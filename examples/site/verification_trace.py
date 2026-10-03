@@ -1,4 +1,4 @@
-"""Request-local display traces using only public pyevp ports and checks."""
+"""Request-local display traces using only public PyEVP ports and checks."""
 
 from __future__ import annotations
 

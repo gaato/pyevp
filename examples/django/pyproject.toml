@@ -1,7 +1,7 @@
 [project]
 name = "pyevp-example-django"
 version = "0"
-description = "Plain Django relying party using pyevp"
+description = "Plain Django relying party using PyEVP"
 requires-python = ">=3.12"
 dependencies = [
     "pyevp[all]",

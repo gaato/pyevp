@@ -27,7 +27,7 @@ are refused, and bodies are size-capped.
 
 The issuer host comes from a DNS record that anyone can publish for their own domain, and the
 key set's location from that issuer's metadata. Without care, a crafted token could make your
-server send requests into its own network. pyevp guards against this in two places:
+server send requests into its own network. PyEVP guards against this in two places:
 
 - Discovery refuses issuer hosts and metadata URLs that are IP literals, single-label names or
   special-use names (`localhost`, `.local`, `.home.arpa`, `.internal`).
@@ -79,7 +79,7 @@ DnsPythonResolver(resolver)
 
 ## Standard library only
 
-{mod}`pyevp.adapters.urllib` needs nothing beyond pyevp's core dependencies, for applications
+{mod}`pyevp.adapters.urllib` needs nothing beyond PyEVP's core dependencies, for applications
 that already chose an HTTP stack and do not want httpx or dnspython added. Without dnspython
 there is no stdlib way to query TXT records, so it resolves them over DoH:
 

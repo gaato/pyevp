@@ -1,4 +1,4 @@
-# pyevp
+# PyEVP
 
 [![Documentation](https://app.readthedocs.org/projects/pyevp/badge/?version=latest)](https://docs.pyevp.dev/en/latest/)
 [![CI](https://github.com/gaato/pyevp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gaato/pyevp/actions/workflows/ci.yml)
@@ -11,9 +11,10 @@
 
 [日本語](https://github.com/gaato/pyevp/blob/main/README.ja.md)
 
-Relying-party verification for the **Email Verification Protocol** (EVP): the browser obtains a
-token from the user's email provider proving they control an address, and your server verifies it,
-with no confirmation email round-trip.
+Python library for the **Email Verification Protocol** (EVP): verify tokens as a relying party,
+or issue them for your own email domains. With EVP, the browser obtains a token from the user's
+email provider proving they control an address, and your server verifies it, with no confirmation
+email round-trip.
 
 **Documentation: <https://docs.pyevp.dev/>**
 
@@ -97,8 +98,8 @@ See the [CLI guide](https://docs.pyevp.dev/en/latest/guides/cli.html) for every 
 - [Testing your application](https://docs.pyevp.dev/en/latest/guides/testing.html): `FakeIssuer` and `FakeBrowser`, no network needed
 - [Replay protection](https://docs.pyevp.dev/en/latest/guides/replay.html), [logging and metrics](https://docs.pyevp.dev/en/latest/guides/observability.html)
 - [DNS, HTTP and caching](https://docs.pyevp.dev/en/latest/guides/transport.html): DNS over HTTPS, a standard-library-only setup, private networks
-- [Profiles](https://docs.pyevp.dev/en/latest/concepts.html#profiles): how pyevp follows a protocol that is still changing
-- [Running an issuer](https://docs.pyevp.dev/en/latest/guides/issuer-operations.html) for your own mail domains (experimental)
+- [Profiles](https://docs.pyevp.dev/en/latest/concepts.html#profiles): how PyEVP follows a protocol that is still changing
+- [Running an issuer](https://docs.pyevp.dev/en/latest/guides/issuer-operations.html) for your own mail domains
 - [Compatibility policy](https://docs.pyevp.dev/en/latest/compatibility.html)
 
 ## Examples

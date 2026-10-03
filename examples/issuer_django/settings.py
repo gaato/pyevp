@@ -1,4 +1,4 @@
-"""Minimal Django issuer for your own email domains (experimental, development only).
+"""Minimal Django issuer for your own email domains (development only).
 
 Users are Django's own; each may get tokens for the address on their account.
 Configure it with environment variables::

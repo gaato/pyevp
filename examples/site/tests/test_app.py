@@ -602,6 +602,7 @@ def test_no_token(rp_client: TestClient) -> None:
     response = rp_client.post("/verify", data={"email": "alice@gmail.example"})
     assert response.status_code == 200
     assert "No token received" in response.text
+    assert "chrome://flags/#email-verification-protocol" in response.text
 
 
 def test_failure_shows_code(rp_client: TestClient, rp_issuer: FakeIssuer) -> None:
@@ -1095,7 +1096,7 @@ def test_seo_metadata(rp_client: TestClient) -> None:
         assert meta["og:description"] == meta["description"]
         assert len(meta["description"]) >= 50
         assert meta["og:type"] == "website"
-        assert meta["og:site_name"] == "pyevp"
+        assert meta["og:site_name"] == "PyEVP"
         assert meta["twitter:card"] == "summary"
         seen.add((meta["title"], meta["description"]))
     assert len(seen) == 3  # The result page shares the demo page's metadata.
@@ -1193,7 +1194,7 @@ def test_origin_trial_token(signer: SigningKey, stylesheet: Path) -> None:
         assert demo.index("origin-trial") < demo.index("</head>")
         text = _page_text(demo)
         assert "Chrome 150 or later, on desktop or Android, works as is" in text
-        assert "chrome://flags/#email-verification-protocol" in text  # The fallback.
+        assert "chrome://flags/#email-verification-protocol" not in text
         assert "set it to Enabled" not in text
         _nonce(client)
         for data in ({"email": EMAIL}, {"email": EMAIL, "evt": "garbage"}):

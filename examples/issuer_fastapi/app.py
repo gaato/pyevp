@@ -1,4 +1,4 @@
-"""Minimal FastAPI issuer for your own email domains (experimental).
+"""Minimal FastAPI issuer for your own email domains.
 
 This is a sketch of the moving parts, not a mail service: users are a dict and
 log in with a password.  Configure it with environment variables::

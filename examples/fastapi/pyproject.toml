@@ -1,7 +1,7 @@
 [project]
 name = "pyevp-example-fastapi"
 version = "0"
-description = "FastAPI relying party using pyevp"
+description = "FastAPI relying party using PyEVP"
 requires-python = ">=3.12"
 dependencies = [
     "pyevp[all]",

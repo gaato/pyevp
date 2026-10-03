@@ -1,4 +1,4 @@
-# pyevp
+# PyEVP
 
 [![Documentation](https://app.readthedocs.org/projects/pyevp/badge/?version=latest)](https://docs.pyevp.dev/ja/latest/)
 [![CI](https://github.com/gaato/pyevp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gaato/pyevp/actions/workflows/ci.yml)
@@ -8,14 +8,15 @@
 
 [English](https://github.com/gaato/pyevp/blob/main/README.md)
 
-pyevp は、**Email Verification Protocol**（EVP）のリライングパーティー側の検証を行う Python
-ライブラリです。ブラウザーがユーザーのメールプロバイダーから「このアドレスを管理している」ことを示す
-トークンを受け取り、サーバーがそれを検証します。確認メールを往復させずにメールアドレスを確認できます。
+PyEVP は、**Email Verification Protocol**（EVP）の Python ライブラリです。リライングパーティー（RP）
+としてトークンを検証することも、自分のメールドメイン向けにトークンを発行することもできます。EVP では、
+ブラウザーがユーザーのメールプロバイダーから「このアドレスを管理している」ことを示すトークンを受け取り、
+サーバーがそれを検証します。確認メールを往復させずにメールアドレスを確認できます。
 
 ## ステータス
 
 アルファ版です。プロトコル（[draft-hardt-email-verification]、[WICG Email Verification API]）と
-ブラウザーの対応（Chrome のオリジントライアル）はまだ変わり続けています。pyevp は変わりうる部分を
+ブラウザーの対応（Chrome のオリジントライアル）はまだ変わり続けています。PyEVP は変わりうる部分を
 バージョン付きの `Profile` にまとめ、仕様の変更に追従できるようにしています。
 
 [draft-hardt-email-verification]: https://github.com/dickhardt/email-verification

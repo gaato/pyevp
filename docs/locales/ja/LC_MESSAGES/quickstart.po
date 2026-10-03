@@ -437,7 +437,3 @@ msgstr ""
 "nonce をクライアント側に保存している場合、つまり Starlette の `SessionMiddleware` のような署名付き "
 "Cookie のセッションや、nonce 専用の Cookie に置いている場合は、取り出しても使い捨てにはなりません。{doc}`リプレイ対策 "
 "<guides/replay>` を有効にしてください。"
-
-#~ msgid "Authentic, but not acceptable"
-#~ msgstr "真正だが、受け入れられない"
-

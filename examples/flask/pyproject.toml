@@ -1,7 +1,7 @@
 [project]
 name = "pyevp-example-flask"
 version = "0"
-description = "Flask relying party using pyevp"
+description = "Flask relying party using PyEVP"
 requires-python = ">=3.12"
 dependencies = [
     "pyevp[all]",

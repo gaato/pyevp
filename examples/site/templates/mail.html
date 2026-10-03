@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% set page_title = "Demo email provider — pyevp" %}
-{% set page_description = "A demo email provider that issues Email Verification Protocol tokens for one shared demo address, for the pyevp demo only." %}
+{% set page_title = "Demo email provider — PyEVP" %}
+{% set page_description = "A demo email provider that issues Email Verification Protocol tokens for one shared demo address, for the PyEVP demo only." %}
 {% set canonical_url = provider_url %}
 {% set main_width = "max-w-xl" %}
 {% block head %}
@@ -10,8 +10,8 @@
 {% block content %}
   <div class="card card-border bg-base-100 shadow-sm">
     <div class="card-body gap-4 sm:p-8">
-      <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">pyevp demo email provider</h1>
-      <p>This provider plays the issuer in the pyevp demo. Anyone can sign in as
+      <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">PyEVP demo email provider</h1>
+      <p>This provider plays the issuer in the PyEVP demo. Anyone can sign in as
         <code>{{ email }}</code> and let the browser request a token for that address.</p>
       <p class="text-base-content/80">Signing in sets a signed session cookie so this provider can remember your choice
         when the browser asks for accounts or a token. It also tells the browser that you
@@ -38,7 +38,7 @@
   </div>
   <nav aria-label="Demo links" class="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
     {% if not signed_in %}<a class="link" href="{{ site_url }}/demo">Try the demo relying party</a>{% endif %}
-    <a class="link" href="{{ site_url }}">pyevp landing page</a>
+    <a class="link" href="{{ site_url }}">PyEVP landing page</a>
   </nav>
 {% endblock %}
 {% block scripts %}

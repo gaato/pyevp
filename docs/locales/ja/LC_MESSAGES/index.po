@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 00:46+0900\n"
+"POT-Creation-Date: 2026-10-03 11:08+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -19,27 +19,31 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../index.md:23
+#: ../../index.md:24
 msgid "Getting started"
 msgstr "はじめに"
 
-#: ../../index.md:31
+#: ../../index.md:32
 msgid "Guides"
 msgstr "ガイド"
 
-#: ../../index.md:45
+#: ../../index.md:48
 msgid "Reference"
 msgstr "リファレンス"
 
 #: ../../index.md:1
-msgid "pyevp"
-msgstr "pyevp"
+msgid "PyEVP"
+msgstr "PyEVP"
 
 #: ../../index.md:3
-msgid "Relying-party verification for the **Email Verification Protocol** (EVP)."
-msgstr "**Email Verification Protocol**（EVP）のリライングパーティー側の検証を行うライブラリです。"
+msgid ""
+"Python library for the **Email Verification Protocol** (EVP): verify "
+"tokens as a relying party, or issue them for your own email domains."
+msgstr ""
+"**Email Verification Protocol**（EVP）の Python ライブラリです。リライングパーティー（RP）としてトークンを検証することも、"
+"自分のメールドメイン向けにトークンを発行することもできます。"
 
-#: ../../index.md:5
+#: ../../index.md:6
 msgid ""
 "With EVP, the browser obtains a token from the user's email provider "
 "proving that the user controls an address, and puts it in your sign-up or"
@@ -49,7 +53,7 @@ msgstr ""
 "EVP "
 "では、ユーザーがそのアドレスを管理していることを示すトークンを、ブラウザーがユーザーのメールプロバイダーから受け取り、サインアップやサインインのフォームに入れます。このライブラリはそのトークンをサーバーで検証するので、確認メールを往復させる必要がありません。"
 
-#: ../../index.md:10
+#: ../../index.md:11
 #, python-brace-format
 msgid ""
 "**Alpha.** The protocol ([draft-hardt-email-verification], [WICG Email "
@@ -65,17 +69,17 @@ msgstr ""
 "のオリジントライアル）はまだ変わり続けています。変わりうる部分はすべてバージョン付きの {doc}`プロファイル <concepts>` "
 "にまとめてあるので、挙動を知らないうちに変えることなく仕様の変更に追従できます。"
 
-#: ../../index.md:16
+#: ../../index.md:17
 msgid "**Typed:** frozen dataclasses, protocols and stable error codes."
 msgstr "**型付き**：frozen なデータクラス、プロトコル、安定したエラーコードを備えています。"
 
-#: ../../index.md:17
+#: ../../index.md:18
 msgid ""
 "**Sync and async from one core:** the verification logic does no I/O "
 "itself; thin drivers serve Django and FastAPI alike."
 msgstr "**同期と非同期を一つのコアで**：検証ロジック自体は I/O を行わず、薄いドライバーが Django にも FastAPI にも対応します。"
 
-#: ../../index.md:19
+#: ../../index.md:20
 msgid ""
 "**Testable:** `pyevp.testing` ships a fake issuer and a fake browser, so "
 "your application's tests need no network access."
@@ -83,7 +87,7 @@ msgstr ""
 "**テストしやすい**：`pyevp.testing` "
 "にはフェイクの発行者（issuer）とフェイクのブラウザーが付属しているので、アプリケーションのテストにネットワーク接続は要りません。"
 
-#: ../../index.md:21
+#: ../../index.md:22
 msgid ""
 "**Small:** the only required dependencies are [joserfc] and idna; DNS and"
 " HTTP are pluggable."

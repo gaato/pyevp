@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% set page_title = "Try EVP in Chrome — pyevp demo" %}
-{% set page_description = "Verify an email address with the Email Verification Protocol in Chrome, step by step, and see every check pyevp runs on the token." %}
+{% set page_title = "Try EVP in Chrome — PyEVP demo" %}
+{% set page_description = "Verify an email address with the Email Verification Protocol in Chrome, step by step, and see every check PyEVP runs on the token." %}
 {% set canonical_url = site_url ~ "/demo" %}
 {% set nav_current = "demo" %}
 {% set main_width = "max-w-3xl" %}
@@ -12,7 +12,7 @@
 {% block content %}
 <section id="demo" class="demo" aria-labelledby="demo-heading">
   <h1 id="demo-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">Try the Email Verification Protocol</h1>
-  <p class="mt-3 text-lg text-base-content/80 text-pretty">Verify an email address in three steps, then see each check pyevp ran on the token.</p>
+  <p class="mt-3 text-lg text-base-content/80 text-pretty">Verify an email address in three steps, then see each check PyEVP ran on the token.</p>
 
   <section id="demo-result" class="demo-result" role="status" aria-live="polite" aria-label="Verification result">
     {% if result_kind %}
@@ -56,7 +56,9 @@
           <ul class="mt-2 list-disc space-y-1 pl-5">
             <li>You are not signed in at the email provider in this browser profile.</li>
             <li>The form was submitted before the token arrived.</li>
-            <li>EVP is not enabled, or this browser or provider does not support it.</li>
+            <li>EVP is not enabled, or this browser or provider does not support it. In Chrome, enable
+              <code class="select-all wrap-anywhere">chrome://flags/#email-verification-protocol</code>
+              and relaunch.</li>
           </ul>
         </div>
       </div>
@@ -134,8 +136,6 @@
         </div>
         {% if origin_trial_token %}
         <p>Chrome 150 or later, on desktop or Android, works as is: this page takes part in the EVP origin trial.</p>
-        <p class="text-sm text-base-content/70">If no token arrives, enable
-          <code class="select-all wrap-anywhere">chrome://flags/#email-verification-protocol</code> and relaunch Chrome.</p>
         {% else %}
         <p>Use Chrome or Chromium 150 or newer, on desktop or Android. Open
           <code class="select-all wrap-anywhere">chrome://flags/#email-verification-protocol</code>

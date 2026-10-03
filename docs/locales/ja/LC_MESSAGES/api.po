@@ -832,11 +832,11 @@ msgstr "標準ライブラリーだけを使う JSON フェッチャーと DoH T
 
 #: of pyevp.adapters.urllib:3
 msgid ""
-"Nothing beyond pyevp's core dependencies is needed, which suits "
+"Nothing beyond PyEVP's core dependencies is needed, which suits "
 "applications that already pick their own HTTP stack and do not want httpx"
 " or dnspython::"
 msgstr ""
-"pyevp の必須の依存パッケージ以外は何も要らないので、HTTP スタックをすでに自分で選んでいて、httpx や dnspython "
+"PyEVP の必須の依存パッケージ以外は何も要らないので、HTTP スタックをすでに自分で選んでいて、httpx や dnspython "
 "を入れたくないアプリケーションに向いています。"
 
 #: of pyevp.adapters.urllib:11
@@ -1092,8 +1092,8 @@ msgid "the name of the hidden input (``{% evp_token_input field=... %}``)."
 msgstr "hidden フィールドの名前（``{% evp_token_input field=... %}``）。"
 
 #: of pyevp.contrib.django.issuer:1
-msgid "Running an EVP issuer in Django (experimental)."
-msgstr "Django で EVP の発行者を運用します（実験的）。"
+msgid "Running an EVP issuer in Django."
+msgstr "Django で EVP の発行者を運用します。"
 
 #: of pyevp.contrib.django.issuer:3
 msgid ""
@@ -1241,12 +1241,12 @@ msgid ""
 msgstr "``/.well-known/web-identity`` です。Chrome は発行者の登録可能ドメイン上でこれを読みます。"
 
 #: ../../api.md:68
-msgid "Issuer (experimental)"
-msgstr "発行者（実験的）"
+msgid "Issuer"
+msgstr "発行者"
 
 #: of pyevp.issuer:1
-msgid "Issuer side of the Email Verification Protocol (experimental)."
-msgstr "Email Verification Protocol の発行者側（実験的）。"
+msgid "Issuer side of the Email Verification Protocol."
+msgstr "Email Verification Protocol の発行者側。"
 
 #: of pyevp.issuer:3
 msgid ""
@@ -1562,28 +1562,3 @@ msgstr "URL ごとにドキュメントを返します。値が呼び出し可�
 #: of pyevp.testing.make_verifier:1
 msgid "A :class:`Verifier` wired to in-memory DNS/HTTP serving ``issuers``."
 msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につないだ {class}`Verifier` を返します。"
-
-#~ msgid ""
-#~ "Any constructor argument, including "
-#~ "``resolver`` / ``fetcher``, can be "
-#~ "overridden."
-#~ msgstr "``resolver`` や ``fetcher`` を含め、コンストラクターの引数はどれでも上書きできます。"
-
-#~ msgid "Unicode case-folded (W3C Email Verification API)."
-#~ msgstr "Unicode のケースフォールディングをしてから比較します（W3C の Email Verification API）。"
-
-#~ msgid "on any failure; see ``.code``."
-#~ msgstr "失敗したとき。``.code`` を参照してください。"
-
-#~ msgid ""
-#~ "The default is the user model's "
-#~ "email field.  Return only addresses the"
-#~ " user has proven control of."
-#~ msgstr "既定ではユーザーモデルのメールフィールドを使います。ユーザーが管理していると確認済みのアドレスだけを返してください。"
-
-#~ msgid ""
-#~ "domains EVTs may be issued for.  "
-#~ "Requests for any other domain are "
-#~ "refused with ``authentication_required``."
-#~ msgstr "EVT を発行してよいドメイン。それ以外のドメインのリクエストは ``authentication_required`` で拒否します。"
-

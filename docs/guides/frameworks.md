@@ -134,7 +134,7 @@ With {class}`~pyevp.AsyncVerifier`, use {class}`~pyevp.contrib.django.AsyncEVPCa
 loop, where Django would raise `SynchronousOnlyOperation`.
 
 Combined with the {doc}`standard-library adapters <transport>`, a Django project needs no
-dependency beyond pyevp's core:
+dependency beyond PyEVP's core:
 
 ```python
 from pyevp import Verifier

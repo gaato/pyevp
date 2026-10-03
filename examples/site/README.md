@@ -105,7 +105,7 @@ The page uses semantic HTML and named hooks for its three steps: `#demo-browser`
 `aria-live="polite"`). Chrome/Chromium 150 or newer (desktop or Android) with
 `chrome://flags/#email-verification-protocol` enabled is the suggested browser. With
 `EVP_ORIGIN_TRIAL_TOKEN` set, the page joins the origin trial, so Chrome 150 or later works
-without the flag; the flag stays as a fallback. A soft
+without the flag; the flag is then mentioned only when no token arrived. A soft
 client-side notice uses the secure context and the UA brands/version; it never
 blocks submission and cannot detect whether EVP is enabled. The provider sign-in state
 is not queried or displayed by the relying party. The email field starts empty, with the

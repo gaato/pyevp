@@ -1,6 +1,7 @@
-# pyevp
+# PyEVP
 
-Relying-party verification for the **Email Verification Protocol** (EVP).
+Python library for the **Email Verification Protocol** (EVP): verify tokens as a relying party, or
+issue them for your own email domains.
 
 With EVP, the browser obtains a token from the user's email provider proving that the user
 controls an address, and puts it in your sign-up or sign-in form. This library verifies that

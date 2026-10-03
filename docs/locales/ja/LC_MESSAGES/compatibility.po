@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 00:46+0900\n"
+"POT-Creation-Date: 2026-10-03 11:05+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -56,8 +56,8 @@ msgid ""
 msgstr "対応する Python は 3.11 以降です。サポートを打ち切るのは、そのバージョンが上流でサポート終了（EOL）を迎えた後に限ります。"
 
 #: ../../compatibility.md:13
-msgid "Depending on pyevp from a library"
-msgstr "ライブラリから pyevp に依存する"
+msgid "Depending on PyEVP from a library"
+msgstr "ライブラリから PyEVP に依存する"
 
 #: ../../compatibility.md:15
 msgid ""

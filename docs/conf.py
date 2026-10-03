@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from importlib.metadata import version as _version
 
-project = "pyevp"
+project = "PyEVP"
 author = "Gakuto Furuya"
 copyright = f"2026, {author}"
 release = _version("pyevp")
@@ -20,7 +20,7 @@ extensions = [
 ]
 
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "locales"]
 
 myst_enable_extensions = ["colon_fence", "deflist", "fieldlist"]
 myst_heading_anchors = 3
@@ -42,7 +42,7 @@ html_theme = "furo"
 # Read the Docs passes the canonical URL (https://docs.pyevp.dev/<lang>/<version>/) but
 # no longer sets html_baseurl itself; without it Sphinx emits no rel="canonical".
 html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
-html_title = f"pyevp {release}"
+html_title = f"PyEVP {release}"
 html_theme_options = {
     "source_repository": "https://github.com/gaato/pyevp/",
     "source_branch": "main",

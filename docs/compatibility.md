@@ -10,7 +10,7 @@
   codes.
 - Supported Pythons: 3.11 and newer. A version is dropped only after its upstream end of life.
 
-## Depending on pyevp from a library
+## Depending on PyEVP from a library
 
 Libraries that still support Python 3.10 can offer EVP as an optional extra by gating it with an
 environment marker:

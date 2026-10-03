@@ -3,7 +3,7 @@
 - ``pyevp discover``: check a domain's issuer as a relying party would see it.
 - ``pyevp inspect``: decode a presentation token offline (signatures not checked).
 - ``pyevp verify``: run the full verification of a token.
-- ``pyevp issuer keygen`` / ``pyevp issuer documents``: set up an issuer (experimental).
+- ``pyevp issuer keygen`` / ``pyevp issuer documents``: set up an issuer.
 """
 
 from __future__ import annotations
@@ -184,9 +184,7 @@ def make_app(
 
 
 def _issuer_app() -> typer.Typer:
-    app = typer.Typer(
-        help="Set up an issuer for your own email domains (experimental).", no_args_is_help=True
-    )
+    app = typer.Typer(help="Set up an issuer for your own email domains.", no_args_is_help=True)
 
     @app.command("keygen")
     def keygen_cmd(

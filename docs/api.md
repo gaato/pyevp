@@ -65,7 +65,7 @@ Everything most applications need is importable from the top-level package.
       LoginStatusMiddleware
 ```
 
-## Issuer (experimental)
+## Issuer
 
 ```{eval-rst}
 .. automodule:: pyevp.issuer

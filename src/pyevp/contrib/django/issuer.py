@@ -1,4 +1,4 @@
-"""Running an EVP issuer in Django (experimental).
+"""Running an EVP issuer in Django.
 
 :class:`IssuerSite` serves everything Chrome needs from an issuer, with the
 logged-in Django user deciding which addresses get tokens::

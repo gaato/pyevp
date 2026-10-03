@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% set page_title = "pyevp — Email Verification Protocol for Python" %}
-{% set page_description = "pyevp is a Python relying-party library for the Email Verification Protocol (EVP): confirm a user's email address with a token signed by their email provider, without sending a confirmation email." %}
+{% set page_title = "PyEVP — Email Verification Protocol for Python" %}
+{% set page_description = "PyEVP is a Python library for the Email Verification Protocol (EVP): confirm a user's email address with a token signed by their email provider, without sending a confirmation email, or issue such tokens for your own email domains." %}
 {% set canonical_url = site_url ~ "/" %}
 {% block content %}
   <section id="landing-intro" class="landing-intro hero py-6 sm:py-12">
@@ -8,7 +8,7 @@
       <p class="badge badge-ghost">Email Verification Protocol · Python</p>
       <h1 class="text-4xl font-bold tracking-tight text-balance sm:text-5xl">Verify email addresses without sending an email</h1>
       <p class="text-lg text-base-content/80 text-pretty">With the Email Verification Protocol, the browser brings a token signed by the user's
-        email provider. pyevp verifies it on your Python server: no confirmation email, no code to copy.</p>
+        email provider. PyEVP verifies it on your Python server: no confirmation email, no code to copy.</p>
       <div class="mt-2 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
         <a href="/demo" class="btn btn-primary btn-lg">Try the demo</a>
         <a href="https://docs.pyevp.dev/" class="btn btn-lg">Read the docs</a>
@@ -43,7 +43,7 @@
             <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-base-300 font-semibold" aria-hidden="true">3</span>
             <h3 class="card-title text-base">Your server verifies</h3>
           </div>
-          <p class="text-base-content/80">Your server verifies the token with pyevp.</p>
+          <p class="text-base-content/80">Your server verifies the token with PyEVP.</p>
         </div>
       </li>
     </ol>

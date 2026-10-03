@@ -1,8 +1,8 @@
 # Running an issuer
 
 ```{warning}
-**Experimental.** `pyevp.issuer` follows draft-hardt-email-verification-02 and the request format
-Chrome sends from version 153 on. It was tested end to end with Chrome 154.0.8037.92 (the
+`pyevp.issuer` follows draft-hardt-email-verification-02 and the request format Chrome sends from
+version 153 on. It was tested end to end with Chrome 154.0.8037.92 (the
 `#email-verification-protocol` flag, or `--enable-features=EmailVerificationProtocol`), and a
 nightly job runs the example issuer against current Chrome stable and beta
 ([`interop/`](https://github.com/gaato/pyevp/tree/main/interop)). Chrome and the draft are

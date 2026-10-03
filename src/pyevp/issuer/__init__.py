@@ -1,4 +1,4 @@
-"""Issuer side of the Email Verification Protocol (experimental).
+"""Issuer side of the Email Verification Protocol.
 
 Framework-neutral building blocks for running an issuer for your own email
 domains: validate the browser's signed issuance request, mint EVTs, and produce

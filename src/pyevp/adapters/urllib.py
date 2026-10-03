@@ -1,6 +1,6 @@
 """A JSON fetcher and a DoH TXT resolver using only the standard library.
 
-Nothing beyond pyevp's core dependencies is needed, which suits applications
+Nothing beyond PyEVP's core dependencies is needed, which suits applications
 that already pick their own HTTP stack and do not want httpx or dnspython::
 
     from pyevp import Verifier
