@@ -28,15 +28,16 @@ email round-trip.
 ## Install
 
 ```sh
-pip install "pyevp[all]"   # core + dnspython + httpx adapters
+pip install "pyevp[dns,httpx2]"   # core + the DNS and HTTP adapters
 ```
 
-The core depends only on [joserfc] and idna. DNS and HTTP are pluggable; `[all]` installs the
-default adapters used by `Verifier.default()`.
+The core depends only on [joserfc] and idna. DNS and HTTP are pluggable; `[dns,httpx2]` installs
+the default adapters used by `Verifier.default()`. `[all]` installs every optional dependency,
+including the Django integration and the command line.
 
 The HTTP adapters work with [httpx2] (pydantic's maintained fork of httpx) or httpx and prefer
-httpx2 when both are installed: `pip install "pyevp[dns,httpx2]"`. A client from either library can
-be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
+httpx2 when both are installed, so `pip install "pyevp[dns,httpx]"` works too. A client from either
+library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
 
 [httpx2]: https://github.com/pydantic/httpx2
 

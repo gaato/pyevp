@@ -4,7 +4,7 @@ version = "0"
 description = "Plain Django relying party using PyEVP"
 requires-python = ">=3.12"
 dependencies = [
-    "pyevp[all]",
+    "pyevp[dns,httpx2,django]",
     "django>=6.1",
 ]
 

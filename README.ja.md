@@ -25,11 +25,12 @@ PyEVP は、**Email Verification Protocol**（EVP）の Python ライブラリ�
 ## インストール
 
 ```sh
-pip install "pyevp[all]"   # core + dnspython + httpx adapters
+pip install "pyevp[dns,httpx2]"   # core + the DNS and HTTP adapters
 ```
 
-コアの依存は joserfc と idna だけです。`[all]` を付けると、`Verifier.default()` が使う DNS と HTTP
-のアダプターも入ります。
+コアの依存は joserfc と idna だけです。`[dns,httpx2]` を付けると、`Verifier.default()` が使う DNS と
+HTTP のアダプターも入ります。`[all]` を付けると、Django 連携とコマンドラインも含めてオプションの依存が
+すべて入ります。
 
 ## 使い方
 

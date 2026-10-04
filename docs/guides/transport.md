@@ -15,7 +15,7 @@ maintained fork) or httpx, and prefers httpx2 when both are installed. Install o
 
 ```sh
 pip install "pyevp[dns,httpx2]"
-pip install "pyevp[dns,httpx]"      # same as pyevp[all]
+pip install "pyevp[dns,httpx]"
 ```
 
 A client from either library can be passed explicitly, for example to share connection pools

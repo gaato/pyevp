@@ -41,7 +41,7 @@ httpx2 = [
     "httpx2>=2.13",
 ]
 all = [
-    "pyevp[dns,httpx]",
+    "pyevp[dns,httpx2,django,cli]",
 ]
 cli = [
     "pyevp[dns,httpx2]",

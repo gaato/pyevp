@@ -4,7 +4,7 @@ version = "0"
 description = "Flask relying party using PyEVP"
 requires-python = ">=3.12"
 dependencies = [
-    "pyevp[all]",
+    "pyevp[dns,httpx2]",
     "flask>=3.1",
 ]
 

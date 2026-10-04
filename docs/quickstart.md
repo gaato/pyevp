@@ -3,11 +3,11 @@
 ## Install
 
 ```sh
-pip install "pyevp[all]"
+pip install "pyevp[dns,httpx2]"
 ```
 
-`[all]` adds dnspython and httpx, which `Verifier.default()` uses for DNS and HTTPS. See
-{doc}`guides/transport` for httpx2, DNS over HTTPS and other options.
+`[dns,httpx2]` adds dnspython and httpx2, which `Verifier.default()` uses for DNS and HTTPS. See
+{doc}`guides/transport` for httpx, DNS over HTTPS and other options.
 
 ## 1. Put a nonce on the form
 

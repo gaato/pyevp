@@ -4,7 +4,7 @@ version = "0"
 description = "Passwordless login with EVP and AuthX cookie JWTs"
 requires-python = ">=3.12"
 dependencies = [
-    "pyevp[all]",
+    "pyevp[dns,httpx2]",
     "authx>=1.7",
     "fastapi>=0.142",
     "itsdangerous>=2.2",

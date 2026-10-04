@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 00:10+0900\n"
+"POT-Creation-Date: 2026-10-04 14:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -56,8 +56,10 @@ msgid "An async context manager: leaving it calls :meth:`aclose`."
 msgstr "非同期コンテキストマネージャーです。抜けると {meth}`aclose` を呼びます。"
 
 #: of pyevp.verifier.AsyncVerifier.default:1 pyevp.verifier.Verifier.default:1
-msgid "Build a verifier using dnspython and httpx (``pip install pyevp[all]``)."
-msgstr "dnspython と httpx を使う verifier を作ります（``pip install pyevp[all]``）。"
+msgid ""
+"Build a verifier using dnspython and httpx2 or httpx "
+"(``pyevp[dns,httpx2]``)."
+msgstr "dnspython と、httpx2 または httpx を使う verifier を作ります（``pyevp[dns,httpx2]``）。"
 
 #: of pyevp.verifier.AsyncVerifier.default:3
 msgid ""

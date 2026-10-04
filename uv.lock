@@ -1208,8 +1208,10 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "anyio" },
+    { name = "django" },
     { name = "dnspython" },
-    { name = "httpx" },
+    { name = "httpx2" },
+    { name = "typer" },
 ]
 cli = [
     { name = "anyio" },
@@ -1261,8 +1263,8 @@ requires-dist = [
     { name = "httpx2", marker = "extra == 'httpx2'", specifier = ">=2.13" },
     { name = "idna", specifier = ">=3.7" },
     { name = "joserfc", specifier = ">=1.7" },
-    { name = "pyevp", extras = ["dns", "httpx"], marker = "extra == 'all'" },
     { name = "pyevp", extras = ["dns", "httpx2"], marker = "extra == 'cli'" },
+    { name = "pyevp", extras = ["dns", "httpx2", "django", "cli"], marker = "extra == 'all'" },
     { name = "typer", marker = "extra == 'cli'", specifier = ">=0.27" },
 ]
 provides-extras = ["dns", "httpx", "httpx2", "all", "cli", "django"]
@@ -1292,7 +1294,7 @@ dependencies = [
     { name = "authx" },
     { name = "fastapi" },
     { name = "itsdangerous" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -1308,7 +1310,7 @@ requires-dist = [
     { name = "authx", specifier = ">=1.7" },
     { name = "fastapi", specifier = ">=0.142" },
     { name = "itsdangerous", specifier = ">=2.2" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "uvicorn", specifier = ">=0.54" },
 ]
@@ -1325,7 +1327,7 @@ version = "0"
 source = { virtual = "examples/django" }
 dependencies = [
     { name = "django" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["django", "dns", "httpx2"] },
 ]
 
 [package.dev-dependencies]
@@ -1337,7 +1339,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "django", specifier = ">=6.1" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2", "django"], editable = "." },
 ]
 
 [package.metadata.requires-dev]
@@ -1353,7 +1355,7 @@ source = { virtual = "examples/django_allauth" }
 dependencies = [
     { name = "django" },
     { name = "django-allauth" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["django", "dns", "httpx2"] },
 ]
 
 [package.dev-dependencies]
@@ -1366,7 +1368,7 @@ dev = [
 requires-dist = [
     { name = "django", specifier = ">=6.1" },
     { name = "django-allauth", specifier = ">=65" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2", "django"], editable = "." },
 ]
 
 [package.metadata.requires-dev]
@@ -1382,7 +1384,7 @@ source = { virtual = "examples/fastapi" }
 dependencies = [
     { name = "fastapi" },
     { name = "itsdangerous" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -1397,7 +1399,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.142" },
     { name = "itsdangerous", specifier = ">=2.2" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "uvicorn", specifier = ">=0.54" },
 ]
@@ -1414,7 +1416,7 @@ version = "0"
 source = { virtual = "examples/fastapi_spa" }
 dependencies = [
     { name = "fastapi" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
     { name = "uvicorn" },
 ]
 
@@ -1427,7 +1429,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.142" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
     { name = "uvicorn", specifier = ">=0.54" },
 ]
 
@@ -1446,7 +1448,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastapi-users", extra = ["sqlalchemy"] },
     { name = "itsdangerous" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -1463,7 +1465,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.142" },
     { name = "fastapi-users", extras = ["sqlalchemy"], specifier = ">=15" },
     { name = "itsdangerous", specifier = ">=2.2" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "uvicorn", specifier = ">=0.54" },
 ]
@@ -1480,7 +1482,7 @@ version = "0"
 source = { virtual = "examples/flask" }
 dependencies = [
     { name = "flask" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
 ]
 
 [package.dev-dependencies]
@@ -1491,7 +1493,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "flask", specifier = ">=3.1" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
 ]
 
 [package.metadata.requires-dev]
@@ -1562,7 +1564,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "itsdangerous" },
     { name = "jinja2" },
-    { name = "pyevp", extra = ["all"] },
+    { name = "pyevp", extra = ["dns", "httpx2"] },
     { name = "pygments" },
     { name = "python-multipart" },
     { name = "uvicorn" },
@@ -1580,7 +1582,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.142" },
     { name = "itsdangerous", specifier = ">=2.2" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "pyevp", extras = ["all"], editable = "." },
+    { name = "pyevp", extras = ["dns", "httpx2"], editable = "." },
     { name = "pygments", specifier = ">=2.19" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "uvicorn", specifier = ">=0.54" },

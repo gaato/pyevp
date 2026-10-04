@@ -433,7 +433,7 @@ def test_real_markers_and_landing(client: TestClient) -> None:
     response = client.get(SITE + "/")
     assert response.status_code == 200
     text = _page_text(response.text)
-    assert 'pip install "pyevp[all]"' in text
+    assert 'pip install "pyevp[dns,httpx2]"' in text
     for url in (
         "/demo",
         "https://docs.pyevp.dev/",

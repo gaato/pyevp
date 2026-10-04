@@ -4,7 +4,7 @@ version = "0"
 description = "django-allauth signup that trusts EVP tokens"
 requires-python = ">=3.12"
 dependencies = [
-    "pyevp[all]",
+    "pyevp[dns,httpx2,django]",
     "django>=6.1",
     "django-allauth>=65",
 ]

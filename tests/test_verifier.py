@@ -412,7 +412,7 @@ def test_default_names_missing_extras(
     kwargs = {"resolver": InMemoryDns()} if named != "dnspython" else {}
     with pytest.raises(ImportError, match=named) as exc:
         cls.default(audience=AUDIENCE, **kwargs)
-    assert "pip install 'pyevp[all]'" in str(exc.value)
+    assert "pip install 'pyevp[dns,httpx2]'" in str(exc.value)
 
 
 def test_default_accepts_port_overrides(issuer: FakeIssuer, token: str, nonce: str) -> None:

@@ -155,8 +155,8 @@ def _unreachable(effect: ResolveTxt | FetchJson, exc: Exception) -> DiscoveryErr
 
 def _missing_extras(cls: type, what: str) -> ImportError:
     return ImportError(
-        f"{cls.__name__}.default() needs {what}: pip install 'pyevp[all]', or pass resolver= "
-        "and fetcher= yourself (pyevp.adapters.urllib needs no extra dependencies)"
+        f"{cls.__name__}.default() needs {what}: pip install 'pyevp[dns,httpx2]', or pass "
+        "resolver= and fetcher= yourself (pyevp.adapters.urllib needs no extra dependencies)"
     )
 
 
@@ -210,7 +210,7 @@ class Verifier(_Base):
         replay_guard: ReplayGuard | None = None,
         observer: Observer | None = None,
     ) -> Self:
-        """Build a verifier using dnspython and httpx (``pip install pyevp[all]``).
+        """Build a verifier using dnspython and httpx2 or httpx (``pyevp[dns,httpx2]``).
 
         ``resolver`` and ``fetcher`` default to those adapters, which :meth:`close` closes;
         the other arguments are the constructor's.
@@ -377,7 +377,7 @@ class AsyncVerifier(_Base):
         replay_guard: ReplayGuard | AsyncReplayGuard | None = None,
         observer: Observer | None = None,
     ) -> Self:
-        """Build a verifier using dnspython and httpx (``pip install pyevp[all]``).
+        """Build a verifier using dnspython and httpx2 or httpx (``pyevp[dns,httpx2]``).
 
         ``resolver`` and ``fetcher`` default to those adapters, which :meth:`aclose` closes;
         the other arguments are the constructor's.
