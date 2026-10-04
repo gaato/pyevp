@@ -11,10 +11,8 @@ pip install "pyevp[dns,httpx2]"
 
 ## 1. Put a nonce on the form
 
-Each time you render the page, issue a nonce into the user's session and add two inputs to the
-form: the email field the user fills in, and a hidden field the browser fills with the token.
-{class}`~pyevp.SessionNonces` works with any session that has `get` and item assignment, such
-as Flask's, Starlette's or Django's.
+When you render the form, issue a nonce into the user's session (Flask's, Starlette's or
+Django's) and add a hidden field for the browser to fill with the token:
 
 ```python
 from pyevp import SessionNonces, token_input
@@ -28,33 +26,28 @@ hidden_input = token_input(nonce)  # HTML that Jinja and Django templates insert
 <input type="hidden" name="evt" autocomplete="email-verification-token" nonce="{{ nonce }}">
 ```
 
-The `nonce` must be a content attribute in the HTML. Frameworks that set it as a DOM property
-are not picked up by the browser. React 19 renders the `nonce` prop as a content attribute.
+Create one {class}`~pyevp.SessionNonces` per request, and issue a nonce only on pages that have
+a form, since storing it creates a session. Without a server session, see {doc}`guides/spa`.
 
-Chrome writes the token into the hidden field only when the form is submitted. Before that,
-page scripts read an empty value, so check the token on the server, not in client-side
-validation.
-
-Use one `SessionNonces` per request: all forms on a page share the nonce of its first
-`issue()`. The session keeps the nonces of the last five pages for ten minutes, so a form in any
-open tab can be verified. Storing the nonce gives each visitor a session, so add the inputs only
-to pages that have a form. Elsewhere, implement {class}`~pyevp.NonceStore` yourself: an API
-without server sessions can keep the nonce in a cookie, for example; see {doc}`guides/spa`.
+The `nonce` must be an HTML attribute; the browser ignores one set as a DOM property.
 
 ### Fitting EVP into an existing form
 
-- The email field needs `autocomplete="email"`. With `autocomplete="off"` the browser does not
-  offer verified addresses.
-- Leave the field empty. Chrome asks the email provider for a token only after the user types an
-  address or picks one from autofill, so a pre-filled value sends none.
-- Submit through the form. The token is filled in as part of the form's submission, so a script
-  that sends the fields with `fetch()` from a click handler gets none. Send from the form's
-  `submit` handler instead, including the `evt` field, as `FormData` if your server reads form
-  fields.
+- The email field needs `autocomplete="email"`, not `off`, and must start empty: a pre-filled
+  address gets no token.
+- Chrome fills `evt` only as the form is submitted, just before `submit` handlers run. Check it on
+  the server, not in client-side validation. A script that sends the form must do so from the
+  `submit` handler, with the `evt` field.
+- Chrome asks the email provider when focus leaves the email field, so a quick submit can carry
+  an empty `evt`. To wait, a `submit` handler can cancel the submission while `evt` is empty and
+  retry with `form.requestSubmit()` up to a deadline; the [demo](https://pyevp.dev/demo) retries
+  every 400 ms for 8 seconds ([WICG/email-verification#42]).
+
+[WICG/email-verification#42]: https://github.com/WICG/email-verification/issues/42
 
 ## 2. Verify on submit
 
-Create the verifier once, with your origin as the audience:
+Create the verifier once, with your page's origin as the audience:
 
 ```python
 from pyevp import EVPError, Verifier
@@ -62,9 +55,12 @@ from pyevp import EVPError, Verifier
 verifier = Verifier.default(audience="https://example.com")
 ```
 
-The verifier keeps an HTTP client open. On shutdown, call `verifier.close()` (`await
-verifier.aclose()` for `AsyncVerifier`), or use it as a context manager. It closes only what
-`default()` created: a resolver, fetcher or HTTP client you pass in is yours to close.
+Call `verifier.close()` on shutdown (`await verifier.aclose()` for `AsyncVerifier`), or use it
+as a context manager.
+
+By default, any issuer that the email domain's DNS names is accepted. To accept only providers
+you know, list them, for example `allowed_issuers=["https://accounts.google.com"]`; other tokens
+are refused with `issuer_not_allowed` before anything is looked up.
 
 Then, in the form handler:
 
@@ -82,64 +78,56 @@ else:
         mark_verified(result.email)  # result.issuer, result.claims, ...
 ```
 
-{meth}`~pyevp.Verifier.verify_submission` takes the nonce the token presents out of the
-session, whether or not the token then verifies, so each nonce is used once. A nonce the
-session does not hold is `nonce_mismatch`. Without a token it returns `None` and leaves the
-session alone: the browser did not use the nonce, and a form that is not rendered again, such as
-one sent with `fetch()`, still has it for its next submission.
+Each nonce works once. `AsyncVerifier` has the same API: `await verifier.verify_submission(...)`.
+To pass the nonce yourself, use {meth}`~pyevp.Verifier.verify`.
 
-`AsyncVerifier` has the same API: `await verifier.verify_submission(...)`. To pass the nonce
-yourself, use {meth}`~pyevp.Verifier.verify`.
-
-`result.email` is the address the issuer asserted. Under the default profile it may differ from
-the submitted one in case. To find the account, compare addresses with
-{meth}`verifier.profile.emails_match() <pyevp.Profile.emails_match>`, which applies the same rule
-as verification: the local part is case-folded, and domains are compared as DNS names, so
-`faß.example` and `fass.example` stay different.
+`result.email` may differ from the submitted address in case, so look up the account with
+{meth}`verifier.profile.emails_match() <pyevp.Profile.emails_match>`.
 
 (handle-failures)=
 
 ## 3. Handle failures
 
-A rejected token raises a subclass of {class}`pyevp.EVPError` whose {class}`pyevp.ErrorCode`
-says why:
+A rejected token raises a {class}`~pyevp.TokenError`, {class}`~pyevp.DiscoveryError` or
+{class}`~pyevp.PolicyError`, all {class}`~pyevp.EVPError`s whose `code` says why. Errors from
+your own cache or replay guard propagate unchanged.
 
-| Exception | Meaning | Typical codes |
-|---|---|---|
-| {class}`~pyevp.TokenError` | Malformed, stale, mis-bound or badly signed token | `nonce_mismatch`, `token_expired`, `token_replayed` |
-| {class}`~pyevp.DiscoveryError` | The issuer could not be discovered or used | `issuer_mismatch`, `issuer_unreachable` |
-| {class}`~pyevp.PolicyError` | Not acceptable to your policy; checked before the signature, so not a sign of authenticity | `email_mismatch`, `email_not_verified`, `issuer_not_allowed` |
-
-`issuer_unreachable` may be transient. Everything else means "do not trust this token".
-Exceptions from your own cache or replay guard are not `EVPError`s; they propagate unchanged,
-so an outage on your side does not look like a rejected token. EVP is a
-progressive enhancement: when there is no token, or it is rejected, fall back to your existing
-verification flow.
-
-Whatever the code, the safe default is the fallback. The codes tell you whether the user can
-simply try again and whether something on your side needs attention:
+Whatever the code, the safe default is to fall back to your existing verification flow. The
+code tells you whether the user can retry and whether your side needs attention:
 
 | Code | Usually means | What to do |
 |---|---|---|
-| `nonce_mismatch` | The session expired, the form was submitted twice, or it is older than the last five forms | Render a fresh form, or fall back |
-| `token_expired` | The user took longer than `max_token_age` to submit | Render a fresh form, or fall back |
+| `nonce_mismatch`, `token_expired` | Stale form: expired session, double submit, or older than the last five forms or `max_token_age` | Render a fresh form, or fall back |
 | `token_not_yet_valid` | Clock skew between the browser and your server | Fall back; if frequent, check your server clock |
 | `email_mismatch` | The email field was edited after picking an address | Ask the user to pick the address again |
 | `audience_mismatch` | `audience` differs from the page's origin | Fix your configuration (proxies, hostnames) |
 | `issuer_unreachable` | DNS or HTTPS to the issuer failed; may be transient | Fall back; monitor the rate |
-| `issuer_discovery_failed` | The email domain has no usable `_email-verification` record | Fall back |
-| `metadata_invalid`, `key_not_found` | The issuer's metadata or keys are broken or rotating | Fall back; `pyevp discover <domain>` shows details |
-| `unsupported_alg`, `bad_type` | The issuer signs in a way your profile does not accept | Fall back; compare with `pyevp discover` |
-| `email_not_verified` | The issuer does not vouch for the address | Fall back |
-| `issuer_not_allowed` | The email provider is not in your `allowed_issuers` | Fall back |
+| `issuer_discovery_failed`, `metadata_invalid`, `key_not_found`, `unsupported_alg`, `bad_type` | No usable issuer for the domain, or its metadata or keys are broken, rotating or refused by your profile | Fall back; `pyevp discover <domain>` shows details |
+| `email_not_verified`, `issuer_not_allowed` | The issuer does not vouch for the address, or is not in your `allowed_issuers` | Fall back |
 | `token_replayed` | The token was already accepted once | Reject; this is a resubmission or an attack |
 | `malformed_token` | The field did not contain an EVP token | Fall back; if frequent, check the form markup |
 | `issuer_mismatch`, `evt_signature_invalid`, `kb_signature_invalid`, `sd_hash_mismatch` | Forged or tampered token | Fall back and log; do not trust the address |
 
-Codes may be added in minor releases, so treat unknown codes as "fall back".
+Treat unknown codes as "fall back".
 
 ```{important}
-If the nonce is stored client-side, in a session kept in a signed cookie such as Starlette's
-`SessionMiddleware` or in a cookie of its own, taking it out does not make it single-use: the old
-cookie can be sent again. Enable {doc}`replay protection <guides/replay>`.
+If the session lives in a signed cookie, such as Starlette's `SessionMiddleware`, taking the
+nonce out does not make it single-use: the old cookie can be sent again. Enable
+{doc}`replay protection <guides/replay>`.
 ```
+
+## Try it in Chrome
+
+1. Enable `chrome://flags/#email-verification-protocol`, or start Chrome with
+   `--enable-features=EmailVerificationProtocol`. Visitors need neither if your page carries a
+   token from Chrome's origin trial (`<meta http-equiv="origin-trial" content="...">`).
+2. Sign in to Google in the same Chrome profile.
+3. Open your form over HTTPS or on `localhost`, at the `audience` origin, pick your Gmail
+   address and move to the next field. Chrome asks once whether to verify it automatically.
+
+## Next
+
+- {doc}`guides/frameworks`: FastAPI, Flask, Django and other integrations
+- {doc}`guides/replay`: one use per token
+- {doc}`guides/testing`: test your application without a browser or network
+- {doc}`guides/transport`: DNS, HTTP, caching and private networks

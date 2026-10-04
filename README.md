@@ -16,11 +16,15 @@ or issue them for your own email domains. With EVP, the browser obtains a token 
 email provider proving they control an address, and your server verifies it, with no confirmation
 email round-trip.
 
-**Documentation: <https://docs.pyevp.dev/>**
+**Documentation: <https://docs.pyevp.dev/>** · **Live demo: <https://pyevp.dev/demo>**
 
 > **Status: alpha.** The protocol ([draft-hardt-email-verification], [WICG Email Verification API])
-> and browser support (Chrome origin trial) are still changing. This library isolates every
-> moving part in a versioned `Profile` so it can follow along.
+> is still changing. PyEVP keeps every moving part in a versioned `Profile` so it can follow along.
+
+- **Browsers:** Chrome, with `chrome://flags/#email-verification-protocol` enabled or on a site
+  registered for the origin trial. Tested with Chrome 154. Other browsers send no token.
+- **Email providers:** Gmail issues tokens today. Your own domains can too, with `pyevp.issuer`.
+- **Python:** 3.11 or newer.
 
 [draft-hardt-email-verification]: https://github.com/dickhardt/email-verification
 [WICG Email Verification API]: https://github.com/WICG/email-verification
@@ -31,17 +35,12 @@ email round-trip.
 pip install "pyevp[dns,httpx2]"   # core + the DNS and HTTP adapters
 ```
 
-The core depends only on [joserfc] and idna. DNS and HTTP are pluggable; `[dns,httpx2]` installs
-the default adapters used by `Verifier.default()`. `[all]` installs every optional dependency,
-including the Django integration and the command line.
-
-The HTTP adapters work with [httpx2] (pydantic's maintained fork of httpx) or httpx and prefer
-httpx2 when both are installed, so `pip install "pyevp[dns,httpx]"` works too. A client from either
-library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
-
-[httpx2]: https://github.com/pydantic/httpx2
+The core depends only on [joserfc] and idna. `[dns,httpx2]` adds the adapters
+`Verifier.default()` uses; httpx works too (see [DNS, HTTP and caching]). `[all]` adds the Django
+integration and the command line.
 
 [joserfc]: https://jose.authlib.org/
+[DNS, HTTP and caching]: https://docs.pyevp.dev/en/latest/guides/transport.html
 
 ## How it works
 
@@ -73,7 +72,7 @@ library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
            form.get("evt"), nonces=SessionNonces(session), email=form["email"]
        )
    except EVPError as exc:
-       ...  # exc.code is an ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
+       ...  # exc.code says why, e.g. "nonce_mismatch"; fall back to email confirmation
    else:
        if result is None:
            ...  # no token: fall back to email confirmation
@@ -81,40 +80,19 @@ library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
            result.email, result.issuer  # verified
    ```
 
-   `AsyncVerifier` has the same API with `await verifier.verify_submission(...)`.
+   `AsyncVerifier` has the same API with `await`.
 
-Verification checks the key-binding JWT (audience, nonce, freshness, `sd_hash`, holder signature)
-before doing any I/O. It then discovers the issuer from DNS (`_email-verification.<domain>`
-TXT `iss=…`), fetches its metadata and JWKS (cached), and verifies the issuer's signature. Only
-hosts derived from DNS are ever contacted, never hosts named in the token. Before connecting, the
-default fetchers also check that the host resolves only to public addresses; see
-[private networks](https://docs.pyevp.dev/en/latest/guides/transport.html#ssrf) for what this check
-does not catch.
-
-Every rejected token raises an `EVPError` with an `ErrorCode`. The safe default is to fall back to your existing
-verification flow; the [error table](https://docs.pyevp.dev/en/latest/quickstart.html#handle-failures) tells which codes
-the user can retry and which point at your configuration.
-
-## Command line
-
-`pyevp[cli]` installs a `pyevp` command for relying-party developers and operators, and for
-issuer operators checking their own setup. It runs without installing anything into your project:
-
-```sh
-uvx --from "pyevp[cli]" pyevp discover gmail.com           # DNS record, metadata, keys vs. profile
-pbpaste | uvx --from "pyevp[cli]" pyevp inspect            # decode a token offline (no signature checks)
-uvx --from "pyevp[cli]" pyevp verify "$TOKEN" --audience https://example.com --nonce "$NONCE"
-```
-
-See the [CLI guide](https://docs.pyevp.dev/en/latest/guides/cli.html) for every command and option.
+Everything that can be checked offline is checked first, and only hosts found through DNS are
+ever contacted, never hosts named in the token. Every rejection raises an `EVPError` with an
+[error code](https://docs.pyevp.dev/en/latest/quickstart.html#handle-failures).
 
 ## More
 
+- [Quickstart](https://docs.pyevp.dev/en/latest/quickstart.html) and [concepts](https://docs.pyevp.dev/en/latest/concepts.html)
 - [Frameworks](https://docs.pyevp.dev/en/latest/guides/frameworks.html): FastAPI, Flask, fastapi-users, AuthX and Django
-- [Testing your application](https://docs.pyevp.dev/en/latest/guides/testing.html): `FakeIssuer` and `FakeBrowser`, no network needed
+- [Testing your application](https://docs.pyevp.dev/en/latest/guides/testing.html) without network access
 - [Replay protection](https://docs.pyevp.dev/en/latest/guides/replay.html), [logging and metrics](https://docs.pyevp.dev/en/latest/guides/observability.html)
-- [DNS, HTTP and caching](https://docs.pyevp.dev/en/latest/guides/transport.html): DNS over HTTPS, a standard-library-only setup, private networks
-- [Profiles](https://docs.pyevp.dev/en/latest/concepts.html#profiles): how PyEVP follows a protocol that is still changing
+- [Command line](https://docs.pyevp.dev/en/latest/guides/cli.html): `uvx --from "pyevp[cli]" pyevp discover gmail.com` checks a domain's issuer
 - [Running an issuer](https://docs.pyevp.dev/en/latest/guides/issuer-operations.html) for your own mail domains
 - [Compatibility policy](https://docs.pyevp.dev/en/latest/compatibility.html)
 
@@ -124,13 +102,12 @@ Each example is a standalone project with its own tests:
 
 - [`examples/fastapi`](https://github.com/gaato/pyevp/blob/main/examples/fastapi/app.py): FastAPI with session nonces
 - [`examples/flask`](https://github.com/gaato/pyevp/blob/main/examples/flask/app.py): the same flow with the synchronous `Verifier`
-- [`examples/fastapi_spa`](https://github.com/gaato/pyevp/blob/main/examples/fastapi_spa/app.py): a JSON API for a single-page app, without server sessions, with password recovery
-- [`examples/fastapi_users`](https://github.com/gaato/pyevp/blob/main/examples/fastapi_users/app.py): fastapi-users registration that falls back to the usual verification email
+- [`examples/fastapi_spa`](https://github.com/gaato/pyevp/blob/main/examples/fastapi_spa/app.py): a JSON API for a single-page app, with password recovery
+- [`examples/fastapi_users`](https://github.com/gaato/pyevp/blob/main/examples/fastapi_users/app.py): fastapi-users registration
 - [`examples/authx`](https://github.com/gaato/pyevp/blob/main/examples/authx/app.py): passwordless login with AuthX
-- [`examples/django`](https://github.com/gaato/pyevp/blob/main/examples/django/views.py): plain Django with the template tag and `verify_request`
+- [`examples/django`](https://github.com/gaato/pyevp/blob/main/examples/django/views.py): Django with the template tag
 - [`examples/django_allauth`](https://github.com/gaato/pyevp/blob/main/examples/django_allauth/evp_allauth.py): a django-allauth adapter
-- [`examples/issuer_fastapi`](https://github.com/gaato/pyevp/blob/main/examples/issuer_fastapi/app.py): an issuer for your own domains
-- [`examples/issuer_django`](https://github.com/gaato/pyevp/blob/main/examples/issuer_django/urls.py): the same issuer on Django, with Django's own users
+- [`examples/issuer_fastapi`](https://github.com/gaato/pyevp/blob/main/examples/issuer_fastapi/app.py), [`examples/issuer_django`](https://github.com/gaato/pyevp/blob/main/examples/issuer_django/urls.py): an issuer for your own domains
 
 ## Contributing
 

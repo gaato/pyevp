@@ -3,7 +3,7 @@
 ## The flow
 
 1. Your page renders a form with a nonce (see {doc}`quickstart`).
-2. The user picks an address from autofill. The browser looks up the issuer for the address's
+2. The user types or picks an address. The browser looks up the issuer for the address's
    domain, obtains an **Email Verification Token (EVT)** from it, and binds it to your origin and
    nonce with a **key-binding JWT (KB-JWT)**.
 3. The form is submitted with `evt=<EVT>~<KB-JWT>`.
@@ -12,6 +12,26 @@
 The EVT is signed by the issuer and contains `iss`, `iat`, `email`, `email_verified` and the
 browser's public key (`cnf.jwk`). The KB-JWT is signed with that browser key and contains `aud`
 (your origin), `nonce`, `iat` and `sd_hash` (a hash of the EVT).
+
+## What the user sees
+
+The user must be signed in to their email provider in the same browser. Before the first token
+for an address, Chrome asks once whether to verify that email automatically. After that, nothing
+is shown: Chrome starts when focus leaves the email field and attaches the token when the form is
+submitted. When anything fails, the form arrives without a token and the page is not told why.
+
+## Trust model
+
+An EVT means the issuer vouches that the browser's user controls the address, as a click on a
+link sent there would. The KB-JWT ties it to your origin and nonce, so it cannot be replayed on
+another site.
+
+Anyone who controls a domain's DNS names its issuer, with a `_email-verification` TXT record. A
+token is therefore as trustworthy as the domain's owner, just as a confirmation email is as
+trustworthy as the domain's mail server. That is why any issuer is accepted by default. Pass
+`allowed_issuers` when you want addresses only from providers you know, such as your company's
+identity provider, or want the verifier to contact only those hosts (see
+{ref}`private networks <ssrf>`).
 
 ## Verification
 
@@ -29,26 +49,16 @@ browser's public key (`cnf.jwk`). The KB-JWT is signed with that browser key and
 4. **EVT signature.**
 5. **Replay protection**, if enabled.
 
-Everything that can be checked without the network is checked first. The only hosts ever
-contacted are derived from DNS, never from the token.
+The only hosts ever contacted are derived from DNS, never from the token.
 
 ## Sans-I/O core
 
-The verification logic in {mod}`pyevp.core` performs no I/O. It is a generator that *yields*
-requests, {class}`~pyevp.core.ResolveTxt`, {class}`~pyevp.core.FetchJson` and
-{class}`~pyevp.core.MarkUsed`, and receives their results. The drivers {class}`pyevp.Verifier` and
-{class}`pyevp.AsyncVerifier` only answer those requests through injected *ports*:
-
-- {class}`~pyevp.TxtResolver`
-- {class}`~pyevp.JsonFetcher`
-- {class}`~pyevp.ReplayGuard`
-- their async counterparts
-
-As a result:
-
-- the same logic serves synchronous Django views and asynchronous FastAPI endpoints;
-- DNS, HTTP, caches and replay stores can be swapped without touching verification;
-- tests can drive the generator by hand or plug in the fakes from {mod}`pyevp.testing`.
+{func}`~pyevp.core.verification_steps` performs no I/O: it is a generator that yields requests
+({class}`~pyevp.core.ResolveTxt`, {class}`~pyevp.core.FetchJson`, {class}`~pyevp.core.MarkUsed`)
+and receives their results. {class}`pyevp.Verifier` and {class}`pyevp.AsyncVerifier` answer them
+through the ports you inject ({class}`~pyevp.TxtResolver`, {class}`~pyevp.JsonFetcher`,
+{class}`~pyevp.ReplayGuard` and their async counterparts), so the same logic serves sync and
+async code, and tests can use the fakes in {mod}`pyevp.testing`.
 
 (profiles)=
 
@@ -71,6 +81,5 @@ strict = Profile.named("draft-hardt-02")
 short_lived = Profile.compat_2026_10().replace(max_token_age=timedelta(minutes=2))
 ```
 
-Following a spec change usually means adding a new preset rather than changing an existing one,
-so that you can choose when to switch. Run `pyevp discover <domain> --profile <name>` to see how an issuer fares
-under a profile.
+Spec changes usually arrive as new presets, so you choose when to switch. Run
+`pyevp discover <domain> --profile <name>` to see how an issuer fares under a profile.
