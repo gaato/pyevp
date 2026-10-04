@@ -6,6 +6,45 @@ see the [compatibility policy].
 
 ## [Unreleased]
 
+### Changed
+
+- The issuer answers its endpoints itself, so that web frameworks only pass requests in and
+  send responses back. `Issuer.issuance_response` (and `aissuance_response`) takes the
+  request's method, headers and body and the signed-in user's addresses (`user_emails`, a
+  collection or a function), and checks that the user controls the requested address. It
+  compares addresses case-insensitively and only ASCII ones, as `IssuerSite.owns` did, so the
+  examples' own comparisons are gone. Every refusal is a response; nothing is raised.
+- The replay guard records a request only after the user is found to control the address, so
+  that requests from users who are not signed in neither fill the store nor use up a request
+  that would work after signing in. A signature's `expires`, when earlier than `created` plus
+  the maximum age, is now the request's deadline, and a request that goes stale while the
+  user's addresses are looked up is refused, with or without a replay guard.
+- Requests over 16 KiB (`MAX_REQUEST_BODY`) are refused from `Content-Length`, or their size,
+  before the signature is checked, the same way in every framework.
+- `IssuanceResponse` is renamed `IssuerResponse` and moved to `pyevp.issuer.response`.
+- Observers get one `IssuanceEvent` per request: `stage` is `"request"`, `"ownership"` or
+  `"issue"`, and the new `detail` says why a request was refused (without the address). Refusals
+  are also logged at `DEBUG`.
+- The Django `IssuanceView` answers every method through the issuer, `AccountsView` lists only
+  addresses the issuer would issue for, and `IssuerSite` refuses an asynchronous replay guard
+  at startup.
+
+### Added
+
+- `Issuer.accounts_response` answers Chrome's FedCM accounts request: it checks
+  `Sec-Fetch-Dest`, lists only valid addresses in `email_domains`, and is never cached.
+- `Issuer.metadata_response`, `Issuer.jwks_response` and `web_identity_response` serve the
+  documents with `Cache-Control: public, max-age=300`.
+- `login_status_headers` gives the FedCM `Set-Login` header.
+- The Django deployment check `pyevp.W003` warns when `DATA_UPLOAD_MAX_MEMORY_SIZE` is too small
+  for issuance requests.
+
+### Removed
+
+- `Issuer.parse_request`, `aparse_request`, `issue` and `success_response`: there is no way to
+  issue an EVT without the ownership check. `IssuanceRequest`, `IssuanceError` and
+  `accounts_document` are no longer exported, and `IssuerSite.owns` is gone.
+
 ## [0.1.0] - 2026-10-04
 
 The first release.

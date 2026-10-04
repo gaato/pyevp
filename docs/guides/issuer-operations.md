@@ -5,9 +5,10 @@
 version 153 on. Both are still changing, and `pyevp.issuer` will change with them.
 ```
 
-`pyevp.issuer` provides building blocks for issuing EVTs for email domains you control. It does
-not include an HTTP server or user accounts. You plug it into your web framework and your login
-system. A complete FastAPI sketch lives in
+`pyevp.issuer` issues EVTs for email domains you control. It answers every endpoint of the
+issuer itself, as framework-neutral responses, but it does not include an HTTP server or user
+accounts. Your web framework passes requests in and sends the responses back, and your login
+system tells it which addresses the signed-in user controls. A complete FastAPI sketch lives in
 [`examples/issuer_fastapi`](https://github.com/gaato/pyevp/tree/main/examples/issuer_fastapi).
 Django projects can use the ready-made views described in [Django](#django-issuer).
 
@@ -22,9 +23,10 @@ Django projects can use the ready-made views described in [Django](#django-issue
 4. Checks that the logged-in user controls the requested address, then returns an EVT bound to
    the browser's key.
 
-`pyevp.issuer` covers steps 1–4 except "the logged-in user controls the address", which is
-yours. Chrome also requires the FedCM documents described in [What Chrome requires beyond the
-draft](#chrome-requirements).
+`pyevp.issuer` covers steps 1–4. What it needs from you is which addresses the logged-in user
+controls; see [Deciding who gets a token](#who-gets-a-token). Chrome also requires the FedCM
+endpoints described in [What Chrome requires beyond the draft](#chrome-requirements), which
+`pyevp.issuer` answers too.
 
 ## Set up
 
@@ -73,33 +75,59 @@ pyevp issuer documents --issuer https://issuer.example \
 pyevp discover example.com --profile draft-hardt-02
 ```
 
-## Handle a request
+## Serve the endpoints
+
+Each endpoint is one call that returns an {class}`~pyevp.issuer.IssuerResponse`, with the
+status, headers and body to send as they are:
+
+| Endpoint | Call |
+|---|---|
+| `issuance_endpoint` | `issuer.issuance_response(method=..., headers=..., body=..., user_emails=...)`, or `await issuer.aissuance_response(...)` |
+| `/.well-known/email-verification` | `issuer.metadata_response()` |
+| `jwks_uri` | `issuer.jwks_response()` |
+| FedCM accounts endpoint | `issuer.accounts_response(headers=..., user_emails=...)` |
+| `/.well-known/web-identity` | `web_identity_response(accounts_endpoint=..., login_url=...)` |
 
 ```python
-from pyevp.issuer import IssuanceError
+from pyevp.issuer import MAX_REQUEST_BODY
 
-try:
-    request = issuer.parse_request(method=method, headers=raw_header_pairs, body=body)
-    if current_user(cookies) is None or not current_user(cookies).owns(request.email):
-        raise IssuanceError.authentication_required()
-    response = issuer.success_response(issuer.issue(request))
-except IssuanceError as exc:
-    response = exc.to_response()
-# response.status, response.headers, response.body
+
+async def issuance(request):  # route every method here
+    response = await issuer.aissuance_response(
+        method=request.method,
+        headers=request.headers.items(),
+        body=await read_at_most(request, MAX_REQUEST_BODY + 1),
+        user_emails=lambda: addresses_of(current_user(request)),  # [] when nobody is
+    )
+    return Response(response.body, status=response.status, headers=response.headers)
 ```
 
-`parse_request` checks the method, `Content-Type`, `Sec-Fetch-Dest`, `Content-Digest`, the
-signature and its freshness, the JSON body and the address. It also checks that the address is
-in one of `email_domains`. It does **not** authenticate the user. Pass headers as `(name,
-value)` pairs where your framework offers them, so that repeated header lines are kept apart.
-With an async replay guard, use `aparse_request`.
+The issuer checks the method, the body's size, `Content-Type`, `Sec-Fetch-Dest`,
+`Content-Digest`, the signature and its freshness, the JSON body and the address, and that the
+address is in one of `email_domains`. Only then does it ask `user_emails` for the signed-in
+user's addresses, and it issues an EVT only if the requested address is one of them. Every
+refusal is an EVP error response; nothing is raised.
 
-`request.email` is exactly what the browser sent. The EVT asserts that string, and relying
-parties compare it with what the user typed. If your accounts treat addresses
-case-insensitively, compare them that way in `owns`, but do not rewrite `request.email`. Compare
-only ASCII addresses, as {func}`pyevp.issuer.is_valid_email` accepts them: lowercasing a
-non-ASCII address can turn it into someone else's (`\u212aate@` with a KELVIN SIGN becomes
-`kate@`).
+The glue around it:
+
+- **Methods.** Route every method of the issuance endpoint to the issuer, so that a `GET` gets
+  an EVP error rather than the framework's own.
+- **Headers.** Pass them as `(name, value)` pairs where your framework offers them, so that
+  repeated header lines are kept apart. Frameworks that join them with commas work too.
+- **Body.** Requests over `MAX_REQUEST_BODY` (16 KiB) are refused, from
+  `Content-Length` when there is one. There is no need to read more than one byte beyond it,
+  anything when `Content-Length` is larger, or the body of anything but a `POST`.
+- **Addresses.** `user_emails` is a collection or a function returning one; a function is
+  called at most once, and only for a request that is otherwise valid, so that unsigned junk
+  never reaches your database. `aissuance_response` also takes an `async` function. Pass an
+  empty collection when nobody is signed in.
+- **Replay guard.** With an async replay guard, use `aissuance_response`.
+
+The EVT asserts the address exactly as the browser sent it, and relying parties compare it with
+what the user typed. The issuer compares it with your addresses case-insensitively, and only
+ASCII ones, as {func}`pyevp.issuer.is_valid_email` accepts them: lowercasing a non-ASCII address
+can turn it into someone else's (`\u212aate@` with a KELVIN SIGN becomes `kate@`). Return
+addresses with A-label domains (`xn--bcher-kva.example`, not `bücher.example`).
 
 (who-gets-a-token)=
 
@@ -155,19 +183,22 @@ them. Before issuing:
 ## Preventing account enumeration
 
 The draft requires the same response whether the address does not exist, nobody is logged in,
-or someone else is. Raise `IssuanceError.authentication_required()` in every one of these cases.
-Its body is fixed, and `parse_request` uses it for addresses outside `email_domains` too. Keep
-the work done on each path similar as well. For example, do not query a database only when the
-address looks valid.
+or someone else is. The issuer answers all of these, and addresses outside `email_domains`, with
+the same `authentication_required` response. Keep the work done on each path similar as well:
+look up the signed-in user's addresses, never the requested one.
 
 Error responses only ever carry a fixed description per code. The detailed reason is in the
-exception message for your logs.
+observer's {attr}`~pyevp.issuer.IssuanceEvent.detail` and in a `DEBUG` message on the `pyevp`
+logger, neither of which contains the address.
 
 ## Keys and rotation
 
 - Every key has a `kid`, and every EVT names the key that signed it.
 - To rotate, publish the next key before using it. Pass it in `published_keys=[...]` until
-  relying parties' caches (minutes) have picked it up, and then make it the `signer`.
+  relying parties' caches have picked it up, and then make it the `signer`. The metadata and
+  JWKS responses may be cached for five minutes (`Cache-Control: public, max-age=300`), and
+  relying parties cache keys themselves for some minutes on top of that (this library: ten), so
+  an hour is a safe wait.
 - Keep publishing the retired public key until no token it signed can still be presented.
   Relying parties accept EVTs for about five minutes, so a day is plenty.
 - A key that is already kept as PEM, for example in an identity provider's certificate store,
@@ -177,15 +208,18 @@ exception message for your logs.
 
 ## Replay and rate limiting
 
-A signed request is only accepted within 300 seconds of its `created` time. Within that window,
-a captured request could be resent together with the cookies. Pass `replay_guard=` to refuse a
-request the second time it is seen. The guard keys on the signed content rather than the
-signature bytes, so re-encoding an ES256 signature does not get a request past it. Use a shared
-store, as described in {doc}`replay`.
+A signed request is only accepted within 300 seconds of its `created` time, or until its
+`expires` if that is earlier. Within that window, a captured request could be resent together
+with the cookies. Pass `replay_guard=` to refuse a request the second time it is seen. The guard
+keys on the signed content rather than the signature bytes, so re-encoding an ES256 signature
+does not get a request past it. It records only requests from users who control the address, so
+nobody can fill the store without signing in, and a request refused before sign-in still works
+after it. Use a shared store, as described in {doc}`replay`.
 
 Rate-limit the issuance endpoint per IP address in front of the application. `observer=`
-receives an {class}`pyevp.issuer.IssuanceEvent` for every accepted or rejected request
-(including requests rejected as replays) and every issued token, for metrics and audit logs.
+receives one {class}`pyevp.issuer.IssuanceEvent` per request, for metrics and audit logs. Its
+`stage` says where the request ended: `"request"` (refused by validation, including replays),
+`"ownership"` (the user does not control the address) or `"issue"` (an EVT was signed).
 
 (chrome-requirements)=
 
@@ -197,13 +231,15 @@ and then stops without telling the page why.
 - **FedCM account check.** Before issuing, Chrome fetches
   `https://<registrable domain of the issuer>/.well-known/web-identity`. For an issuer on
   `accounts.example.com`, that is `https://example.com/.well-known/web-identity`. Serve
-  `pyevp.issuer.web_identity_document(accounts_endpoint=..., login_url=...)` there, with no
-  `provider_urls` member. `accounts_endpoint` must be on the issuer's origin. Chrome requests it
-  with the issuer's cookies and `Sec-Fetch-Dest: webidentity`. Answer with
-  `pyevp.issuer.accounts_document([...])` listing the signed-in user's addresses; the typed address
-  must be one of them.
+  `pyevp.issuer.web_identity_response(accounts_endpoint=..., login_url=...)` there; the document
+  has no `provider_urls` member, which would make Chrome ignore it. `accounts_endpoint` must be
+  on the issuer's origin. Chrome requests it with the issuer's cookies and `Sec-Fetch-Dest:
+  webidentity`. Answer with `issuer.accounts_response(headers=..., user_emails=...)`, which
+  lists the signed-in user's addresses that the issuer would issue for; the typed address must
+  be one of them.
 - **Login status.** Chrome skips issuers it knows the user is signed out of. Send
-  `Set-Login: logged-in` on a page response after login (or call
+  `Set-Login: logged-in` (`pyevp.issuer.login_status_headers(signed_in=True)`) on a page
+  response after login (or call
   `navigator.login.setStatus("logged-in")`), and `logged-out` on logout. A single-page app that
   logs out through an API call or an OpenID Connect logout redirect may never serve a page
   response from the issuer's origin; call `navigator.login.setStatus("logged-out")` from the app
@@ -269,8 +305,6 @@ Subclass {class}`~pyevp.contrib.django.issuer.IssuerSite` to adapt it:
   `ImproperlyConfigured` until you override it: a user model's email field is only right if your
   sign-up flow verified it. Return, for example, the verified addresses of django-allauth, or
   what your mail system delivers to the user's mailbox.
-- `owns(request, email)` compares the requested address with those, case-insensitively by
-  default.
 - `get_issuer(request)` returns the issuer for the request. Override it instead of passing an
   `Issuer` when one deployment serves several issuers, for example one per host.
 - `login_url` (an argument) is where Chrome sends users who are not signed in. It defaults to
@@ -283,7 +317,10 @@ hooks, such as `AccountsView.as_view(site=evp)`.
 email-verification` or a valid signature. The exemption from `ATOMIC_REQUESTS` lets
 {class}`~pyevp.contrib.django.EVPReplayGuard` commit its record on its own, so pass
 `replay_guard=EVPReplayGuard()` to the `Issuer` without a second database alias. The view is
-synchronous, so use the synchronous guard. Bodies over 16 KiB are refused before they are read.
+synchronous, so use the synchronous guard; `IssuerSite` raises `ImproperlyConfigured` for an
+asynchronous one. It answers every method, and bodies over 16 KiB are refused before they are
+read. `DATA_UPLOAD_MAX_MEMORY_SIZE` must not be below that; `manage.py check --deploy` warns
+(`pyevp.W003`) when it is.
 
 Settings:
 
@@ -317,8 +354,8 @@ rather than the application's code:
 
 If the issuer is on a subdomain such as `accounts.example.com`, Chrome reads
 `/.well-known/web-identity` from `example.com`. Serve
-{class}`~pyevp.contrib.django.issuer.WebIdentityView` there, or the document from
-`web_identity_document()`.
+{class}`~pyevp.contrib.django.issuer.WebIdentityView` there, or the response from
+`web_identity_response()`.
 
 ## Not supported yet
 

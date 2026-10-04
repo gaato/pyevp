@@ -28,4 +28,5 @@ assert report.ok, report.problems
 
 To test token issuance end to end, combine your issuer with {class}`pyevp.testing.FakeBrowser`. It
 holds a key-binding key, signs issuance requests the way Chrome does
-(`FakeBrowser.issuance_request`), and builds the presentation token from your EVT.
+(`FakeBrowser.issuance_request`, whose result goes into `Issuer.issuance_response`), and builds
+the presentation token from your EVT.
