@@ -14,6 +14,19 @@ keep to the existing translation:
   with 「。」 (「次のように設定します。」), not a colon.
 - Give the English term in parentheses only the first time it appears on a page: 発行者（issuer）.
 
+## MyST in `.po` files
+
+Sphinx parses each translation with its page's parser, so every entry is MyST, including the
+autodoc docstrings in `api.po`:
+
+- Write roles as ``{class}`Verifier` ``, not ``:class:`Verifier` ``, and drop the `::` that
+  introduces a literal block. The field labels (Parameters, Raises, Return type) come from
+  Sphinx's own catalog.
+- Link to sections with explicit labels (`(label-name)=` above the heading, then
+  `[text](#label-name)`), not with anchors derived from heading text.
+- In a heading that starts with a number, escape the dot (`3\\. …` in the `.po` file), or it is
+  parsed as a list and the translation is dropped.
+
 ## Glossary
 
 | English | Japanese |

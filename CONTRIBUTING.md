@@ -29,19 +29,13 @@ uv run ruff check && uv run ruff format --check && uv run ty check
 
 The library supports Python 3.11, so write type aliases with `TypeAlias`, not `type` statements.
 
-Each example under `examples/` is a member of the uv workspace with its own tests:
+Each example under `examples/` is a member of the uv workspace with its own tests. CI runs them
+as a matrix; to run them all:
 
-```sh
-uv run --directory examples/fastapi pytest
-uv run --directory examples/fastapi_spa pytest
-uv run --directory examples/flask pytest
-uv run --directory examples/fastapi_users pytest
-uv run --directory examples/authx pytest
-uv run --directory examples/django pytest
-uv run --directory examples/django_allauth pytest
-uv run --directory examples/issuer_fastapi pytest
-uv run --directory examples/issuer_django pytest
-uv run --directory examples/site pytest
+```fish
+for e in fastapi fastapi_spa flask fastapi_users authx django django_allauth issuer_fastapi issuer_django site
+    uv run --locked --directory examples/$e pytest
+end
 ```
 
 To try one in a browser:
@@ -51,9 +45,6 @@ cd examples/fastapi && uv run uvicorn app:app --port 8000
 cd examples/flask && uv run flask run --port 8000
 cd examples/django_allauth && uv run manage.py migrate && uv run manage.py runserver
 ```
-
-To start your own project from an example, copy it out and replace
-`pyevp = { workspace = true }` with a normal dependency.
 
 ## Following the protocol
 
@@ -74,17 +65,8 @@ uv run sphinx-intl update -p docs/_build/gettext -l ja -d docs/locales
 
 Entries that are untranslated or marked fuzzy (because their English text changed) show in
 English until someone translates or reviews them and removes the `fuzzy` flag. Translations
-follow the [Japanese style guide and glossary](docs/locales/ja/README.md).
-
-`api.po` also holds the autodoc docstrings. Sphinx parses every translation for a page with that
-page's parser, so even docstring entries are MyST there: write roles as ``{class}`Verifier` ``,
-not ``:class:`Verifier` ``, and drop the `::` that introduces a literal block. The field labels
-(Parameters, Raises, Return type) come from Sphinx's own catalog, not from `api.po`.
-
-Link to sections with explicit labels (`(label-name)=` above the heading, then
-`[text](#label-name)`), not with anchors derived from heading text. A heading that starts with a
-number, like `3. Handle failures`, needs the dot escaped in its translation (`3\\. …` in the
-`.po` file), or it is parsed as a list and the translation is dropped.
+follow the [Japanese style guide and glossary](docs/locales/ja/README.md), which also covers
+writing MyST in `.po` files.
 
 To build the Japanese docs locally and check progress:
 

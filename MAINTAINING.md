@@ -16,6 +16,18 @@ Record changes under `## [Unreleased]` in `CHANGELOG.md` as they land. To releas
    publishing. The `pypi` environment only accepts `v*` tags and waits for a maintainer to
    approve the deployment.
 
+## pyevp.dev
+
+A push to `main` that changes the site image deploys pyevp.dev and the demo provider; see
+[Deployment](examples/site/README.md#deployment) for which paths count and how to check what is
+running.
+
+The site's stylesheet build pins Tailwind CSS and daisyUI, each download with a SHA256, at the
+top of `examples/site/scripts/build-css.sh`. Renovate bumps the versions but not the hashes, so
+after a bump the build fails with a SHA256 mismatch. From `examples/site`, run
+`scripts/build-css.sh --print-hashes`, paste its output over the `*_SHA256` lines, then rebuild
+with `scripts/build-css.sh static/site.css` and check the page.
+
 ## Japanese docs on Read the Docs
 
 The Read the Docs project `pyevp-ja` builds the same repository with the language set to Japanese.
