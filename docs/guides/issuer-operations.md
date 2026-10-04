@@ -2,11 +2,7 @@
 
 ```{warning}
 `pyevp.issuer` follows draft-hardt-email-verification-02 and the request format Chrome sends from
-version 153 on. It was tested end to end with Chrome 154.0.8037.92 (the
-`#email-verification-protocol` flag, or `--enable-features=EmailVerificationProtocol`), and a
-nightly job runs the example issuer against current Chrome stable and beta
-([`interop/`](https://github.com/gaato/pyevp/tree/main/interop)). Chrome and the draft are
-still changing, so expect the `chrome-153` issuance profile to follow them.
+version 153 on. Both are still changing, and `pyevp.issuer` will change with them.
 ```
 
 `pyevp.issuer` provides building blocks for issuing EVTs for email domains you control. It does
@@ -229,6 +225,12 @@ and then stops without telling the page why.
 Chrome also shows the user a one-time prompt per address ("verify this email automatically?")
 before the first issuance. It starts the check when focus moves from the email field to another
 form field, and it rate-limits repeated failures per address.
+
+These requirements come from testing end to end with Chrome 154.0.8037.92, with the
+`#email-verification-protocol` flag or `--enable-features=EmailVerificationProtocol`. A nightly
+job runs the example issuer against current Chrome stable and beta
+([`interop/`](https://github.com/gaato/pyevp/tree/main/interop)), so changes in Chrome show up
+there.
 
 (django-issuer)=
 
