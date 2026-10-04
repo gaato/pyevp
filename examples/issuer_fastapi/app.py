@@ -35,7 +35,6 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 
 from pyevp.issuer import (
-    MAX_REQUEST_BODY,
     Issuer,
     IssuerResponse,
     SigningKey,
@@ -102,8 +101,8 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
             method=request.method,
             # Starlette keeps repeated header lines apart, as the issuer expects.
             headers=request.headers.items(),
-            # Only a POST can succeed; do not wait for the body of anything else.
-            body=await _read_body(request) if request.method == "POST" else b"",
+            # Read by the issuer only as far as needed.
+            body=request.stream(),
             user_emails=user_emails(request),
         )
         return _response(result)
@@ -156,25 +155,6 @@ def _same_origin(request: Request, origin: str) -> bool:
     if site is not None:
         return site == "same-origin"
     return request.headers.get("origin") == origin
-
-
-async def _read_body(request: Request) -> bytes:
-    """The body, but no more of it than the issuer accepts.
-
-    The issuer refuses larger requests, from ``Content-Length`` when there is one, so
-    there is no point reading more.
-    """
-    length = request.headers.get("content-length", "")
-    if len(length) > 9 or (
-        length.isascii() and length.isdigit() and int(length) > MAX_REQUEST_BODY
-    ):
-        return b""
-    body = b""
-    async for chunk in request.stream():
-        body += chunk[: MAX_REQUEST_BODY + 1 - len(body)]
-        if len(body) > MAX_REQUEST_BODY:
-            break
-    return body
 
 
 def _response(result: IssuerResponse) -> Response:

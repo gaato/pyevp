@@ -333,11 +333,16 @@ def test_session_cookie_checks(issuer: Issuer) -> None:
         deploy = checks.run_checks(tags=security, include_deployment_checks=True)
         assert {m.id for m in deploy} >= set(ids)
         assert not {m.id for m in checks.run_checks(tags=security)} & set(ids)
-    with override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=1024):
-        assert [m.id for m in check_session_cookie()] == ["pyevp.W003"]
-    with override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=None):
-        assert check_session_cookie() == []
     del site
+
+
+@pytest.mark.usefixtures("site")
+def test_a_small_upload_limit_does_not_get_in_the_way(client: Client, clock: FixedClock) -> None:
+    # The view reads the body itself, as far as the issuer needs, so Django's own limit on
+    # what request.body may hold does not apply.
+    _login(client)
+    with override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=16):
+        assert _issue(client, FakeBrowser(clock=clock)).status_code == 200
 
 
 def test_issuance_response_is_json(client: Client, clock: FixedClock, site: IssuerSite) -> None:

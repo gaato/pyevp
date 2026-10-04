@@ -27,7 +27,6 @@ to the issuer are cross-site; a system check warns otherwise.  Add
 
 from __future__ import annotations
 
-import inspect
 import weakref
 from collections.abc import Callable, Sequence
 from typing import Any, ClassVar
@@ -42,8 +41,8 @@ from django.urls import URLPattern, get_resolver, path
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
+from pyevp._drive import is_async
 from pyevp.issuer import (
-    MAX_REQUEST_BODY,
     Issuer,
     IssuerResponse,
     login_status_headers,
@@ -94,7 +93,7 @@ class IssuerSite:
                 if urlsplit(url).path != "/" + route:
                     raise ImproperlyConfigured(f"{url} is not served at /{route}")
             guard = issuer.replay_guard
-            if guard is not None and inspect.iscoroutinefunction(guard.mark_used):
+            if is_async(getattr(guard, "mark_used", None)):
                 raise ImproperlyConfigured(
                     "IssuerSite's views are synchronous; use a synchronous replay guard "
                     "such as pyevp.contrib.django.EVPReplayGuard"
@@ -195,8 +194,8 @@ class IssuanceView(_IssuerView):
             method=request.method or "",
             # Django has joined repeated header lines with commas, which the issuer accepts.
             headers=request.headers.items(),
-            # Only a POST can succeed; do not wait for the body of anything else.
-            body=_read_body(request) if request.method == "POST" else b"",
+            # Read by the issuer only as far as needed, without DATA_UPLOAD_MAX_MEMORY_SIZE.
+            body=request.read,
             user_emails=lambda: site.user_emails(request),
         )
         return _to_http(response)
@@ -249,14 +248,6 @@ class LoginStatusMiddleware:
         return response
 
 
-def _read_body(request: HttpRequest) -> bytes:
-    # Do not read a body the issuer will refuse anyway; it refuses it from Content-Length.
-    length = request.META.get("CONTENT_LENGTH") or "0"
-    if not length.isascii() or not length.isdigit() or len(length) > 9:
-        return b""
-    return b"" if int(length) > MAX_REQUEST_BODY else request.body
-
-
 def _to_http(result: IssuerResponse) -> HttpResponse:
     return HttpResponse(result.body, status=result.status, headers=result.headers)
 
@@ -270,10 +261,9 @@ _PER_RESPONSE = (
 def check_session_cookie(**kwargs: Any) -> list[checks.CheckMessage]:
     """Warn when settings would break an :class:`IssuerSite`.
 
-    Chrome's cross-site requests would lack the session (``pyevp.W001``, ``pyevp.W002``), or
-    Django would refuse issuance requests the issuer accepts (``pyevp.W003``).  Registered as
-    a deployment check (``manage.py check --deploy``).  It reads the settings, so it cannot
-    see attributes a middleware sets per response.
+    Chrome's cross-site requests would lack the session (``pyevp.W001``, ``pyevp.W002``).
+    Registered as a deployment check (``manage.py check --deploy``).  It reads the settings,
+    so it cannot see attributes a middleware sets per response.
     """
     if getattr(settings, "ROOT_URLCONF", None):
         get_resolver().url_patterns  # noqa: B018  (importing the URLconf creates the sites)
@@ -296,16 +286,6 @@ def check_session_cookie(**kwargs: Any) -> list[checks.CheckMessage]:
                 "SESSION_COOKIE_SECURE is off.",
                 hint="Browsers drop SameSite=None cookies that are not Secure." + _PER_RESPONSE,
                 id="pyevp.W002",
-            )
-        )
-    limit = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
-    if limit is not None and limit < MAX_REQUEST_BODY:
-        warnings.append(
-            checks.Warning(
-                f"DATA_UPLOAD_MAX_MEMORY_SIZE is below {MAX_REQUEST_BODY} bytes.",
-                hint="Django refuses issuance requests the issuer accepts, with its own error "
-                "response instead of the issuer's.",
-                id="pyevp.W003",
             )
         )
     return warnings

@@ -56,8 +56,6 @@ see the [compatibility policy].
 - `Issuer.metadata_response`, `Issuer.jwks_response` and `web_identity_response` serve the
   documents with `Cache-Control: public, max-age=300`.
 - `login_status_headers` gives the FedCM `Set-Login` header.
-- The Django deployment check `pyevp.W003` warns when `DATA_UPLOAD_MAX_MEMORY_SIZE` is too small
-  for issuance requests.
 
 #### Removed
 

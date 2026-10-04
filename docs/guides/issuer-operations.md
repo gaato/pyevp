@@ -89,14 +89,11 @@ status, headers and body to send as they are:
 | `/.well-known/web-identity` | `web_identity_response(accounts_endpoint=..., login_url=...)` |
 
 ```python
-from pyevp.issuer import MAX_REQUEST_BODY
-
-
 async def issuance(request):  # route every method here
     response = await issuer.aissuance_response(
         method=request.method,
         headers=request.headers.items(),
-        body=await read_at_most(request, MAX_REQUEST_BODY + 1),
+        body=request.stream(),  # read only as far as needed
         user_emails=lambda: addresses_of(current_user(request)),  # [] when nobody is
     )
     return Response(response.body, status=response.status, headers=response.headers)
@@ -114,9 +111,9 @@ The glue around it:
   an EVP error rather than the framework's own.
 - **Headers.** Pass them as `(name, value)` pairs where your framework offers them, so that
   repeated header lines are kept apart. Frameworks that join them with commas work too.
-- **Body.** Requests over `MAX_REQUEST_BODY` (16 KiB) are refused, from
-  `Content-Length` when there is one. There is no need to read more than one byte beyond it,
-  anything when `Content-Length` is larger, or the body of anything but a `POST`.
+- **Body.** Pass a function that reads it, such as Django's `request.read`, or for
+  `aissuance_response` the request's stream, and the issuer reads only as much as it accepts
+  (16 KiB). The body itself, as bytes, works too.
 - **Addresses.** `user_emails` is a collection or a function returning one; a function is
   called at most once, and only for a request that is otherwise valid, so that unsigned junk
   never reaches your database. `aissuance_response` also takes an `async` function. Pass an
@@ -318,9 +315,8 @@ email-verification` or a valid signature. The exemption from `ATOMIC_REQUESTS` l
 {class}`~pyevp.contrib.django.EVPReplayGuard` commit its record on its own, so pass
 `replay_guard=EVPReplayGuard()` to the `Issuer` without a second database alias. The view is
 synchronous, so use the synchronous guard; `IssuerSite` raises `ImproperlyConfigured` for an
-asynchronous one. It answers every method, and bodies over 16 KiB are refused before they are
-read. `DATA_UPLOAD_MAX_MEMORY_SIZE` must not be below that; `manage.py check --deploy` warns
-(`pyevp.W003`) when it is.
+asynchronous one. It answers every method, and reads no more of a body than the issuer
+accepts.
 
 Settings:
 

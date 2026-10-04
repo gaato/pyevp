@@ -61,7 +61,6 @@ from pyevp.adapters import httpx as httpx_adapter
 from pyevp.adapters.dnspython import AsyncDnsPythonResolver
 from pyevp.cache import InMemoryCache
 from pyevp.issuer import (
-    MAX_REQUEST_BODY,
     Issuer,
     IssuerResponse,
     SigningKey,
@@ -336,21 +335,6 @@ def _user_emails(request: Request) -> list[str]:
     return [email] if email else []
 
 
-async def _read_body(request: Request) -> bytes:
-    """The body, but no more of it than the issuer accepts."""
-    length = request.headers.get("content-length", "")
-    if len(length) > 9 or (
-        length.isascii() and length.isdigit() and int(length) > MAX_REQUEST_BODY
-    ):
-        return b""  # refused from Content-Length
-    body = b""
-    async for chunk in request.stream():
-        body += chunk[: MAX_REQUEST_BODY + 1 - len(body)]
-        if len(body) > MAX_REQUEST_BODY:
-            break
-    return body
-
-
 def _response(result: IssuerResponse) -> Response:
     return Response(result.body, status_code=result.status, headers=result.headers)
 
@@ -359,7 +343,7 @@ async def _issuance(request: Request, issuer: Issuer) -> Response:
     result = await issuer.aissuance_response(
         method=request.method,
         headers=request.headers.items(),
-        body=await _read_body(request) if request.method == "POST" else b"",
+        body=request.stream(),
         user_emails=_user_emails(request),
     )
     if result.status == 200:
