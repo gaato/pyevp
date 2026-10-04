@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from pyevp.cache import AsyncCache, Cache, CacheEntry, InMemoryCache
 from pyevp.core import Effect, FetchJson, MarkUsed, ResolveTxt, Steps, verification_steps
 from pyevp.errors import DiscoveryError, ErrorCode, EVPError, TokenError
+from pyevp.nonce import AsyncNonceStore, NonceStore, generate_nonce
 from pyevp.observability import Observer, VerificationEvent, claimed_email_domain
 from pyevp.ports import (
     AsyncJsonFetcher,
@@ -27,6 +28,7 @@ from pyevp.ports import (
 )
 from pyevp.profile import DEFAULT_PROFILE, Profile
 from pyevp.replay import AsyncReplayGuard, ReplayGuard
+from pyevp.token import parse_token
 from pyevp.types import VerifiedEmail
 
 __all__ = ["AsyncVerifier", "Verifier"]
@@ -48,6 +50,19 @@ def _validate_origin(origin: str) -> str:
             f"audience must be a serialized origin like 'https://rp.example': {origin!r}"
         )
     return origin
+
+
+class _Unreadable(Exception):
+    """The token cannot be parsed, so it has no nonce to take."""
+
+
+def _presented_nonce(token: str) -> str:
+    """The nonce in the token's KB-JWT, before anything is verified; ``""`` if it has none."""
+    try:
+        nonce = parse_token(token, allow_disclosures=True).kb.claims.get("nonce")
+    except EVPError:
+        raise _Unreadable from None
+    return nonce if isinstance(nonce, str) else ""
 
 
 class _Base:
@@ -84,6 +99,18 @@ class _Base:
             email=email,
             replay_protection=self._replay_protection,
         )
+
+    def _store_failed(self, token: str, error: Exception, started: float) -> None:
+        # Reported like a cache or replay guard failure inside verify().
+        self._notify(token, None, error, started)
+
+    def _unknown_nonce(self, token: str, started: float) -> TokenError:
+        # Refused before the token is checked, so that this is the one error reported.
+        error = TokenError(
+            ErrorCode.NONCE_MISMATCH, "KB-JWT nonce was not issued to this user or was used"
+        )
+        self._notify(token, None, error, started)
+        return error
 
     def _notify(
         self, token: str, result: VerifiedEmail | None, error: Exception | None, started: float
@@ -272,7 +299,8 @@ class Verifier(_Base):
     ) -> VerifiedEmail:
         """Verify a presentation token.
 
-        :param nonce: the nonce this server put on the form (from the session).
+        :param nonce: the nonce this server put on the form.  To take it from where you
+            kept it, use :meth:`verify_submission` instead.
         :param email: the address the user submitted; checked against the token.  Pass
             ``None`` explicitly to skip the check and use the asserted address instead.
         :param audience: override the configured origin (multi-host deployments).
@@ -297,6 +325,45 @@ class Verifier(_Base):
             raise
         finally:
             self._notify(token, result, error, started)
+
+    def verify_submission(
+        self,
+        token: str | None,
+        *,
+        nonces: NonceStore,
+        email: str | None,
+        audience: str | None = None,
+    ) -> VerifiedEmail | None:
+        """Verify the token a form submitted, taking its nonce from ``nonces``.
+
+        Returns ``None`` when ``token`` is empty: the browser does not support EVP, or
+        the email provider does not issue tokens.  Fall back to your usual flow, such as a
+        confirmation email; ``nonces`` is left as it was.
+
+        Otherwise the nonce the token presents is taken from ``nonces``, even if the
+        token then fails, and the token is checked as by :meth:`verify`.  A nonce that
+        ``nonces`` did not issue, or that was used already, is ``nonce_mismatch``.
+
+        :param token: the submitted field, as is.
+        :param email: as for :meth:`verify`.
+        :raises pyevp.EVPError: as :meth:`verify` does.
+        """
+        if not token:
+            return None
+        try:
+            presented = _presented_nonce(token)
+        except _Unreadable:
+            # Fails verification as malformed, with a nonce that matches nothing.
+            return self.verify(token, nonce=generate_nonce(), email=email, audience=audience)
+        started = time.perf_counter()
+        try:
+            taken = bool(presented) and nonces.take(presented)
+        except Exception as exc:
+            self._store_failed(token, exc, started)
+            raise
+        if not taken:
+            raise self._unknown_nonce(token, started)
+        return self.verify(token, nonce=presented, email=email, audience=audience)
 
     def _run(self, steps: Steps) -> VerifiedEmail:
         try:
@@ -449,6 +516,35 @@ class AsyncVerifier(_Base):
             raise
         finally:
             self._notify(token, result, error, started)
+
+    async def verify_submission(
+        self,
+        token: str | None,
+        *,
+        nonces: NonceStore | AsyncNonceStore,
+        email: str | None,
+        audience: str | None = None,
+    ) -> VerifiedEmail | None:
+        """Async counterpart of :meth:`Verifier.verify_submission`.
+
+        ``nonces`` may be synchronous or asynchronous.
+        """
+        if not token:
+            return None
+        try:
+            presented = _presented_nonce(token)
+        except _Unreadable:
+            return await self.verify(token, nonce=generate_nonce(), email=email, audience=audience)
+        started = time.perf_counter()
+        try:
+            taken = presented and nonces.take(presented)
+            taken = bool(await taken if inspect.isawaitable(taken) else taken)
+        except Exception as exc:
+            self._store_failed(token, exc, started)
+            raise
+        if not taken:
+            raise self._unknown_nonce(token, started)
+        return await self.verify(token, nonce=presented, email=email, audience=audience)
 
     async def _run(self, steps: Steps) -> VerifiedEmail:
         try:

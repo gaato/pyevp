@@ -189,8 +189,11 @@ def verify_kb(
     if claims.get("aud") != audience:
         raise TokenError(ErrorCode.AUDIENCE_MISMATCH, "KB-JWT aud does not match this origin")
     presented = claims.get("nonce")
-    if not isinstance(presented, str) or not hmac.compare_digest(
-        presented.encode(), nonce.encode()
+    # An empty nonce binds the token to nothing, even if the caller expects one.
+    if (
+        not isinstance(presented, str)
+        or not presented
+        or not hmac.compare_digest(presented.encode(), nonce.encode())
     ):
         raise TokenError(ErrorCode.NONCE_MISMATCH, "KB-JWT nonce does not match")
     iat = _numeric_date(claims, "iat", "KB-JWT")
