@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 09:52+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -60,33 +60,16 @@ msgstr ""
 
 #: ../../guides/replay.md:21
 msgid ""
-"The key identifies the presentation, not its bytes: it is a hash of the "
-"KB-JWT header and payload, which carry the nonce, audience and a hash of "
-"the EVT. Re-encoding a signature, for example turning an ECDSA `s` into "
-"`n - s`, therefore does not produce a new key."
-msgstr ""
-"キーはバイト列ではなく、提示そのものを識別します。キーは KB-JWT のヘッダーとペイロードのハッシュで、そこには "
-"nonce、audience、EVT のハッシュが含まれています。そのため、署名をエンコードし直しても（たとえば ECDSA の `s` を `n"
-" - s` に変えても）新しいキーにはなりません。"
-
-#: ../../guides/replay.md:25
-msgid ""
-"The guard is only consulted after every other check has passed, so "
+"The guard is consulted only after every other check has passed, so "
 "rejected tokens never fill the store. Errors raised by the guard itself, "
-"such as a store outage, propagate unchanged. Freshness is checked before "
-"any I/O, so a token that expires while DNS and HTTP are in flight is "
-"rejected with `ErrorCode.TOKEN_EXPIRED` after it has been marked: its "
-"record may already be gone, and a replay would not find it."
-msgstr ""
-"ガードは他のすべての確認を通過した後にだけ参照されるため、拒否されたトークンでストアが埋まることはありません。ストアの障害など、ガード自身が送出したエラーはそのまま伝播します。鮮度は"
-" I/O の前に確認されるため、DNS や HTTP の処理中に期限切れになったトークンは、記録された後に "
-"`ErrorCode.TOKEN_EXPIRED` で拒否されます。その記録はすでに消えているかもしれず、リプレイされても検出できないからです。"
+"such as a store outage, propagate unchanged."
+msgstr "ガードは他のすべての確認を通過した後にだけ参照されるため、拒否されたトークンでストアが埋まることはありません。ストアの障害など、ガード自身が送出したエラーはそのまま伝播します。"
 
-#: ../../guides/replay.md:31
+#: ../../guides/replay.md:24
 msgid "Shared stores"
 msgstr "共有ストア"
 
-#: ../../guides/replay.md:33
+#: ../../guides/replay.md:26
 #, python-brace-format
 msgid ""
 "{class}`~pyevp.InMemoryReplayGuard` only protects a single process. With "
@@ -97,22 +80,48 @@ msgstr ""
 "が守れるのは単一のプロセスだけです。複数のワーカーを使う場合は、{class}`~pyevp.ReplayGuard` または "
 "{class}`~pyevp.AsyncReplayGuard` を、アトミックな「存在しなければ追加」の操作として実装してください。"
 
-#: ../../guides/replay.md:51
-#, python-brace-format
+#: ../../guides/replay.md:44
 msgid ""
 "The store must keep each record until it expires. Do not build a guard on"
 " a cache that evicts under memory pressure: once the record is evicted, "
 "the token is accepted again. For Redis this means `maxmemory-policy "
 "noeviction` (the `volatile-*` policies evict exactly these keys, which "
 "have a TTL), so that a full Redis rejects the write and verification "
-"fails instead. With Django, use "
-"{class}`~pyevp.contrib.django.EVPReplayGuard`, which keeps records in "
-"a database table; see {doc}`frameworks`."
+"fails instead."
 msgstr ""
 "ストアは、各レコードを有効期限が切れるまで保持しなければなりません。メモリーが逼迫すると追い出しを行うキャッシュの上にガードを作ってはいけません。レコードが追い出されると、そのトークンが再び受け付けられてしまいます。Redis"
 " の場合は `maxmemory-policy noeviction` にします（`volatile-*` ポリシーは TTL "
-"を持つキー、つまりまさにこれらのキーを追い出します）。こうしておけば、満杯になった Redis "
-"は書き込みを拒否し、その場合は検証が失敗します。Django では "
-"{class}`~pyevp.contrib.django.EVPReplayGuard` "
-"を使ってください。レコードをデータベースのテーブルに保持します。詳しくは {doc}`frameworks` を参照してください。"
+"を持つキー、つまりまさにこれらのキーを追い出します）。こうしておけば、満杯になった Redis は書き込みを拒否し、その場合は検証が失敗します。"
+
+#: ../../guides/replay.md:49
+msgid "Django"
+msgstr "Django"
+
+#: ../../guides/replay.md:51
+#, python-brace-format
+msgid ""
+"{class}`~pyevp.contrib.django.EVPReplayGuard` (or "
+"{class}`~pyevp.contrib.django.AsyncEVPReplayGuard` for an "
+"{class}`~pyevp.AsyncVerifier`) keeps records in a database table, which "
+"needs `\"pyevp.contrib.django\"` in `INSTALLED_APPS` and `manage.py "
+"migrate`. Database errors propagate, so verification fails closed."
+msgstr ""
+"{class}`~pyevp.contrib.django.EVPReplayGuard`（{class}`~pyevp.AsyncVerifier`"
+" では "
+"{class}`~pyevp.contrib.django.AsyncEVPReplayGuard`）は、レコードをデータベースのテーブルに保持します。そのため、`INSTALLED_APPS`"
+" への `\"pyevp.contrib.django\"` の追加と `manage.py migrate` "
+"の実行が必要です。データベースのエラーはそのまま伝播するので、検証は安全側に失敗します。"
+
+#: ../../guides/replay.md:56
+msgid ""
+"Each record is committed in its own transaction, so a rollback of the "
+"request cannot undo it. Inside a transaction on the same database, "
+"whether `ATOMIC_REQUESTS`, `transaction.atomic()` or autocommit turned "
+"off, the guard raises `RuntimeError` instead. In that case give it a "
+"second alias for the same database:"
+msgstr ""
+"各レコードは専用のトランザクションでコミットされるため、リクエストがロールバックされても取り消されません。同じデータベースのトランザクションの中では、それが"
+" `ATOMIC_REQUESTS`、`transaction.atomic()`、autocommit "
+"の無効化のどれによるものでも、ガードは代わりに `RuntimeError` "
+"を送出します。その場合は、同じデータベースを指す別のエイリアスをガードに渡してください。"
 

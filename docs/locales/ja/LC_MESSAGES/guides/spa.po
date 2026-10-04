@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 17:33+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -104,76 +104,49 @@ msgstr ""
 
 #: ../../guides/spa.md:31
 msgid ""
-"Over HTTPS, the cookie is named with the `__Host-` prefix, which requires"
-" `Secure` and `Path=/` and forbids `Domain`. Other hosts on the same "
-"site, and plain HTTP, then cannot set it: otherwise they could plant a "
-"nonce of their choosing."
+"Over HTTPS the example names the cookie with the `__Host-` prefix, so "
+"that other hosts on the same site cannot plant a nonce. Keep that."
 msgstr ""
-"HTTPS では、Cookie の名前に `__Host-` プレフィックスを付けます。このプレフィックスは `Secure` と "
-"`Path=/` を必須とし、`Domain` を禁止します。これで、同じサイトのほかのホストや平文の HTTP からはこの Cookie "
-"を設定できなくなります。設定できると、好きな nonce を仕込まれてしまいます。"
+"HTTPS では、この例は Cookie の名前に `__Host-` プレフィックスを付け、同じサイトのほかのホストが nonce "
+"を仕込めないようにしています。これは変えないでください。"
 
-#: ../../guides/spa.md:35
+#: ../../guides/spa.md:34
 msgid "In the browser"
 msgstr "ブラウザー側"
 
-#: ../../guides/spa.md:37
+#: ../../guides/spa.md:36
+msgid "A sketch with React and TanStack Query, not tested itself:"
+msgstr "React と TanStack Query を使った例です。この例自体はテストしていません。"
+
+#: ../../guides/spa.md:72
 msgid ""
-"A sketch with React and TanStack Query. It follows code that worked in a "
-"real application, but this sketch itself is not tested:"
+"React 19 renders the `nonce` prop as a content attribute, which is what "
+"the browser reads. Read the token in the submit handler, for example with"
+" `FormData` inside react-hook-form's `handleSubmit`; sending it in a JSON"
+" body is fine."
 msgstr ""
-"React と TanStack Query "
-"を使った概略です。実際のアプリケーションで動いたコードに沿っていますが、この概略そのものはテストしていません。"
+"React 19 は `nonce` prop をコンテンツ属性として描画し、ブラウザーはそれを読み取ります。トークンは submit "
+"ハンドラーで読み取ってください。たとえば react-hook-form の `handleSubmit` の中で `FormData` "
+"を使います。JSON のボディに入れて送ってかまいません。"
 
-#: ../../guides/spa.md:74
+#: ../../guides/spa.md:76
 msgid ""
-"What worked in that application, with React 19 and Chrome 154 on a page "
-"without a Content-Security-Policy header:"
+"Request the nonce once. A second request, from React's StrictMode or from"
+" refetching when the window regains focus, replaces the cookie and leaves"
+" the page with a stale nonce; `staleTime: Infinity` in TanStack Query "
+"avoids both. A form submitted before the nonce arrives carries no token "
+"and falls back to your usual flow."
 msgstr ""
-"そのアプリケーションで、React 19 と Chrome 154 を使い、Content-Security-Policy "
-"ヘッダーの無いページで確かめたことは次のとおりです。"
-
-#: ../../guides/spa.md:77
-msgid ""
-"React renders the `nonce` prop as a content attribute, and Chrome picked "
-"it up."
-msgstr "React は `nonce` prop をコンテンツ属性として描画し、Chrome はそれを読み取りました。"
-
-#: ../../guides/spa.md:78
-msgid "A token field rendered only after the nonce arrived worked."
-msgstr "nonce が届いてから描画したトークン欄でも動きました。"
-
-#: ../../guides/spa.md:79
-msgid ""
-"The token could be read from the submit event with `FormData`, inside "
-"react-hook-form's `handleSubmit`. Sending it to the API in a JSON body is"
-" fine, since the API reads JSON."
-msgstr ""
-"react-hook-form の `handleSubmit` の中で、submit イベントから `FormData` "
-"でトークンを読み取れました。API は JSON を読むので、JSON の本文に入れて送ってかまいません。"
+"nonce の取得は 1 回だけにしてください。React の StrictMode や、ウィンドウにフォーカスが戻ったときの再取得で 2 "
+"回目のリクエストが送られると、Cookie が置き換わり、ページには古い nonce が残ります。TanStack Query で "
+"`staleTime: Infinity` を指定すると、どちらも防げます。nonce "
+"が届く前に送信されたフォームはトークンを含まず、通常のフローにフォールバックします。"
 
 #: ../../guides/spa.md:81
-msgid ""
-"A second request for the nonce, from React's StrictMode or from "
-"refetching when the window regains focus, replaces the cookie and can "
-"leave the page with a stale nonce. TanStack Query with `staleTime: "
-"Infinity` avoids both."
-msgstr ""
-"React の StrictMode や、ウィンドウにフォーカスが戻ったときの再取得で nonce をもう一度取得すると、Cookie "
-"が置き換わり、ページに古い nonce が残ることがあります。TanStack Query で `staleTime: Infinity` "
-"を指定すると、どちらも防げます。"
-
-#: ../../guides/spa.md:85
-msgid ""
-"Submitting before the token arrived was not tested. Such a submission "
-"carries no token and falls back to your usual flow."
-msgstr "トークンが届く前の送信は試していません。その場合の送信にはトークンが含まれず、通常の手順にフォールバックします。"
-
-#: ../../guides/spa.md:88
 msgid "Linting"
 msgstr "lint"
 
-#: ../../guides/spa.md:90
+#: ../../guides/spa.md:83
 msgid ""
 "Biome 2.5 reports `autocomplete=\"email-verification-token\"` under "
 "`lint/a11y/useValidAutocomplete`, because the value is not in the HTML "
@@ -182,29 +155,4 @@ msgstr ""
 "Biome 2.5 は、`autocomplete=\"email-verification-token\"` を "
 "`lint/a11y/useValidAutocomplete` として報告します。この値がまだ HTML "
 "の標準に無いためです。属性の直前で抑止します。"
-
-#: ../../guides/spa.md:104
-msgid ""
-"`jsx-a11y/autocomplete-valid` in eslint-plugin-jsx-a11y 6.10 skips hidden"
-" inputs, so it does not report the token field."
-msgstr ""
-"eslint-plugin-jsx-a11y 6.10 の `jsx-a11y/autocomplete-valid` は hidden "
-"の入力欄を対象にしないので、トークン欄は報告されません。"
-
-#~ msgid "As with a session, consume the nonce only when a token arrived."
-#~ msgstr "セッションの場合と同じく、nonce を消費するのはトークンが届いたときだけにします。"
-
-#~ msgid ""
-#~ "Other hosts on the same site can"
-#~ " overwrite or clear the cookie. The"
-#~ " worst they can do is make the"
-#~ " next submission fall back to your"
-#~ " usual flow. Over HTTPS, the "
-#~ "`__Secure-` prefix stops hosts served "
-#~ "over plain HTTP from setting it."
-#~ msgstr ""
-#~ "同じサイトのほかのホストは、この Cookie "
-#~ "を上書きしたり消したりできます。それでも起きうる最悪のことは、次の送信が通常の手順にフォールバックすることだけです。HTTPS "
-#~ "なら `__Secure-` プレフィックスを付けると、平文の HTTP "
-#~ "で配信されているホストからは設定できなくなります。"
 

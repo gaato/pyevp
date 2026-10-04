@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 00:46+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -27,37 +27,44 @@ msgstr "ログとメトリクス"
 #, python-brace-format
 msgid ""
 "Pass `observer=` to a verifier to receive one "
-"{class}`~pyevp.VerificationEvent` per `verify()` call. An event carries:"
+"{class}`~pyevp.VerificationEvent` per verification: every `verify()` "
+"call, and every `verify_submission()` call that carries a token. An event"
+" carries:"
 msgstr ""
-"Verifier に `observer=` を渡すと、`verify()` の呼び出しごとに "
-"{class}`~pyevp.VerificationEvent` を 1 つ受け取れます。イベントには次の情報が含まれます。"
+"Verifier に `observer=` を渡すと、検証ごとに {class}`~pyevp.VerificationEvent` を 1 "
+"つ受け取れます。対象は、すべての `verify()` の呼び出しと、トークンが付いたすべての `verify_submission()` "
+"の呼び出しです。イベントには次の情報が含まれます。"
 
-#: ../../guides/observability.md:6
+#: ../../guides/observability.md:7
 msgid "`ok`"
 msgstr "`ok`"
 
-#: ../../guides/observability.md:7
-#, python-brace-format
-msgid "`code`: the {class}`~pyevp.ErrorCode` on failure"
-msgstr "`code`: 失敗時の {class}`~pyevp.ErrorCode`"
-
 #: ../../guides/observability.md:8
+#, python-brace-format
+msgid ""
+"`code`: the {class}`~pyevp.ErrorCode` when an {class}`~pyevp.EVPError` "
+"was raised; `None` on success and when your cache or replay guard raised"
+msgstr ""
+"`code`: {class}`~pyevp.EVPError` が送出された場合はその "
+"{class}`~pyevp.ErrorCode`。成功した場合と、自分のキャッシュやリプレイガードが例外を送出した場合は `None`"
+
+#: ../../guides/observability.md:10
 msgid "`issuer`: on success"
 msgstr "`issuer`: 成功時の発行者"
 
-#: ../../guides/observability.md:9
-msgid "`email_domain`: the claimed domain, read before verification"
-msgstr "`email_domain`: 申告されたドメイン（検証前に読み取ったもの）"
+#: ../../guides/observability.md:11
+msgid "`email_domain`: the domain the unverified token claims"
+msgstr "`email_domain`: 検証前のトークンが申告しているドメイン"
 
-#: ../../guides/observability.md:10
+#: ../../guides/observability.md:12
 msgid "`profile`"
 msgstr "`profile`"
 
-#: ../../guides/observability.md:11
+#: ../../guides/observability.md:13
 msgid "`duration`"
 msgstr "`duration`"
 
-#: ../../guides/observability.md:19
+#: ../../guides/observability.md:21
 #, python-brace-format
 msgid ""
 "{class}`~pyevp.LoggingObserver` writes one line per verification to the "
@@ -66,15 +73,15 @@ msgstr ""
 "{class}`~pyevp.LoggingObserver` は、検証ごとに 1 行を `pyevp` "
 "ロガーに書き込みます。メトリクスを取るには、小さな呼び出し可能オブジェクトを書きます。"
 
-#: ../../guides/observability.md:34
+#: ../../guides/observability.md:37
 msgid ""
-"Observers should be fast. Exceptions raised by an observer are logged to "
-"the `pyevp` logger and ignored, so monitoring can never break sign-in."
+"Observers should be fast. Exceptions they raise are logged to the `pyevp`"
+" logger and ignored, so monitoring cannot break sign-in."
 msgstr ""
 "オブザーバーは高速に処理を終えるようにしてください。オブザーバーが送出した例外は `pyevp` "
 "ロガーに記録されたうえで無視されるため、監視がサインインを妨げることはありません。"
 
-#: ../../guides/observability.md:37
+#: ../../guides/observability.md:40
 #, python-brace-format
 msgid ""
 "Watching these numbers per `email_domain` and `code` shows quickly when "

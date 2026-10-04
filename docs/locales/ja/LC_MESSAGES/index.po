@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 15:03+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -19,19 +19,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../index.md:24
+#: ../../index.md:20
 msgid "Getting started"
 msgstr "はじめに"
 
-#: ../../index.md:32
+#: ../../index.md:28
 msgid "Guides"
 msgstr "ガイド"
 
-#: ../../index.md:48
+#: ../../index.md:45
 msgid "Changelog"
 msgstr "変更履歴"
 
-#: ../../index.md:48
+#: ../../index.md:45
 msgid "Reference"
 msgstr "リファレンス"
 
@@ -41,60 +41,50 @@ msgstr "PyEVP"
 
 #: ../../index.md:3
 msgid ""
-"Python library for the **Email Verification Protocol** (EVP): verify "
-"tokens as a relying party, or issue them for your own email domains."
+"Python library for the **Email Verification Protocol** (EVP). With EVP, "
+"the browser obtains a token from the user's email provider proving that "
+"the user controls an address, and puts it in your sign-up or sign-in "
+"form. Your server verifies the token, so no confirmation email round-trip"
+" is needed."
 msgstr ""
-"**Email Verification Protocol**（EVP）の Python "
-"ライブラリです。リライングパーティー（RP）としてトークンを検証することも、自分のメールドメイン向けにトークンを発行することもできます。"
+"**Email Verification Protocol**（EVP）の Python ライブラリです。EVP "
+"では、ユーザーがそのアドレスを管理していることを示すトークンを、ブラウザーがユーザーのメールプロバイダーから受け取り、サインアップやサインインのフォームに入れます。そのトークンをサーバーで検証するので、確認メールを往復させる必要がありません。"
 
-#: ../../index.md:6
+#: ../../index.md:8
+#, python-brace-format
 msgid ""
-"With EVP, the browser obtains a token from the user's email provider "
-"proving that the user controls an address, and puts it in your sign-up or"
-" sign-in form. This library verifies that token on your server, so no "
-"confirmation email round-trip is needed."
-msgstr ""
-"EVP "
-"では、ユーザーがそのアドレスを管理していることを示すトークンを、ブラウザーがユーザーのメールプロバイダーから受け取り、サインアップやサインインのフォームに入れます。このライブラリはそのトークンをサーバーで検証するので、確認メールを往復させる必要がありません。"
+"**Verifying addresses on your site** (relying party): start with the "
+"{doc}`quickstart`."
+msgstr "**自分のサイトでアドレスを検証する**（リライングパーティー、RP）なら、{doc}`quickstart` から始めてください。"
 
-#: ../../index.md:11
+#: ../../index.md:9
+#, python-brace-format
+msgid ""
+"**Issuing tokens for your own mail domains** (issuer): start with "
+"{doc}`guides/issuer-operations`."
+msgstr ""
+"**自分のメールドメイン向けにトークンを発行する**（発行者、issuer）なら、{doc}`guides/issuer-operations` "
+"から始めてください。"
+
+#: ../../index.md:12
+msgid ""
+"Chrome sends tokens with `chrome://flags/#email-verification-protocol` "
+"enabled or on a site registered for the origin trial; other browsers send"
+" none. Try it at <https://pyevp.dev/demo>."
+msgstr ""
+"Chrome は、`chrome://flags/#email-verification-protocol` "
+"を有効にしているか、オリジントライアルに登録したサイトであればトークンを送ります。ほかのブラウザーは送りません。<https://pyevp.dev/demo>"
+" で試せます。"
+
+#: ../../index.md:16
 #, python-brace-format
 msgid ""
 "**Alpha.** The protocol ([draft-hardt-email-verification], [WICG Email "
-"Verification API]) and browser support (Chrome origin trial) are still "
-"changing. Every moving part is isolated in a versioned {doc}`profile "
-"<concepts>`, so the library can follow along without silent behaviour "
-"changes."
+"Verification API]) is still changing. Every moving part is isolated in a "
+"versioned {doc}`profile <concepts>`."
 msgstr ""
 "**アルファ版です。** プロトコル（[draft-hardt-email-"
 "verification](https://github.com/dickhardt/email-verification)、[WICG "
 "Email Verification API](https://github.com/WICG/email-"
-"verification)）とブラウザーの対応（Chrome "
-"のオリジントライアル）はまだ変わり続けています。変わりうる部分はすべてバージョン付きの {doc}`プロファイル <concepts>` "
-"にまとめてあるので、挙動を知らないうちに変えることなく仕様の変更に追従できます。"
-
-#: ../../index.md:17
-msgid "**Typed:** frozen dataclasses, protocols and an enum of error codes."
-msgstr "**型付き**：frozen なデータクラス、プロトコル、エラーコードの列挙型を備えています。"
-
-#: ../../index.md:18
-msgid ""
-"**Sync and async from one core:** the verification logic does no I/O "
-"itself; thin drivers serve Django and FastAPI alike."
-msgstr "**同期と非同期を一つのコアで**：検証ロジック自体は I/O を行わず、薄いドライバーが Django にも FastAPI にも対応します。"
-
-#: ../../index.md:20
-msgid ""
-"**Testable:** `pyevp.testing` ships a fake issuer and a fake browser, so "
-"your application's tests need no network access."
-msgstr ""
-"**テストしやすい**：`pyevp.testing` "
-"にはフェイクの発行者（issuer）とフェイクのブラウザーが付属しているので、アプリケーションのテストにネットワーク接続は要りません。"
-
-#: ../../index.md:22
-msgid ""
-"**Small:** the only required dependencies are [joserfc] and idna; DNS and"
-" HTTP are pluggable."
-msgstr ""
-"**軽量**：必須の依存は [joserfc](https://jose.authlib.org/) と idna だけです。DNS と HTTP"
-" は差し替えられます。"
+"verification)）はまだ変わり続けています。変わりうる部分はすべてバージョン付きの {doc}`プロファイル <concepts>` "
+"にまとめてあります。"

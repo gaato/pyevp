@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 17:33+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -32,17 +32,6 @@ msgstr ""
 "{mod}`pyevp.testing` を使うと、ブラウザーや "
 "DNS、ネットワークへのアクセスなしに、正しく署名された本物のトークンをテストスイートの中で生成できます。"
 
-#: ../../guides/testing.md:20
-#, python-brace-format
-msgid ""
-"To exercise {meth}`~pyevp.Verifier.verify_submission` without a web "
-"framework, a plain `dict` stands in for the session: `nonces = "
-"SessionNonces({})`, then `nonce=nonces.issue()`."
-msgstr ""
-"Web フレームワークを使わずに {meth}`~pyevp.Verifier.verify_submission` "
-"を試すときは、セッションの代わりにただの `dict` を使えます。`nonces = SessionNonces({})` "
-"としてから、`nonce=nonces.issue()` を渡します。"
-
 #: ../../guides/testing.md:23
 #, python-brace-format
 msgid ""
@@ -50,14 +39,14 @@ msgid ""
 "to {func}`~pyevp.testing.make_verifier` / "
 "{func}`~pyevp.testing.make_async_verifier`. You can override claims and "
 "headers (`claims={\"email_verified\": False}`) and rotate keys. To mimic "
-"Gmail's current deviations from the draft, use "
-"{meth}`FakeIssuer.gmail_like() <pyevp.testing.FakeIssuer.gmail_like>`."
+"Gmail's deviations from the draft, use {meth}`FakeIssuer.gmail_like() "
+"<pyevp.testing.FakeIssuer.gmail_like>`."
 msgstr ""
 "{class}`~pyevp.testing.FakeIssuer` は、{func}`~pyevp.testing.make_verifier`"
 " / {func}`~pyevp.testing.make_async_verifier` に DNS "
 "レコード、メタデータ、鍵を提供します。クレームやヘッダーを上書きしたり（`claims={\"email_verified\": "
 "False}`）、鍵をローテーションしたりできます。Gmail "
-"が現在ドラフトから外れている点を再現するには、{meth}`FakeIssuer.gmail_like() "
+"がドラフトから外れている点を再現するには、{meth}`FakeIssuer.gmail_like() "
 "<pyevp.testing.FakeIssuer.gmail_like>` を使います。"
 
 #: ../../guides/testing.md:27
@@ -76,8 +65,37 @@ msgstr ""
 "を使います。サンプルのテストに両方の例があります。"
 
 #: ../../guides/testing.md:32
+#, python-brace-format
 msgid ""
-"The verification core can also be driven by hand. That is useful when "
-"writing your own driver:"
-msgstr "検証のコアは手で動かすこともできます。独自のドライバーを書くときに便利です。"
+"To drive the verification core without a verifier, for example when "
+"writing your own driver, see {func}`pyevp.core.verification_steps`."
+msgstr ""
+"独自のドライバーを書く場合など、verifier "
+"を使わずに検証のコアを動かすには、{func}`pyevp.core.verification_steps` を参照してください。"
+
+#: ../../guides/testing.md:35
+msgid "Testing an issuer"
+msgstr "発行者（issuer）のテスト"
+
+#: ../../guides/testing.md:37
+#, python-brace-format
+msgid ""
+"{meth}`~pyevp.testing.FakeBrowser.issuance_request` signs a request as "
+"Chrome does, and `FakeBrowser.present()` turns the EVT from the reply "
+"into the token a relying party receives. Give the browser the "
+"{class}`~pyevp.testing.FixedClock` your {class}`~pyevp.issuer.Issuer` was"
+" built with (`clock=`), so that the request is fresh:"
+msgstr ""
+"{meth}`~pyevp.testing.FakeBrowser.issuance_request` は Chrome "
+"と同じ方法でリクエストに署名し、`FakeBrowser.present()` は応答の EVT "
+"を、リライングパーティー（RP）が受け取るトークンに変換します。リクエストが古くならないように、{class}`~pyevp.issuer.Issuer`"
+" を組み立てたときの {class}`~pyevp.testing.FixedClock` をブラウザーにも渡してください（`clock=`）。"
+
+#: ../../guides/testing.md:50
+msgid ""
+"To test your endpoint instead, post `request[\"headers\"]` and "
+"`request[\"body\"]` to it."
+msgstr ""
+"エンドポイントそのものをテストするには、`request[\"headers\"]` と `request[\"body\"]` "
+"をエンドポイントに POST します。"
 

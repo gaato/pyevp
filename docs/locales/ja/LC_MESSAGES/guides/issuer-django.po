@@ -1,0 +1,156 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Gakuto Furuya
+# This file is distributed under the same license as the pyevp package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pyevp 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../guides/issuer-django.md:3
+msgid "Django issuer"
+msgstr "Django の発行者（issuer）"
+
+#: ../../guides/issuer-django.md:5
+#, python-brace-format
+msgid ""
+"{mod}`pyevp.contrib.django.issuer` (`pip install \"pyevp[django]\"`) "
+"serves every issuer endpoint, including the ones Chrome needs, from "
+"Django views. It is for Django projects that already sign their users in."
+" Read {doc}`issuer-operations` for the setup and {doc}`issuer-policy` for"
+" who gets a token. A complete project lives in "
+"[`examples/issuer_django`](https://github.com/gaato/pyevp/tree/main/examples/issuer_django)."
+msgstr ""
+"{mod}`pyevp.contrib.django.issuer`（`pip install "
+"\"pyevp[django]\"`）は、Chrome が必要とするものも含め、発行者のすべてのエンドポイントを Django "
+"のビューとして提供します。すでにユーザーをサインインさせている Django プロジェクト向けです。セットアップについては {doc"
+"}`issuer-operations` を、誰にトークンを発行するかについては {doc}`issuer-policy` "
+"を読んでください。一通り組み上げたプロジェクトが "
+"[`examples/issuer_django`](https://github.com/gaato/pyevp/tree/main/examples/issuer_django)"
+" にあります。"
+
+#: ../../guides/issuer-django.md:25
+msgid ""
+"Include `evp.urls` at the root of the issuer's origin. It serves the "
+"metadata, issuance and the JWKS where the issuer's configuration says, "
+"the FedCM accounts endpoint at `/fedcm/accounts` (`accounts_path`), and "
+"`/.well-known/web-identity`."
+msgstr ""
+"`evp.urls` は発行者のオリジンのルートに include してください。メタデータ、発行エンドポイント、JWKS "
+"を発行者の設定が示す場所で、FedCM のアカウントエンドポイントを "
+"`/fedcm/accounts`（`accounts_path`）で、そして `/.well-known/web-identity` "
+"を配信します。"
+
+#: ../../guides/issuer-django.md:29
+#, python-brace-format
+msgid "Subclass {class}`~pyevp.contrib.django.issuer.IssuerSite` to adapt it:"
+msgstr "動作を変えるには {class}`~pyevp.contrib.django.issuer.IssuerSite` をサブクラス化します。"
+
+#: ../../guides/issuer-django.md:31
+msgid ""
+"`user_emails(request)` returns the addresses the signed-in user may get "
+"tokens for. It has no default: a user model's email field is right only "
+"if your sign-up flow verified it. Return, for example, the verified "
+"addresses of django-allauth, or what your mail system delivers to the "
+"user's mailbox."
+msgstr ""
+"`user_emails(request)` "
+"は、サインイン中のユーザーがトークンを受け取れるアドレスを返します。既定の実装はありません。ユーザーモデルのメールアドレス欄が正しいのは、サインアップ時に検証している場合だけだからです。たとえば"
+" django-allauth の検証済みアドレスや、メールシステムがユーザーのメールボックスに配送するアドレスを返します。"
+
+#: ../../guides/issuer-django.md:35
+msgid ""
+"`get_issuer(request)` returns the issuer for the request. Override it "
+"instead of passing an `Issuer` when one deployment serves several "
+"issuers, for example one per host."
+msgstr ""
+"`get_issuer(request)` はリクエストに対応する発行者を返します。ホストごとに発行者を分けるなど、1 "
+"つのデプロイで複数の発行者を提供する場合は、`Issuer` を渡す代わりにこれをオーバーライドします。"
+
+#: ../../guides/issuer-django.md:37
+msgid ""
+"`login_url` (an argument) is where Chrome sends users who are not signed "
+"in. It defaults to `settings.LOGIN_URL`."
+msgstr ""
+"`login_url`（引数）は、サインインしていないユーザーを Chrome が案内する先です。既定値は "
+"`settings.LOGIN_URL` です。"
+
+#: ../../guides/issuer-django.md:40
+msgid ""
+"Each endpoint is also a view of its own, for mounting it elsewhere with "
+"the same hooks, such as `AccountsView.as_view(site=evp)`. Pass "
+"`replay_guard=EVPReplayGuard()` (the sync one) to the `Issuer`; no extra "
+"database alias is needed."
+msgstr ""
+"各エンドポイントは単独のビューとしても使えます。`AccountsView.as_view(site=evp)` "
+"のように、同じフックを使ったまま別の場所にマウントできます。`Issuer` には "
+"`replay_guard=EVPReplayGuard()`（同期版）を渡してください。別のデータベースエイリアスは必要ありません。"
+
+#: ../../guides/issuer-django.md:44
+msgid "Settings"
+msgstr "設定"
+
+#: ../../guides/issuer-django.md:57
+#, python-brace-format
+msgid ""
+"{class}`~pyevp.contrib.django.issuer.LoginStatusMiddleware` tells Chrome "
+"about logins and logouts without changes to your login views. `manage.py "
+"check --deploy` warns about the session cookie (`pyevp.W001`, "
+"`pyevp.W002`). If your session middleware sets the cookie's attributes "
+"per response instead, add both to `SILENCED_SYSTEM_CHECKS`."
+msgstr ""
+"{class}`~pyevp.contrib.django.issuer.LoginStatusMiddleware` "
+"を使うと、ログインビューを変えずに Chrome にログインとログアウトを伝えられます。`manage.py check --deploy` "
+"は、セッション Cookie "
+"の設定について警告（`pyevp.W001`、`pyevp.W002`）を出します。セッションのミドルウェアがレスポンスごとに Cookie "
+"の属性を決める場合は、両方を `SILENCED_SYSTEM_CHECKS` に加えてください。"
+
+#: ../../guides/issuer-django.md:62
+msgid "Adding it to an existing application"
+msgstr "既存のアプリケーションに加える"
+
+#: ../../guides/issuer-django.md:64
+msgid ""
+"Include `evp.urls` at the root, before the application's own patterns. "
+"Plugin systems that mount apps under a prefix cannot serve `/.well-"
+"known/`."
+msgstr ""
+"`evp.urls` は、アプリケーション自身のパターンより前に、ルートで include "
+"します。アプリをプレフィックスの下にマウントするプラグイン機構では `/.well-known/` を提供できません。"
+
+#: ../../guides/issuer-django.md:66
+msgid ""
+"Route `/.well-known/email-verification`, `/.well-known/web-identity`, the"
+" issuance and JWKS paths, and `/fedcm/` to Django in the reverse proxy. A"
+" proxy that hands unknown paths to a single-page app answers them with "
+"its HTML, and Chrome fails without an error."
+msgstr ""
+"リバースプロキシで、`/.well-known/email-verification`、`/.well-known/web-"
+"identity`、発行エンドポイントと JWKS のパス、`/fedcm/` を Django "
+"に振り分けます。知らないパスをシングルページアプリケーション（SPA）に渡すプロキシは、これらにも SPA の HTML を返すので、Chrome"
+" はエラーを出さずに失敗します。"
+
+#: ../../guides/issuer-django.md:69
+#, python-brace-format
+msgid ""
+"If the issuer is on a subdomain such as `accounts.example.com`, serve "
+"{class}`~pyevp.contrib.django.issuer.WebIdentityView` (or "
+"`web_identity_response()`) at `https://example.com/.well-known/web-"
+"identity`."
+msgstr ""
+"発行者が `accounts.example.com` のようなサブドメインにある場合は、`https://example.com/.well-"
+"known/web-identity` で "
+"{class}`~pyevp.contrib.django.issuer.WebIdentityView`（または "
+"`web_identity_response()`）を提供してください。"

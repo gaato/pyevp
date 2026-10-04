@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:48+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -26,11 +26,12 @@ msgstr "コマンドライン"
 #: ../../guides/cli.md:3
 msgid ""
 "The `pyevp` command is for relying-party developers and operators, and "
-"for issuer operators checking their own setup. It needs the `cli` extra. "
-"You can run it without installing anything into your project:"
+"for issuer operators setting up and checking their issuer. It needs the "
+"`cli` extra. You can run it without installing anything into your "
+"project:"
 msgstr ""
 "`pyevp` "
-"コマンドは、リライングパーティー（RP）の開発者や運用者と、自分の設定を確認したい発行者（issuer）の運用者のためのものです。`cli` "
+"コマンドは、リライングパーティー（RP）の開発者や運用者と、発行者（issuer）をセットアップして確認する運用者のためのものです。`cli` "
 "extra が必要です。プロジェクトに何もインストールせずに実行することもできます。"
 
 #: ../../guides/cli.md:11
@@ -65,12 +66,38 @@ msgid "Run the full verification, as your server would:"
 msgstr "サーバーと同じように、検証をすべて実行します。"
 
 #: ../../guides/cli.md:40
+msgid "`pyevp issuer`"
+msgstr "`pyevp issuer`"
+
+#: ../../guides/cli.md:42
+#, python-brace-format
+msgid ""
+"Set up an issuer for your own email domains (see {doc}`issuer-"
+"operations`). `keygen` writes the private JWK to a new file readable only"
+" by you, and prints the public one. `documents` prints the metadata, the "
+"JWKS and the DNS records to publish."
+msgstr ""
+"自分のメールドメイン向けの発行者をセットアップします（{doc}`issuer-operations` を参照）。`keygen` は秘密鍵の "
+"JWK を自分だけが読める新しいファイルに書き込み、公開鍵の JWK を出力します。`documents` "
+"は、公開するメタデータ、JWKS、DNS レコードを出力します。"
+
+#: ../../guides/cli.md:54
+msgid ""
+"`--domain` and `--publish` (a next or retired key's JWK file) can be "
+"repeated."
+msgstr "`--domain` と `--publish`（次の鍵や使わなくなった鍵の JWK ファイル）は、複数回指定できます。"
+
+#: ../../guides/cli.md:56
 msgid "Output and exit status"
 msgstr "出力と終了ステータス"
 
-#: ../../guides/cli.md:42
-msgid "Every command accepts `--json` for scripts."
-msgstr "どのコマンドも、スクリプト向けに `--json` を受け付けます。"
+#: ../../guides/cli.md:58
+msgid ""
+"`discover`, `inspect` and `verify` accept `--json` for scripts; the "
+"`issuer` commands always print JSON."
+msgstr ""
+"`discover`、`inspect`、`verify` は、スクリプト向けに `--json` を受け付けます。`issuer` "
+"のコマンドは常に JSON を出力します。"
 
 #: ../../guides/cli.md
 msgid "Status"
@@ -112,7 +139,7 @@ msgstr "3"
 msgid "the `cli` extra is not installed"
 msgstr "`cli` extra がインストールされていない"
 
-#: ../../guides/cli.md:52
+#: ../../guides/cli.md:69
 msgid ""
 "Tokens contain email addresses. Treat them as personal data, and avoid "
 "pasting real users' tokens into shared terminals or issue trackers."

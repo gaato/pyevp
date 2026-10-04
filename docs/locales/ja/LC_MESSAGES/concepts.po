@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 17:33+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -34,12 +34,12 @@ msgstr "ページが nonce を埋め込んだフォームを表示します（{d
 
 #: ../../concepts.md:6
 msgid ""
-"The user picks an address from autofill. The browser looks up the issuer "
-"for the address's domain, obtains an **Email Verification Token (EVT)** "
-"from it, and binds it to your origin and nonce with a **key-binding JWT "
-"(KB-JWT)**."
+"The user types or picks an address. The browser looks up the issuer for "
+"the address's domain, obtains an **Email Verification Token (EVT)** from "
+"it, and binds it to your origin and nonce with a **key-binding JWT (KB-"
+"JWT)**."
 msgstr ""
-"ユーザーが自動入力の候補からアドレスを選びます。ブラウザーはそのアドレスのドメインの発行者（issuer）を調べ、発行者から **Email "
+"ユーザーがアドレスを入力するか、候補から選びます。ブラウザーはそのアドレスのドメインの発行者（issuer）を調べ、発行者から **Email "
 "Verification Token**（EVT）を受け取り、**鍵バインディング JWT**（KB-JWT）で自分のサイトのオリジンと "
 "nonce に結び付けます。"
 
@@ -64,15 +64,63 @@ msgstr ""
 "のハッシュ）を含みます。"
 
 #: ../../concepts.md:16
+msgid "What the user sees"
+msgstr "ユーザーに見えるもの"
+
+#: ../../concepts.md:18
+msgid ""
+"The user must be signed in to their email provider in the same browser. "
+"Before the first token for an address, Chrome asks once whether to verify"
+" that email automatically. After that, nothing is shown: Chrome starts "
+"when focus leaves the email field and attaches the token when the form is"
+" submitted. When anything fails, the form arrives without a token and the"
+" page is not told why."
+msgstr ""
+"ユーザーは、同じブラウザーでメールプロバイダーにサインインしている必要があります。あるアドレスで最初にトークンを受け取る前に、Chrome "
+"はそのメールアドレスを自動で確認するかどうかを一度だけ尋ねます。それ以降は何も表示されません。Chrome "
+"はフォーカスがメールアドレス欄から離れたときに処理を始め、フォームの送信時にトークンを付けます。どこかで失敗すると、フォームはトークンなしで届き、ページには理由が伝えられません。"
+
+#: ../../concepts.md:23
+msgid "Trust model"
+msgstr "信頼モデル"
+
+#: ../../concepts.md:25
+msgid ""
+"An EVT means the issuer vouches that the browser's user controls the "
+"address, as a click on a link sent there would. The KB-JWT ties it to "
+"your origin and nonce, so it cannot be replayed on another site."
+msgstr ""
+"EVT "
+"は、ブラウザーのユーザーがそのアドレスを管理していることを発行者が保証するものです。そのアドレスに送ったリンクがクリックされた場合と同じ意味を持ちます"
+"。KB-JWT が EVT を自分のサイトのオリジンと nonce に結び付けるので、ほかのサイトでリプレイすることはできません。"
+
+#: ../../concepts.md:29
+#, python-brace-format
+msgid ""
+"Anyone who controls a domain's DNS names its issuer, with a `_email-"
+"verification` TXT record. A token is therefore as trustworthy as the "
+"domain's owner, just as a confirmation email is as trustworthy as the "
+"domain's mail server. That is why any issuer is accepted by default. Pass"
+" `allowed_issuers` when you want addresses only from providers you know, "
+"such as your company's identity provider, or want the verifier to contact"
+" only those hosts (see {ref}`private networks <ssrf>`)."
+msgstr ""
+"ドメインの DNS を管理している人は誰でも、`_email-verification` の TXT "
+"レコードでそのドメインの発行者を指定できます。そのため、トークンの信頼性はドメインの所有者の信頼性と同じです。確認メールの信頼性が、ドメインのメールサーバーの信頼性と同じなのと同様です。既定でどの発行者も受け入れるのはこのためです。自社の"
+" ID プロバイダーなど、知っているプロバイダーのアドレスだけを受け入れたい場合や、verifier "
+"をそれらのホストにだけ接続させたい場合は、`allowed_issuers` を渡してください（{ref}`プライベートネットワーク "
+"<ssrf>` を参照）。"
+
+#: ../../concepts.md:36
 msgid "Verification"
 msgstr "検証"
 
-#: ../../concepts.md:18
+#: ../../concepts.md:38
 #, python-brace-format
 msgid "{func}`pyevp.core.verification_steps` checks, in this order:"
 msgstr "{func}`pyevp.core.verification_steps` は次の順に確認します。"
 
-#: ../../concepts.md:20
+#: ../../concepts.md:40
 msgid ""
 "**Offline checks.** It parses the token, then checks the EVT's header and"
 " claims and its freshness. It verifies the KB-JWT signature against "
@@ -85,7 +133,7 @@ msgstr ""
 "を確認します。送信されたメールアドレスが渡されていれば、それとの一致も確認します。`allowed_issuers` がある場合は、`iss` "
 "がそこに挙がっていないトークンを拒否します。"
 
-#: ../../concepts.md:24
+#: ../../concepts.md:44
 msgid ""
 "**Discovery.** It looks up the DNS TXT record `_email-"
 "verification.<domain>`, which must hold exactly one `iss=` entry. The "
@@ -94,7 +142,7 @@ msgstr ""
 "**ディスカバリー**。DNS の TXT レコード `_email-verification.<domain>` を引きます。このレコードには "
 "`iss=` のエントリーがちょうど 1 つなければなりません。トークンの `iss` はその発行者と一致する必要があります。"
 
-#: ../../concepts.md:26
+#: ../../concepts.md:46
 msgid ""
 "**Issuer metadata and keys.** It fetches `<issuer>/.well-known/email-"
 "verification` and then the `jwks_uri` it names. These are cached. If no "
@@ -106,86 +154,48 @@ msgstr ""
 "を取得します。これらはキャッシュされます。どの鍵でもトークンを検証できなかった場合は、鍵がローテーションされた可能性を考えて、レート制限をかけたうえで"
 " 1 回だけ鍵を取得し直します。"
 
-#: ../../concepts.md:29
+#: ../../concepts.md:49
 msgid "**EVT signature.**"
 msgstr "**EVT の署名**。"
 
-#: ../../concepts.md:30
+#: ../../concepts.md:50
 msgid "**Replay protection**, if enabled."
 msgstr "**リプレイ対策**（有効な場合）。"
 
-#: ../../concepts.md:32
-msgid ""
-"Everything that can be checked without the network is checked first. The "
-"only hosts ever contacted are derived from DNS, never from the token."
-msgstr "ネットワークを使わずに確認できることは、すべて先に確認します。接続するホストは常に DNS から導き出し、トークンの内容から決めることはありません。"
+#: ../../concepts.md:52
+msgid "The only hosts ever contacted are derived from DNS, never from the token."
+msgstr "接続するホストは常に DNS から導き出し、トークンの内容から決めることはありません。"
 
-#: ../../concepts.md:35
+#: ../../concepts.md:54
 msgid "Sans-I/O core"
 msgstr "Sans-I/O のコア"
 
-#: ../../concepts.md:37
+#: ../../concepts.md:56
 #, python-brace-format
 msgid ""
-"The verification logic in {mod}`pyevp.core` performs no I/O. It is a "
-"generator that *yields* requests, {class}`~pyevp.core.ResolveTxt`, "
-"{class}`~pyevp.core.FetchJson` and {class}`~pyevp.core.MarkUsed`, and "
-"receives their results. The drivers {class}`pyevp.Verifier` and "
-"{class}`pyevp.AsyncVerifier` only answer those requests through injected "
-"*ports*:"
-msgstr ""
-"{mod}`pyevp.core` の検証ロジックは I/O "
-"を一切行いません。これはジェネレーターで、リクエスト（{class}`~pyevp.core.ResolveTxt`、{class}`~pyevp.core.FetchJson`、{class}`~pyevp.core.MarkUsed`）を"
-" *yield* し、その結果を受け取ります。ドライバーである {class}`pyevp.Verifier` と "
-"{class}`pyevp.AsyncVerifier` は、注入された *ポート* を通じてそのリクエストに応えるだけです。"
-
-#: ../../concepts.md:42
-#, python-brace-format
-msgid "{class}`~pyevp.TxtResolver`"
-msgstr "{class}`~pyevp.TxtResolver`"
-
-#: ../../concepts.md:43
-#, python-brace-format
-msgid "{class}`~pyevp.JsonFetcher`"
-msgstr "{class}`~pyevp.JsonFetcher`"
-
-#: ../../concepts.md:44
-#, python-brace-format
-msgid "{class}`~pyevp.ReplayGuard`"
-msgstr "{class}`~pyevp.ReplayGuard`"
-
-#: ../../concepts.md:45
-msgid "their async counterparts"
-msgstr "それぞれの非同期版"
-
-#: ../../concepts.md:47
-msgid "As a result:"
-msgstr "その結果、次のことができます。"
-
-#: ../../concepts.md:49
-msgid ""
-"the same logic serves synchronous Django views and asynchronous FastAPI "
-"endpoints;"
-msgstr "同じロジックで、同期の Django ビューにも非同期の FastAPI エンドポイントにも対応できます。"
-
-#: ../../concepts.md:50
-msgid ""
-"DNS, HTTP, caches and replay stores can be swapped without touching "
-"verification;"
-msgstr "検証ロジックに手を入れずに、DNS、HTTP、キャッシュ、リプレイストアを差し替えられます。"
-
-#: ../../concepts.md:51
-#, python-brace-format
-msgid ""
-"tests can drive the generator by hand or plug in the fakes from "
+"{func}`~pyevp.core.verification_steps` performs no I/O: it is a generator"
+" that yields requests ({class}`~pyevp.core.ResolveTxt`, "
+"{class}`~pyevp.core.FetchJson`, {class}`~pyevp.core.MarkUsed`) and "
+"receives their results. {class}`pyevp.Verifier` and "
+"{class}`pyevp.AsyncVerifier` answer them through the ports you inject "
+"({class}`~pyevp.TxtResolver`, {class}`~pyevp.JsonFetcher`, "
+"{class}`~pyevp.ReplayGuard` and their async counterparts), so the same "
+"logic serves sync and async code, and tests can use the fakes in "
 "{mod}`pyevp.testing`."
-msgstr "テストでは、ジェネレーターを手で動かすことも、{mod}`pyevp.testing` のフェイクを差し込むこともできます。"
+msgstr ""
+"{func}`~pyevp.core.verification_steps` は I/O "
+"を一切行いません。これはジェネレーターで、リクエスト（{class}`~pyevp.core.ResolveTxt`、{class}`~pyevp.core.FetchJson`、{class}`~pyevp.core.MarkUsed`）を"
+" yield し、その結果を受け取ります。{class}`pyevp.Verifier` と "
+"{class}`pyevp.AsyncVerifier` "
+"は、注入されたポート（{class}`~pyevp.TxtResolver`、{class}`~pyevp.JsonFetcher`、{class}`~pyevp.ReplayGuard`"
+" とその非同期版）を通じてそのリクエストに応えます。そのため、同期と非同期のコードで同じロジックを使え、テストでは "
+"{mod}`pyevp.testing` のフェイクを使えます。"
 
-#: ../../concepts.md:55
+#: ../../concepts.md:65
 msgid "Profiles"
 msgstr "プロファイル"
 
-#: ../../concepts.md:57
+#: ../../concepts.md:67
 #, python-brace-format
 msgid ""
 "The protocol is still moving, and deployed issuers lag behind the drafts."
@@ -221,14 +231,12 @@ msgstr "`draft-hardt-02`"
 msgid "Strict reading of draft-hardt-email-verification -02"
 msgstr "draft-hardt-email-verification -02 を厳密に解釈する"
 
-#: ../../concepts.md:74
+#: ../../concepts.md:84
 msgid ""
-"Following a spec change usually means adding a new preset rather than "
-"changing an existing one, so that you can choose when to switch. Run "
-"`pyevp discover <domain> --profile <name>` to see how an issuer fares "
-"under a profile."
+"Spec changes usually arrive as new presets, so you choose when to switch."
+" Run `pyevp discover <domain> --profile <name>` to see how an issuer "
+"fares under a profile."
 msgstr ""
-"仕様の変更には、既存のプリセットを変えるのではなく、新しいプリセットを追加して追従するのが基本です。こうすることで、切り替える時期を利用者が選べます。`pyevp"
-" discover <domain> --profile <name>` "
-"を実行すると、あるプロファイルのもとで発行者がどう扱われるかを確認できます。"
+"仕様の変更は、たいてい新しいプリセットとして追加されるので、切り替える時期を自分で選べます。`pyevp discover <domain> "
+"--profile <name>` を実行すると、あるプロファイルのもとで発行者がどう扱われるかを確認できます。"
 

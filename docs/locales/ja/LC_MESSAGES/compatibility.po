@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:48+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -47,3 +47,37 @@ msgstr ""
 #: ../../compatibility.md:11
 msgid "Supported Pythons: 3.11 and newer."
 msgstr "対応する Python は 3.11 以降です。"
+
+#: ../../compatibility.md:13
+msgid "Issuer"
+msgstr "発行者（issuer）"
+
+#: ../../compatibility.md:15
+msgid ""
+"`pyevp.issuer` is tested end to end with Chrome 154.0.8037.92 and EVP "
+"turned on (`--enable-features=EmailVerificationProtocol`). A nightly job "
+"runs the example issuer against current Chrome stable and beta "
+"([`interop/`](https://github.com/gaato/pyevp/tree/main/interop))."
+msgstr ""
+"`pyevp.issuer` は、Chrome 154.0.8037.92 で EVP を有効にして（`--enable-"
+"features=EmailVerificationProtocol`）エンドツーエンドでテストしています。毎晩のジョブで、サンプルの発行者を最新の"
+" Chrome "
+"安定版とベータ版に対して動かしています（[`interop/`](https://github.com/gaato/pyevp/tree/main/interop)）。"
+
+#: ../../compatibility.md:19
+msgid "Not supported:"
+msgstr "未対応の機能は次のとおりです。"
+
+#: ../../compatibility.md:21
+msgid ""
+"`private_email` / `directed_email` requests, answered with "
+"`private_email_not_supported`."
+msgstr ""
+"`private_email` / `directed_email` のリクエスト。`private_email_not_supported` "
+"で応答します。"
+
+#: ../../compatibility.md:22
+msgid ""
+"Chrome's format before version 153 (form-encoded with a `request_token`),"
+" refused with 415."
+msgstr "バージョン 153 より前の Chrome の形式（`request_token` を含むフォームエンコード）。415 で拒否します。"

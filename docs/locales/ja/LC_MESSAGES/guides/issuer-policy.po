@@ -1,0 +1,255 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, Gakuto Furuya
+# This file is distributed under the same license as the pyevp package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pyevp 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: ja\n"
+"Language-Team: ja <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../guides/issuer-policy.md:1
+msgid "Issuer policy"
+msgstr "発行者（issuer）のポリシー"
+
+#: ../../guides/issuer-policy.md:3
+#, python-brace-format
+msgid ""
+"This page is for issuer operators deciding who gets tokens and keeping "
+"the issuer safe. Setting it up is covered in {doc}`issuer-operations`."
+msgstr ""
+"このページは、誰にトークンを発行するかを決め、発行者を安全に保つ、発行者の運用者のためのものです。セットアップについては {doc"
+"}`issuer-operations` で説明しています。"
+
+#: ../../guides/issuer-policy.md:8
+msgid "Deciding who gets a token"
+msgstr "トークンを誰に発行するか"
+
+#: ../../guides/issuer-policy.md:10
+msgid ""
+"An EVT tells any relying party that the signed-in user controls the "
+"address, so it must prove no more than a verification email would. The "
+"rule that holds up is **issue for an address only if mail sent to it "
+"reaches this user**. Derive that from your mail system's delivery logic, "
+"not from your account model or from what the user may send as. It is easy"
+" to get subtly wrong:"
+msgstr ""
+"EVT "
+"は、サインイン中のユーザーがそのアドレスを管理していることをあらゆるリライングパーティー（RP）に伝えます。そのため、確認メールで証明できる以上のことを証明してはいけません。成り立つ規則は、**そのアドレス宛てのメールがこのユーザーに届く場合にだけ発行する**というものです。これはアカウントのモデルや、ユーザーが送信者として名乗れるアドレスからではなく、メールシステムの配送ロジックから導きます。次のように、細かいところで誤りやすい規則です。"
+
+#: ../../guides/issuer-policy.md:15
+msgid ""
+"**Aliases and forwards.** Follow aliases the way the MTA expands them, "
+"nested aliases and domain aliases included. An address the user forwards "
+"elsewhere without keeping a copy does not reach them. An address whose "
+"expansion loops is delivered to nobody."
+msgstr ""
+"**エイリアスと転送**。エイリアスは、入れ子のエイリアスやドメインエイリアスも含めて MTA "
+"と同じように展開します。ユーザーがコピーを残さずに別の宛先へ転送しているアドレスは、そのユーザーには届きません。展開がループするアドレスは、誰にも配送されません。"
+
+#: ../../guides/issuer-policy.md:18
+msgid ""
+"**Shared aliases.** Every recipient of `team@` reads its mail, so each of"
+" them may get a token for it, exactly as each could click a link sent "
+"there."
+msgstr ""
+"**共有エイリアス**。`team@` "
+"の受信者は全員がそのメールを読めるので、それぞれがトークンを受け取ってかまいません。そこへ送られたリンクを全員がクリックできるのと同じです。"
+
+#: ../../guides/issuer-policy.md:20
+msgid ""
+"**Catch-alls.** `*@example.com` cannot be listed in the FedCM accounts "
+"response, so Chrome never asks for those addresses. Leave them out."
+msgstr ""
+"**キャッチオール**。`*@example.com` は FedCM の accounts レスポンスに列挙できないので、Chrome "
+"がそれらのアドレスを要求することはありません。対象から外してください。"
+
+#: ../../guides/issuer-policy.md:22
+msgid ""
+"**Send-as permissions** (sender addresses, \"send as\" delegations) are "
+"about sending. They do not count."
+msgstr "**送信者としての権限**（送信元アドレスや「代理送信」の委任）は送信に関するものです。数に入れません。"
+
+#: ../../guides/issuer-policy.md:24
+msgid ""
+"**Domain names.** EVP requests carry A-labels in lowercase. If your data "
+"can hold one domain under two spellings (`bücher.example` and `xn--bcher-"
+"kva.example`, or a domain alias named like another tenant's domain), "
+"whoever controls one spelling could claim the other's addresses. Compare "
+"canonical names, and refuse names that are ambiguous."
+msgstr ""
+"**ドメイン名**。EVP の要求には小文字の A ラベルが入ります。1 つのドメインが 2 "
+"通りの綴りでデータに入りうる場合（`bücher.example` と `xn--bcher-"
+"kva.example`、あるいは別のテナントのドメインと同じ名前のドメインエイリアス）、一方の綴りを管理する人がもう一方のアドレスを名乗れてしまいます。正規化した名前で比較し、どちらとも取れる名前は拒否してください。"
+
+#: ../../guides/issuer-policy.md:28
+msgid ""
+"**Accounts.** Nothing for disabled accounts or disabled domains, nothing "
+"for a session that is halfway through two-factor authentication, nothing "
+"for an administrator who is impersonating the user, and nothing for "
+"administrators just because their account has an email field. A long-"
+"lived \"remember me\" session keeps getting tokens for as long as it "
+"lasts."
+msgstr "**アカウント**。無効なアカウントや無効なドメインには発行しません。二要素認証の途中にあるセッションにも、ユーザーになりすまして操作している管理者にも、アカウントにメールアドレス欄があるだけの管理者にも発行しません。有効期間の長い「ログイン状態を保持」のセッションは、続いているあいだずっとトークンを受け取れます。"
+
+#: ../../guides/issuer-policy.md:35
+msgid "An identity provider as the issuer"
+msgstr "ID プロバイダーを発行者にする"
+
+#: ../../guides/issuer-policy.md:37
+msgid ""
+"A company can point its domain's TXT record at its identity provider, so "
+"that employees get tokens for their work address. An identity provider "
+"knows who is signed in, but usually not whether an account's email "
+"address was ever verified: administrators type addresses in, directory "
+"and social-login sources sync them, and self-service enrollment lets "
+"users choose them. Before issuing:"
+msgstr ""
+"企業は自社ドメインの TXT レコードを ID プロバイダー（IdP）に向けて、従業員が業務用アドレスのトークンを受け取れるようにできます。IdP"
+" "
+"は誰がサインインしているかは知っていますが、アカウントのメールアドレスが検証済みかどうかは、たいてい知りません。アドレスは管理者が入力したり、ディレクトリやソーシャルログインのソースから同期されたり、セルフサービスの登録でユーザーが選んだりしたものだからです。発行の前に、次のことを確かめてください。"
+
+#: ../../guides/issuer-policy.md:43
+msgid ""
+"Issue only for the company's own domains, and only to employee accounts, "
+"not to guests or external users."
+msgstr "発行するのは自社のドメインのアドレスだけにし、相手も従業員のアカウントに限ります。ゲストや外部ユーザーには発行しません。"
+
+#: ../../guides/issuer-policy.md:45
+msgid ""
+"Refuse an address that more than one account carries. A social login or a"
+" second directory can bring in another account with the same address."
+msgstr "複数のアカウントが持っているアドレスは拒否します。ソーシャルログインや別のディレクトリから、同じアドレスの別アカウントが入り込むことがあります。"
+
+#: ../../guides/issuer-policy.md:47
+msgid ""
+"Let administrators restrict issuance with the provider's own access "
+"policies, for example \"is in the employees group\". That is where the "
+"decision \"this address really belongs to this person\" is made."
+msgstr ""
+"発行は IdP "
+"自身のアクセスポリシー（「従業員グループに属している」など）で管理者が絞り込めるようにします。「このアドレスは本当にこの人のものか」を判断するのはそこです。"
+
+#: ../../guides/issuer-policy.md:50
+msgid ""
+"Consider requiring that the session was established with multi-factor "
+"authentication. A token lets other sites sign the user in, so it is worth"
+" no less than the login that produced it. Count a second factor only "
+"after a first one: a one-time code on its own, or a passkey that did not "
+"verify the user, is a single factor."
+msgstr ""
+"セッションが多要素認証で確立されたことを条件にするか検討してください。トークンを使うと他のサイトがユーザーをサインインさせられるので、その価値はトークンを生んだログインに劣りません。2"
+" つ目の要素は、1 つ目の要素の後に検証された場合だけ数えます。ワンタイムコードだけのログインや、ユーザーを検証しなかったパスキーは 1 "
+"要素です。"
+
+#: ../../guides/issuer-policy.md:54
+msgid ""
+"Know every way an address can change: self-service profile edits, "
+"enrollment and invitation flows that let users type an address, and "
+"synchronisation from sources. Each one lets somebody claim an address "
+"nobody else has yet, such as `security@` or a former employee's."
+msgstr ""
+"アドレスが変わりうる経路をすべて把握してください。セルフサービスのプロフィール編集、ユーザーがアドレスを入力できる登録フローや招待フロー、ソースからの同期などです。どの経路でも、`security@`"
+" や退職者のアドレスのように、まだ誰も持っていないアドレスを誰かが名乗れてしまいます。"
+
+#: ../../guides/issuer-policy.md:58
+msgid "Preventing account enumeration"
+msgstr "アカウント列挙の防止"
+
+#: ../../guides/issuer-policy.md:60
+msgid ""
+"The draft requires the same response whether the address does not exist, "
+"nobody is signed in, or someone else is. The issuer answers all of these,"
+" and addresses outside `email_domains`, with the same "
+"`authentication_required` response. Keep the work done on each path "
+"similar as well: look up the signed-in user's addresses, never the "
+"requested one."
+msgstr ""
+"ドラフトは、アドレスが存在しない場合も、誰もサインインしていない場合も、別の人がサインインしている場合も、同じ応答を返すことを求めています。発行者は、これらのどの場合にも、また"
+" `email_domains` に含まれないアドレスにも、同じ `authentication_required` "
+"の応答を返します。それぞれの経路で行う処理の量もそろえてください。調べるのはサインイン中のユーザーのアドレスであり、要求されたアドレスを調べてはいけません。"
+
+#: ../../guides/issuer-policy.md:65
+#, python-brace-format
+msgid ""
+"Error responses carry only a fixed description per code; the reason is in"
+" the observer's {attr}`~pyevp.issuer.IssuanceEvent.detail` and in `DEBUG`"
+" logs of the `pyevp` logger, without the address."
+msgstr ""
+"エラー応答には、コードごとに固定された説明しか含まれません。理由は、オブザーバーが受け取る "
+"{attr}`~pyevp.issuer.IssuanceEvent.detail` と、`pyevp` ロガーの `DEBUG` "
+"ログにあります。どちらにもアドレスは含まれません。"
+
+#: ../../guides/issuer-policy.md:69
+msgid "Keys and rotation"
+msgstr "鍵とローテーション"
+
+#: ../../guides/issuer-policy.md:71
+msgid "Every key has a `kid`, and every EVT names the key that signed it."
+msgstr "どの鍵にも `kid` があり、どの EVT にも、それに署名した鍵が示されています。"
+
+#: ../../guides/issuer-policy.md:72
+msgid ""
+"To rotate, generate the next key and pass its public JWK in "
+"`published_keys=[...]`. Wait an hour, then make it the `signer`."
+msgstr ""
+"ローテーションするときは、次の鍵を生成し、その公開 JWK を `published_keys=[...]` に渡します。1 "
+"時間待ってから、その鍵を `signer` にします。"
+
+#: ../../guides/issuer-policy.md:74
+msgid ""
+"Keep the retired public key in `published_keys` for a day, until no token"
+" it signed can still be presented."
+msgstr "使わなくなった公開鍵は、それで署名されたトークンが提示されることがなくなるまで、1 日は `published_keys` に残しておきます。"
+
+#: ../../guides/issuer-policy.md:76
+msgid ""
+"A PEM key, for example from an identity provider's certificate store, "
+"loads with `SigningKey.from_pem(pem, kid=...)`. Only Ed25519 and P-256 "
+"keys work."
+msgstr ""
+"IdP の証明書ストアにあるものなど、PEM の鍵は `SigningKey.from_pem(pem, kid=...)` "
+"で読み込めます。使えるのは Ed25519 と P-256 の鍵だけです。"
+
+#: ../../guides/issuer-policy.md:78
+#, python-brace-format
+msgid ""
+"For a key that never leaves a KMS or HSM, implement "
+"{class}`pyevp.issuer.Signer`."
+msgstr "KMS や HSM の外に出ない鍵を使うには、{class}`pyevp.issuer.Signer` を実装します。"
+
+#: ../../guides/issuer-policy.md:80
+msgid "Replay and rate limiting"
+msgstr "リプレイとレート制限"
+
+#: ../../guides/issuer-policy.md:82
+#, python-brace-format
+msgid ""
+"A signed request is accepted for up to five minutes, and within that time"
+" a captured request could be sent again together with the cookies. Pass a"
+" shared `replay_guard=` to refuse it the second time; see {doc}`replay`."
+msgstr ""
+"署名付きリクエストは最大 5 分間受け付けられるので、その間に、傍受されたリクエストが Cookie と一緒に再送されるおそれがあります。共有の "
+"`replay_guard=` を渡すと、2 回目は拒否できます。{doc}`replay` を参照してください。"
+
+#: ../../guides/issuer-policy.md:86
+#, python-brace-format
+msgid ""
+"Rate-limit the issuance endpoint per IP address in front of the "
+"application. `observer=` receives one "
+"{class}`~pyevp.issuer.IssuanceEvent` per request, for metrics and audit "
+"logs."
+msgstr ""
+"発行エンドポイントには、アプリケーションの手前で IP アドレスごとのレート制限をかけてください。`observer=` は、リクエストごとに 1"
+" つの {class}`~pyevp.issuer.IssuanceEvent` を受け取ります。メトリクスや監査ログに利用できます。"

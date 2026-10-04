@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 17:33+0900\n"
+"POT-Creation-Date: 2026-10-04 19:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -43,239 +43,144 @@ msgid "1. Put a nonce on the form"
 msgstr "1\\. フォームに nonce を埋め込む"
 
 #: ../../quickstart.md:14
+msgid ""
+"When you render the form, issue a nonce into the user's session (Flask's,"
+" Starlette's or Django's) and add a hidden field for the browser to fill "
+"with the token:"
+msgstr ""
+"フォームを描画するときにユーザーのセッション（Flask、Starlette、Django のもの）へ nonce "
+"を発行し、ブラウザーがトークンを書き込む hidden フィールドを追加します。"
+
+#: ../../quickstart.md:29
 #, python-brace-format
 msgid ""
-"Each time you render the page, issue a nonce into the user's session and "
-"add two inputs to the form: the email field the user fills in, and a "
-"hidden field the browser fills with the token. "
-"{class}`~pyevp.SessionNonces` works with any session that has `get` and "
-"item assignment, such as Flask's, Starlette's or Django's."
+"Create one {class}`~pyevp.SessionNonces` per request, and issue a nonce "
+"only on pages that have a form, since storing it creates a session. "
+"Without a server session, see {doc}`guides/spa`."
 msgstr ""
-"ページを描画するたびにユーザーのセッションへ nonce を発行し、フォームに入力欄を 2 "
-"つ追加します。ユーザーが入力するメールアドレス欄と、ブラウザーがトークンを書き込む hidden "
-"フィールドです。{class}`~pyevp.SessionNonces` は、Flask、Starlette、Django "
-"のものなど、`get` と要素への代入に対応したセッションであれば使えます。"
+"{class}`~pyevp.SessionNonces` はリクエストごとに 1 つ作成してください。nonce "
+"を保存するとセッションができるので、nonce はフォームのあるページでだけ発行します。サーバーセッションを使わない場合は "
+"{doc}`guides/spa` を参照してください。"
 
-#: ../../quickstart.md:31
+#: ../../quickstart.md:32
 msgid ""
-"The `nonce` must be a content attribute in the HTML. Frameworks that set "
-"it as a DOM property are not picked up by the browser. React 19 renders "
-"the `nonce` prop as a content attribute."
-msgstr ""
-"`nonce` は HTML のコンテンツ属性として書く必要があります。フレームワークが DOM "
-"プロパティとして設定した場合、ブラウザーはそれを読み取りません。React 19 は `nonce` prop をコンテンツ属性として描画します。"
+"The `nonce` must be an HTML attribute; the browser ignores one set as a "
+"DOM property."
+msgstr "`nonce` は HTML の属性として書く必要があります。DOM プロパティとして設定した値は、ブラウザーに無視されます。"
 
 #: ../../quickstart.md:34
-msgid ""
-"Chrome writes the token into the hidden field only when the form is "
-"submitted. Before that, page scripts read an empty value, so check the "
-"token on the server, not in client-side validation."
-msgstr ""
-"Chrome がトークンを hidden "
-"フィールドに書き込むのは、フォームを送信するときだけです。それまではページのスクリプトから読んでも空の値なので、トークンはクライアント側のバリデーションではなくサーバーで確認してください。"
-
-#: ../../quickstart.md:38
-#, python-brace-format
-msgid ""
-"Use one `SessionNonces` per request: all forms on a page share the nonce "
-"of its first `issue()`. The session keeps the nonces of the last five "
-"pages for ten minutes, so a form in any open tab can be verified. Storing"
-" the nonce gives each visitor a session, so add the inputs only to pages "
-"that have a form. Elsewhere, implement {class}`~pyevp.NonceStore` "
-"yourself: an API without server sessions can keep the nonce in a cookie, "
-"for example; see {doc}`guides/spa`."
-msgstr ""
-"`SessionNonces` はリクエストごとに 1 つ使ってください。ページ上のフォームはすべて、最初の `issue()` で得た "
-"nonce を共有します。セッションは直近 5 ページ分の nonce を 10 "
-"分間保管するので、開いているどのタブのフォームでも検証できます。nonce "
-"を保存すると訪問者ごとにセッションができるので、入力欄はフォームのあるページにだけ追加してください。セッションを使わない場合は、{class}`~pyevp.NonceStore`"
-" を自分で実装します。たとえば、サーバーセッションの無い API なら nonce を Cookie "
-"に置けます。{doc}`guides/spa` を参照してください。"
-
-#: ../../quickstart.md:44
 msgid "Fitting EVP into an existing form"
 msgstr "既存のフォームに組み込む"
 
-#: ../../quickstart.md:46
+#: ../../quickstart.md:36
 msgid ""
-"The email field needs `autocomplete=\"email\"`. With "
-"`autocomplete=\"off\"` the browser does not offer verified addresses."
+"The email field needs `autocomplete=\"email\"`, not `off`, and must start"
+" empty: a pre-filled address gets no token."
 msgstr ""
-"メールアドレス欄には `autocomplete=\"email\"` が必要です。`autocomplete=\"off\"` "
-"にすると、ブラウザーは確認済みのアドレスを候補に出しません。"
+"メールアドレス欄には `off` ではなく `autocomplete=\"email\"` "
+"が必要で、最初は空にしておく必要があります。あらかじめ入っているアドレスにはトークンが付きません。"
+
+#: ../../quickstart.md:38
+msgid ""
+"Chrome fills `evt` only as the form is submitted, just before `submit` "
+"handlers run. Check it on the server, not in client-side validation. A "
+"script that sends the form must do so from the `submit` handler, with the"
+" `evt` field."
+msgstr ""
+"Chrome が `evt` に値を入れるのは、フォームが送信されるとき、`submit` "
+"ハンドラーが実行される直前だけです。値はクライアント側のバリデーションではなくサーバーで確認してください。スクリプトでフォームを送る場合は、`submit`"
+" ハンドラーから `evt` フィールドも含めて送ります。"
+
+#: ../../quickstart.md:41
+msgid ""
+"Chrome asks the email provider when focus leaves the email field, so a "
+"quick submit can carry an empty `evt`. To wait, a `submit` handler can "
+"cancel the submission while `evt` is empty and retry with "
+"`form.requestSubmit()` up to a deadline; the "
+"[demo](https://pyevp.dev/demo) retries every 400 ms for 8 seconds ([WICG"
+"/email-verification#42])."
+msgstr ""
+"Chrome はフォーカスがメールアドレス欄から離れたときにメールプロバイダーに問い合わせるので、すぐに送信すると `evt` "
+"が空のことがあります。待つには、`submit` ハンドラーで `evt` が空の間は送信をキャンセルし、期限まで "
+"`form.requestSubmit()` で再試行します。[デモ](https://pyevp.dev/demo)では 400 ms ごとに "
+"8 秒間再試行しています（[WICG/email-verification#42](https://github.com/WICG/email-"
+"verification/issues/42)）。"
 
 #: ../../quickstart.md:48
-msgid ""
-"Leave the field empty. Chrome asks the email provider for a token only "
-"after the user types an address or picks one from autofill, so a pre-"
-"filled value sends none."
-msgstr ""
-"欄は空のままにしてください。Chrome "
-"がメールプロバイダーにトークンを求めるのは、ユーザーがアドレスを入力するか自動入力から選んだときだけです。あらかじめ値を入れておくと、トークンは送られません。"
-
-#: ../../quickstart.md:50
-msgid ""
-"Submit through the form. The token is filled in as part of the form's "
-"submission, so a script that sends the fields with `fetch()` from a click"
-" handler gets none. Send from the form's `submit` handler instead, "
-"including the `evt` field, as `FormData` if your server reads form "
-"fields."
-msgstr ""
-"フォームから送信してください。トークンはフォームの送信の過程で書き込まれるので、クリックハンドラーから `fetch()` "
-"で各欄を送るスクリプトにはトークンが入りません。代わりにフォームの `submit` ハンドラーから、`evt` "
-"フィールドも含めて送信します。サーバーがフォームの値を読むなら `FormData` で送ります。"
-
-#: ../../quickstart.md:55
 msgid "2. Verify on submit"
 msgstr "2\\. 送信時に検証する"
 
-#: ../../quickstart.md:57
-msgid "Create the verifier once, with your origin as the audience:"
-msgstr "`Verifier` は一度だけ作成し、audience には自分のサイトのオリジンを指定します。"
+#: ../../quickstart.md:50
+msgid "Create the verifier once, with your page's origin as the audience:"
+msgstr "`Verifier` は一度だけ作成し、audience にはページのオリジンを指定します。"
+
+#: ../../quickstart.md:58
+msgid ""
+"Call `verifier.close()` on shutdown (`await verifier.aclose()` for "
+"`AsyncVerifier`), or use it as a context manager."
+msgstr ""
+"終了時に `verifier.close()`（`AsyncVerifier` では `await "
+"verifier.aclose()`）を呼ぶか、コンテキストマネージャーとして使ってください。"
+
+#: ../../quickstart.md:61
+msgid ""
+"By default, any issuer that the email domain's DNS names is accepted. To "
+"accept only providers you know, list them, for example "
+"`allowed_issuers=[\"https://accounts.google.com\"]`; other tokens are "
+"refused with `issuer_not_allowed` before anything is looked up."
+msgstr ""
+"既定では、メールアドレスのドメインの DNS "
+"が示す発行者（issuer）であれば、どれも受け入れます。知っているプロバイダーだけを受け入れるには、`allowed_issuers=[\"https://accounts.google.com\"]`"
+" のように列挙します。それ以外のトークンは、何も問い合わせないうちに `issuer_not_allowed` で拒否されます。"
 
 #: ../../quickstart.md:65
-msgid ""
-"The verifier keeps an HTTP client open. On shutdown, call "
-"`verifier.close()` (`await verifier.aclose()` for `AsyncVerifier`), or "
-"use it as a context manager. It closes only what `default()` created: a "
-"resolver, fetcher or HTTP client you pass in is yours to close."
-msgstr ""
-"verifier は HTTP クライアントを開いたままにします。終了時に `verifier.close()`（`AsyncVerifier` "
-"では `await verifier.aclose()`）を呼ぶか、コンテキストマネージャーとして使ってください。閉じるのは "
-"`default()` が作ったものだけです。自分で渡したリゾルバー、フェッチャー、HTTP クライアントは自分で閉じてください。"
-
-#: ../../quickstart.md:69
 msgid "Then, in the form handler:"
 msgstr "そして、フォームのハンドラーで次のように検証します。"
 
-#: ../../quickstart.md:85
+#: ../../quickstart.md:81
 #, python-brace-format
 msgid ""
-"{meth}`~pyevp.Verifier.verify_submission` takes the nonce the token "
-"presents out of the session, whether or not the token then verifies, so "
-"each nonce is used once. A nonce the session does not hold is "
-"`nonce_mismatch`. Without a token it returns `None` and leaves the "
-"session alone: the browser did not use the nonce, and a form that is not "
-"rendered again, such as one sent with `fetch()`, still has it for its "
-"next submission."
+"Each nonce works once. `AsyncVerifier` has the same API: `await "
+"verifier.verify_submission(...)`. To pass the nonce yourself, use "
+"{meth}`~pyevp.Verifier.verify`."
 msgstr ""
-"{meth}`~pyevp.Verifier.verify_submission` は、トークンが提示する nonce "
-"をセッションから取り出します。トークンの検証に成功しても失敗しても取り出すので、どの nonce も 1 回しか使えません。セッションに無い "
-"nonce は `nonce_mismatch` になります。トークンが無ければ `None` を返し、セッションには手を付けません。ブラウザーは"
-" nonce を使っていないので、`fetch()` で送るフォームのように再描画しないフォームでも、次の送信でその nonce を使えます。"
+"どの nonce も 1 回しか使えません。`AsyncVerifier` も同じ API で、`await "
+"verifier.verify_submission(...)` のように使います。nonce を自分で渡すには "
+"{meth}`~pyevp.Verifier.verify` を使います。"
+
+#: ../../quickstart.md:84
+#, python-brace-format
+msgid ""
+"`result.email` may differ from the submitted address in case, so look up "
+"the account with {meth}`verifier.profile.emails_match() "
+"<pyevp.Profile.emails_match>`."
+msgstr ""
+"`result.email` は、送信されたアドレスと大文字・小文字が異なることがあります。アカウントを探すときは "
+"{meth}`verifier.profile.emails_match() <pyevp.Profile.emails_match>` "
+"で比較してください。"
+
+#: ../../quickstart.md:89
+msgid "3. Handle failures"
+msgstr "3\\. 失敗に対処する"
 
 #: ../../quickstart.md:91
 #, python-brace-format
 msgid ""
-"`AsyncVerifier` has the same API: `await "
-"verifier.verify_submission(...)`. To pass the nonce yourself, use "
-"{meth}`~pyevp.Verifier.verify`."
+"A rejected token raises a {class}`~pyevp.TokenError`, "
+"{class}`~pyevp.DiscoveryError` or {class}`~pyevp.PolicyError`, all "
+"{class}`~pyevp.EVPError`s whose `code` says why. Errors from your own "
+"cache or replay guard propagate unchanged."
 msgstr ""
-"`AsyncVerifier` も同じ API で、`await verifier.verify_submission(...)` "
-"のように使います。nonce を自分で渡すには {meth}`~pyevp.Verifier.verify` を使います。"
+"トークンを拒否すると、{class}`~pyevp.TokenError`、{class}`~pyevp.DiscoveryError`、{class}`~pyevp.PolicyError`"
+" のいずれかが送出されます。どれも {class}`~pyevp.EVPError` で、`code` "
+"で理由がわかります。自分のキャッシュやリプレイガードのエラーは、そのまま伝わります。"
 
-#: ../../quickstart.md:94
-#, python-brace-format
+#: ../../quickstart.md:95
 msgid ""
-"`result.email` is the address the issuer asserted. Under the default "
-"profile it may differ from the submitted one in case. To find the "
-"account, compare addresses with {meth}`verifier.profile.emails_match() "
-"<pyevp.Profile.emails_match>`, which applies the same rule as "
-"verification: the local part is case-folded, and domains are compared as "
-"DNS names, so `faß.example` and `fass.example` stay different."
-msgstr ""
-"`result.email` "
-"は発行者が表明したアドレスです。既定のプロファイルでは、入力されたアドレスと大文字・小文字が異なることがあります。アカウントを探すときは "
-"{meth}`verifier.profile.emails_match() <pyevp.Profile.emails_match>` "
-"でアドレスを比較してください。検証と同じ規則で比較します。ローカル部は大文字と小文字を区別せず、ドメインは DNS "
-"名として比較するので、`faß.example` と `fass.example` は別のものとして扱われます。"
-
-#: ../../quickstart.md:102
-msgid "3. Handle failures"
-msgstr "3\\. 失敗に対処する"
-
-#: ../../quickstart.md:104
-#, python-brace-format
-msgid ""
-"A rejected token raises a subclass of {class}`pyevp.EVPError` whose "
-"{class}`pyevp.ErrorCode` says why:"
-msgstr ""
-"トークンを拒否すると {class}`pyevp.EVPError` のサブクラスが送出され、{class}`pyevp.ErrorCode` "
-"で理由がわかります。"
-
-#: ../../quickstart.md
-msgid "Exception"
-msgstr "例外"
-
-#: ../../quickstart.md
-msgid "Meaning"
-msgstr "意味"
-
-#: ../../quickstart.md
-msgid "Typical codes"
-msgstr "代表的なコード"
-
-#: ../../quickstart.md
-#, python-brace-format
-msgid "{class}`~pyevp.TokenError`"
-msgstr "{class}`~pyevp.TokenError`"
-
-#: ../../quickstart.md
-msgid "Malformed, stale, mis-bound or badly signed token"
-msgstr "トークンの形式が不正、古い、紐付けが誤っている、または署名が不正"
-
-#: ../../quickstart.md
-msgid "`nonce_mismatch`, `token_expired`, `token_replayed`"
-msgstr "`nonce_mismatch`, `token_expired`, `token_replayed`"
-
-#: ../../quickstart.md
-#, python-brace-format
-msgid "{class}`~pyevp.DiscoveryError`"
-msgstr "{class}`~pyevp.DiscoveryError`"
-
-#: ../../quickstart.md
-msgid "The issuer could not be discovered or used"
-msgstr "発行者（issuer）が見つからない、または利用できない"
-
-#: ../../quickstart.md
-msgid "`issuer_mismatch`, `issuer_unreachable`"
-msgstr "`issuer_mismatch`, `issuer_unreachable`"
-
-#: ../../quickstart.md
-#, python-brace-format
-msgid "{class}`~pyevp.PolicyError`"
-msgstr "{class}`~pyevp.PolicyError`"
-
-#: ../../quickstart.md
-msgid ""
-"Not acceptable to your policy; checked before the signature, so not a "
-"sign of authenticity"
-msgstr "ポリシーで受け付けない（署名より前に確認するため、本物であることは意味しない）"
-
-#: ../../quickstart.md
-msgid "`email_mismatch`, `email_not_verified`, `issuer_not_allowed`"
-msgstr "`email_mismatch`, `email_not_verified`, `issuer_not_allowed`"
-
-#: ../../quickstart.md:113
-msgid ""
-"`issuer_unreachable` may be transient. Everything else means \"do not "
-"trust this token\". Exceptions from your own cache or replay guard are "
-"not `EVPError`s; they propagate unchanged, so an outage on your side does"
-" not look like a rejected token. EVP is a progressive enhancement: when "
-"there is no token, or it is rejected, fall back to your existing "
-"verification flow."
-msgstr ""
-"`issuer_unreachable` "
-"は一時的な障害の可能性があります。それ以外はすべて「このトークンを信頼してはいけない」という意味です。自分のキャッシュやリプレイガードの例外は "
-"`EVPError` ではなく、そのまま伝わるので、自分の側の障害がトークンの拒否に見えることはありません。EVP "
-"はプログレッシブエンハンスメントなので、トークンがないときや拒否されたときは、既存の検証フローにフォールバックしてください。"
-
-#: ../../quickstart.md:119
-msgid ""
-"Whatever the code, the safe default is the fallback. The codes tell you "
-"whether the user can simply try again and whether something on your side "
-"needs attention:"
-msgstr "コードが何であっても、安全な既定の対応はフォールバックです。コードからは、ユーザーが再試行するだけでよいのか、自分の側で対処が必要なのかがわかります。"
+"Whatever the code, the safe default is to fall back to your existing "
+"verification flow. The code tells you whether the user can retry and "
+"whether your side needs attention:"
+msgstr "コードが何であっても、安全な既定の対応は既存の検証フローへのフォールバックです。コードからは、ユーザーが再試行できるか、自分の側で対処が必要かがわかります。"
 
 #: ../../quickstart.md
 msgid "Code"
@@ -290,26 +195,18 @@ msgid "What to do"
 msgstr "対処"
 
 #: ../../quickstart.md
-msgid "`nonce_mismatch`"
-msgstr "`nonce_mismatch`"
+msgid "`nonce_mismatch`, `token_expired`"
+msgstr "`nonce_mismatch`, `token_expired`"
 
 #: ../../quickstart.md
 msgid ""
-"The session expired, the form was submitted twice, or it is older than "
-"the last five forms"
-msgstr "セッションが切れた、フォームが二重に送信された、または直近 5 つより古いフォームから送信された"
+"Stale form: expired session, double submit, or older than the last five "
+"forms or `max_token_age`"
+msgstr "古いフォーム（セッションが切れた、二重に送信された、直近 5 つのフォームより古い、または `max_token_age` を過ぎた）"
 
 #: ../../quickstart.md
 msgid "Render a fresh form, or fall back"
 msgstr "フォームを新しく表示し直すか、フォールバックする"
-
-#: ../../quickstart.md
-msgid "`token_expired`"
-msgstr "`token_expired`"
-
-#: ../../quickstart.md
-msgid "The user took longer than `max_token_age` to submit"
-msgstr "ユーザーが送信までに `max_token_age` より長くかかった"
 
 #: ../../quickstart.md
 msgid "`token_not_yet_valid`"
@@ -360,56 +257,36 @@ msgid "Fall back; monitor the rate"
 msgstr "フォールバックする。発生率を監視する"
 
 #: ../../quickstart.md
-msgid "`issuer_discovery_failed`"
-msgstr "`issuer_discovery_failed`"
+msgid ""
+"`issuer_discovery_failed`, `metadata_invalid`, `key_not_found`, "
+"`unsupported_alg`, `bad_type`"
+msgstr ""
+"`issuer_discovery_failed`, `metadata_invalid`, `key_not_found`, "
+"`unsupported_alg`, `bad_type`"
 
 #: ../../quickstart.md
-msgid "The email domain has no usable `_email-verification` record"
-msgstr "メールアドレスのドメインに使用できる `_email-verification` レコードがない"
-
-#: ../../quickstart.md
-msgid "Fall back"
-msgstr "フォールバックする"
-
-#: ../../quickstart.md
-msgid "`metadata_invalid`, `key_not_found`"
-msgstr "`metadata_invalid`, `key_not_found`"
-
-#: ../../quickstart.md
-msgid "The issuer's metadata or keys are broken or rotating"
-msgstr "発行者のメタデータや鍵が壊れている、またはローテーション中"
+msgid ""
+"No usable issuer for the domain, or its metadata or keys are broken, "
+"rotating or refused by your profile"
+msgstr "ドメインに使える発行者がない、または発行者のメタデータや鍵が壊れている、ローテーション中である、プロファイルが受け付けない"
 
 #: ../../quickstart.md
 msgid "Fall back; `pyevp discover <domain>` shows details"
 msgstr "フォールバックする。`pyevp discover <domain>` で詳細を確認できる"
 
 #: ../../quickstart.md
-msgid "`unsupported_alg`, `bad_type`"
-msgstr "`unsupported_alg`, `bad_type`"
+msgid "`email_not_verified`, `issuer_not_allowed`"
+msgstr "`email_not_verified`, `issuer_not_allowed`"
 
 #: ../../quickstart.md
-msgid "The issuer signs in a way your profile does not accept"
-msgstr "発行者の署名方式をプロファイルが受け付けない"
+msgid ""
+"The issuer does not vouch for the address, or is not in your "
+"`allowed_issuers`"
+msgstr "発行者がそのアドレスを保証していない、または発行者が `allowed_issuers` に含まれていない"
 
 #: ../../quickstart.md
-msgid "Fall back; compare with `pyevp discover`"
-msgstr "フォールバックする。`pyevp discover` の出力と比較する"
-
-#: ../../quickstart.md
-msgid "`email_not_verified`"
-msgstr "`email_not_verified`"
-
-#: ../../quickstart.md
-msgid "The issuer does not vouch for the address"
-msgstr "発行者がそのアドレスを保証していない"
-
-#: ../../quickstart.md
-msgid "`issuer_not_allowed`"
-msgstr "`issuer_not_allowed`"
-
-#: ../../quickstart.md
-msgid "The email provider is not in your `allowed_issuers`"
-msgstr "メールプロバイダーが `allowed_issuers` に含まれていない"
+msgid "Fall back"
+msgstr "フォールバックする"
 
 #: ../../quickstart.md
 msgid "`token_replayed`"
@@ -451,32 +328,72 @@ msgstr "トークンが偽造または改ざんされている"
 msgid "Fall back and log; do not trust the address"
 msgstr "フォールバックしてログに記録する。アドレスは信頼しない"
 
-#: ../../quickstart.md:139
-msgid ""
-"Codes may be added in minor releases, so treat unknown codes as \"fall "
-"back\"."
-msgstr "マイナーリリースでコードが追加されることがあるので、未知のコードは「フォールバックする」として扱ってください。"
+#: ../../quickstart.md:111
+msgid "Treat unknown codes as \"fall back\"."
+msgstr "未知のコードは「フォールバックする」として扱ってください。"
 
-#: ../../quickstart.md:142
+#: ../../quickstart.md:114
 #, python-brace-format
 msgid ""
-"If the nonce is stored client-side, in a session kept in a signed cookie "
-"such as Starlette's `SessionMiddleware` or in a cookie of its own, taking"
-" it out does not make it single-use: the old cookie can be sent again. "
-"Enable {doc}`replay protection <guides/replay>`."
+"If the session lives in a signed cookie, such as Starlette's "
+"`SessionMiddleware`, taking the nonce out does not make it single-use: "
+"the old cookie can be sent again. Enable {doc}`replay protection "
+"<guides/replay>`."
 msgstr ""
-"nonce をクライアント側に保存している場合、つまり Starlette の `SessionMiddleware` のような署名付き "
-"Cookie のセッションや、nonce 専用の Cookie に置いている場合は、取り出しても使い捨てにはなりません。古い Cookie "
-"をもう一度送れるためです。{doc}`リプレイ対策 <guides/replay>` を有効にしてください。"
+"Starlette の `SessionMiddleware` のように、セッションを署名付き Cookie に保存している場合は、nonce "
+"を取り出しても使い捨てにはなりません。古い Cookie をもう一度送れるためです。{doc}`リプレイ対策 <guides/replay>` "
+"を有効にしてください。"
 
-#~ msgid ""
-#~ "Keeping the nonce when no token "
-#~ "arrived matters when the page is "
-#~ "not rendered again, for example a "
-#~ "form sent with `fetch()`: its next "
-#~ "submission still has a nonce to "
-#~ "check."
-#~ msgstr ""
-#~ "トークンが届かなかったときに nonce を残しておくのは、ページを再描画しない場合のためです。たとえば "
-#~ "`fetch()` で送るフォームでも、次の送信で確認に使う nonce が残ります。"
+#: ../../quickstart.md:119
+msgid "Try it in Chrome"
+msgstr "Chrome で試す"
+
+#: ../../quickstart.md:121
+msgid ""
+"Enable `chrome://flags/#email-verification-protocol`, or start Chrome "
+"with `--enable-features=EmailVerificationProtocol`. Visitors need neither"
+" if your page carries a token from Chrome's origin trial (`<meta http-"
+"equiv=\"origin-trial\" content=\"...\">`)."
+msgstr ""
+"`chrome://flags/#email-verification-protocol` を有効にするか、`--enable-"
+"features=EmailVerificationProtocol` を付けて Chrome を起動します。ページに Chrome "
+"のオリジントライアルのトークン（`<meta http-equiv=\"origin-trial\" "
+"content=\"...\">`）があれば、訪問者はどちらも必要ありません。"
+
+#: ../../quickstart.md:124
+msgid "Sign in to Google in the same Chrome profile."
+msgstr "同じ Chrome プロファイルで Google にサインインします。"
+
+#: ../../quickstart.md:125
+msgid ""
+"Open your form over HTTPS or on `localhost`, at the `audience` origin, "
+"pick your Gmail address and move to the next field. Chrome asks once "
+"whether to verify it automatically."
+msgstr ""
+"HTTPS または `localhost` で、`audience` のオリジンにあるフォームを開き、Gmail "
+"のアドレスを選んで次の欄に移ります。Chrome は、そのアドレスを自動で確認するかどうかを一度だけ尋ねます。"
+
+#: ../../quickstart.md:128
+msgid "Next"
+msgstr "次のステップ"
+
+#: ../../quickstart.md:130
+#, python-brace-format
+msgid "{doc}`guides/frameworks`: FastAPI, Flask, Django and other integrations"
+msgstr "{doc}`guides/frameworks`: FastAPI、Flask、Django などとの統合"
+
+#: ../../quickstart.md:131
+#, python-brace-format
+msgid "{doc}`guides/replay`: one use per token"
+msgstr "{doc}`guides/replay`: トークンを 1 回だけ使えるようにする"
+
+#: ../../quickstart.md:132
+#, python-brace-format
+msgid "{doc}`guides/testing`: test your application without a browser or network"
+msgstr "{doc}`guides/testing`: ブラウザーやネットワークを使わずにアプリケーションをテストする"
+
+#: ../../quickstart.md:133
+#, python-brace-format
+msgid "{doc}`guides/transport`: DNS, HTTP, caching and private networks"
+msgstr "{doc}`guides/transport`: DNS、HTTP、キャッシュ、プライベートネットワーク"
 
