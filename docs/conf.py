@@ -42,7 +42,7 @@ html_theme = "furo"
 # Read the Docs passes the canonical URL (https://docs.pyevp.dev/<lang>/<version>/) but
 # no longer sets html_baseurl itself; without it Sphinx emits no rel="canonical".
 html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
-html_title = f"PyEVP {release}"
+html_title = "PyEVP"
 html_theme_options = {
     "source_repository": "https://github.com/gaato/pyevp/",
     "source_branch": "main",
