@@ -10,4 +10,15 @@ before upgrading. Once the protocol settles, this page will say what stays stabl
 
 Supported Pythons: 3.11 and newer.
 
+## Issuer
+
+`pyevp.issuer` is tested end to end with Chrome 154.0.8037.92 and EVP turned on
+(`--enable-features=EmailVerificationProtocol`). A nightly job runs the example issuer against
+current Chrome stable and beta ([`interop/`](https://github.com/gaato/pyevp/tree/main/interop)).
+
+Not supported:
+
+- `private_email` / `directed_email` requests, answered with `private_email_not_supported`.
+- Chrome's format before version 153 (form-encoded with a `request_token`), refused with 415.
+
 [changelog]: https://github.com/gaato/pyevp/blob/main/CHANGELOG.md

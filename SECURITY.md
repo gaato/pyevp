@@ -19,8 +19,9 @@ You should receive an acknowledgement within a week.
 ## Scope
 
 In scope are flaws that make `Verifier` / `AsyncVerifier` accept a token they
-should reject, or that let a token make the relying party contact hosts
-other than the issuer delegated by DNS.
+should reject, that let a token make the relying party contact hosts
+other than the issuer delegated by DNS, or that make `pyevp.issuer` or the
+Django `IssuerSite` issue a token it should not.
 
 Weaknesses of the protocol itself should be reported upstream to the
 [IETF draft](https://github.com/dickhardt/email-verification) or the

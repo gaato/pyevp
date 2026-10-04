@@ -1,8 +1,8 @@
 # Command line
 
 The `pyevp` command is for relying-party developers and operators, and for issuer operators
-checking their own setup. It needs the `cli` extra. You can run it without installing anything
-into your project:
+setting up and checking their issuer. It needs the `cli` extra. You can run it without
+installing anything into your project:
 
 ```sh
 uvx --from "pyevp[cli]" pyevp --help
@@ -37,9 +37,26 @@ Run the full verification, as your server would:
 pyevp verify "$TOKEN" --audience https://example.com --nonce "$NONCE" --email alice@example.com
 ```
 
+## `pyevp issuer`
+
+Set up an issuer for your own email domains (see {doc}`issuer-operations`).
+`keygen` writes the private JWK to a new file readable only by you, and prints the public one.
+`documents` prints the metadata, the JWKS and the DNS records to publish.
+
+```sh
+pyevp issuer keygen --kid 2026-10 --alg ES256 --out signing-key.json
+pyevp issuer documents --issuer https://accounts.example.com \
+    --issuance-endpoint https://accounts.example.com/email-verification/issuance \
+    --jwks-uri https://accounts.example.com/email-verification/jwks \
+    --key signing-key.json --domain example.com --publish next-key.json
+```
+
+`--domain` and `--publish` (a next or retired key's JWK file) can be repeated.
+
 ## Output and exit status
 
-Every command accepts `--json` for scripts.
+`discover`, `inspect` and `verify` accept `--json` for scripts; the `issuer` commands always
+print JSON.
 
 | Status | Meaning |
 |---|---|
