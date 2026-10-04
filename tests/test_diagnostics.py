@@ -154,7 +154,6 @@ def test_algorithm_list_matches_the_verifier(advertised: list[str], ok: bool) ->
             verifier.verify(token, nonce="n", email=None)
 
 
-@pytest.mark.xfail(strict=True, reason="discover does not refuse asynchronous ports")
 def test_discover_refuses_asynchronous_ports(issuer: FakeIssuer, leash: list[Any]) -> None:
     class Resolver:
         def __init__(self) -> None:
@@ -167,3 +166,7 @@ def test_discover_refuses_asynchronous_ports(issuer: FakeIssuer, leash: list[Any
     resolver: Any = Resolver()
     with pytest.raises(TypeError, match="adiscover"):
         discover("example.com", resolver=resolver, fetcher=InMemoryHttp({}))
+
+    # A port that says it is asynchronous is refused before anything is looked up.
+    with pytest.raises(TypeError, match="adiscover"):
+        discover("example.com", resolver=resolver.inner, fetcher=InMemoryHttp({}))

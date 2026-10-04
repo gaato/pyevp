@@ -13,10 +13,11 @@ from types import TracebackType
 from typing import Self
 from urllib.parse import urlsplit
 
+from pyevp._drive import unreachable
 from pyevp.cache import AsyncCache, Cache, CacheEntry, InMemoryCache
 from pyevp.core import Effect, FetchJson, MarkUsed, ResolveTxt, Steps, verification_steps
 from pyevp.discovery import canonical_issuer
-from pyevp.errors import DiscoveryError, ErrorCode, EVPError, TokenError
+from pyevp.errors import ErrorCode, EVPError, TokenError
 from pyevp.nonce import AsyncNonceStore, NonceStore, generate_nonce
 from pyevp.observability import Observer, VerificationEvent, claimed_email_domain
 from pyevp.ports import (
@@ -189,14 +190,9 @@ def _issuer_io(effect: ResolveTxt | FetchJson) -> Iterator[None]:
     except EVPError:
         raise
     except Exception as exc:
-        raise _unreachable(effect, exc) from exc
-
-
-def _unreachable(effect: ResolveTxt | FetchJson, exc: Exception) -> DiscoveryError:
-    target = effect.name if isinstance(effect, ResolveTxt) else effect.url
-    err = DiscoveryError(ErrorCode.ISSUER_UNREACHABLE, f"lookup of {target} failed: {exc}")
-    err.__cause__ = exc
-    return err
+        mapped = unreachable(effect, exc)
+        assert mapped is not None
+        raise mapped from exc
 
 
 def _missing_extras(cls: type, what: str) -> ImportError:

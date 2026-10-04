@@ -8,15 +8,16 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import Any, TypeAlias
 
 from pyevp import _jose, discovery
+from pyevp._drive import adrive, drive, is_async, lookup, unreachable
 from pyevp.core import Effect, FetchJson, ResolveTxt, _signing_alg_advertised
-from pyevp.errors import DiscoveryError, EVPError
+from pyevp.errors import DiscoveryError
 from pyevp.ports import AsyncJsonFetcher, AsyncTxtResolver, JsonFetcher, TxtResolver
 from pyevp.profile import DEFAULT_PROFILE, Profile
 from pyevp.types import IssuerMetadata, JSONObject
-from pyevp.verifier import _unreachable
 
 __all__ = ["IssuerReport", "KeySummary", "adiscover", "discover", "discovery_steps"]
 
@@ -130,26 +131,12 @@ def discover(
     profile: Profile = DEFAULT_PROFILE,
 ) -> IssuerReport:
     """Run :func:`discovery_steps` with synchronous ports (no caching)."""
-    steps = discovery_steps(target, profile)
-    try:
-        effect = next(steps)
-        while True:
-            if not isinstance(effect, ResolveTxt | FetchJson):
-                raise TypeError(f"unexpected effect {effect!r}")
-            try:
-                if isinstance(effect, ResolveTxt):
-                    result: object = resolver.resolve_txt(effect.name)
-                else:
-                    result = fetcher.fetch_json(effect.url)
-            except EVPError:
-                raise
-            except Exception as exc:
-                raise _unreachable(effect, exc) from exc
-            effect = steps.send(result)
-    except StopIteration as stop:
-        return stop.value
-    finally:
-        steps.close()
+    if is_async(resolver.resolve_txt) or is_async(fetcher.fetch_json):
+        raise TypeError("the resolver or fetcher is asynchronous; use adiscover")
+    perform = partial(lookup, resolver=resolver, fetcher=fetcher)
+    return drive(
+        discovery_steps(target, profile), perform, hint="use adiscover", translate=unreachable
+    )
 
 
 async def adiscover(
@@ -160,23 +147,5 @@ async def adiscover(
     profile: Profile = DEFAULT_PROFILE,
 ) -> IssuerReport:
     """Async counterpart of :func:`discover`."""
-    steps = discovery_steps(target, profile)
-    try:
-        effect = next(steps)
-        while True:
-            if not isinstance(effect, ResolveTxt | FetchJson):
-                raise TypeError(f"unexpected effect {effect!r}")
-            try:
-                if isinstance(effect, ResolveTxt):
-                    result: object = await resolver.resolve_txt(effect.name)
-                else:
-                    result = await fetcher.fetch_json(effect.url)
-            except EVPError:
-                raise
-            except Exception as exc:
-                raise _unreachable(effect, exc) from exc
-            effect = steps.send(result)
-    except StopIteration as stop:
-        return stop.value
-    finally:
-        steps.close()
+    perform = partial(lookup, resolver=resolver, fetcher=fetcher)
+    return await adrive(discovery_steps(target, profile), perform, translate=unreachable)
