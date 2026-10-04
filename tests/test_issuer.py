@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
@@ -22,15 +23,12 @@ from pyevp._jose import decode_json_segment
 from pyevp.diagnostics import discover
 from pyevp.issuer import (
     MAX_REQUEST_BODY,
-    IssuanceError,
     IssuanceErrorCode,
     IssuanceEvent,
     IssuanceProfile,
-    IssuanceRequest,
     Issuer,
     IssuerResponse,
     SigningKey,
-    accounts_document,
     is_valid_email,
     login_status_headers,
     public_jwk,
@@ -113,16 +111,15 @@ def verifier_for(issuer: Issuer, clock: FixedClock, profile: Profile | None = No
     )
 
 
-def error(issuer: Issuer, request: Any) -> IssuanceError:
-    with pytest.raises(IssuanceError) as info:
-        issuer.parse_request(**request)
-    return info.value
+OWNER = ("alice@example.com",)
 
 
-def respond(
-    issuer: Issuer, request: dict[str, Any], emails: Any = ("alice@example.com",)
-) -> IssuerResponse:
+def respond(issuer: Issuer, request: dict[str, Any], emails: Any = OWNER) -> IssuerResponse:
     return issuer.issuance_response(**request, user_emails=emails)
+
+
+async def arespond(issuer: Issuer, request: dict[str, Any], emails: Any = OWNER) -> IssuerResponse:
+    return await issuer.aissuance_response(**request, user_emails=emails)
 
 
 def refusal(response: IssuerResponse) -> str:
@@ -134,6 +131,43 @@ def token(response: IssuerResponse) -> str:
     assert response.status == 200, response.body
     assert response.headers == {"Content-Type": "application/json", "Cache-Control": "no-store"}
     return json.loads(response.body)["issuance_token"]
+
+
+def claims(evt: str) -> dict[str, Any]:
+    return decode_json_segment(evt.split(".")[1])
+
+
+@dataclass(frozen=True)
+class Refusal:
+    code: str
+    signature_error: str | None
+    detail: str | None
+    """What the observer was told, for logs."""
+    response: IssuerResponse
+
+
+def error(issuer: Issuer, request: dict[str, Any], emails: Any = OWNER) -> Refusal:
+    """Refuse ``request``, as seen by the browser and by the issuer's observer."""
+    events: list[IssuanceEvent] = []
+    previous = issuer.observer
+
+    def observe(event: IssuanceEvent) -> None:
+        events.append(event)
+        if previous is not None:
+            previous(event)
+
+    issuer.observer = observe
+    try:
+        response = respond(issuer, request, emails)
+    finally:
+        issuer.observer = previous
+    assert response.status != 200, response.body
+    code = refusal(response)
+    (event,) = events
+    assert (event.ok, event.code) == (False, code)
+    header = response.headers.get("Signature-Error")
+    signature_error = None if header is None else header.removeprefix("error=")
+    return Refusal(code, signature_error, event.detail, response)
 
 
 # --- end to end ---
@@ -155,8 +189,7 @@ def test_issued_tokens_verify(
 ) -> None:
     issuer = make_issuer(clock, signer=SigningKey.generate(alg, kid="k1"), profile=issuance)
     browser = Browser(clock, alg)
-    request = issuer.parse_request(**browser.request(include_alg=True))
-    evt = issuer.issue(request)
+    evt = token(respond(issuer, browser.request(include_alg=True)))
     assert evt.endswith("~")
     result = verifier_for(issuer, clock, verification).verify(
         present(evt, browser), nonce="n-1", email="alice@example.com"
@@ -169,7 +202,7 @@ def test_chrome_profile_tokens_fail_the_strict_verifier(clock: FixedClock) -> No
     """Chrome only accepts ``EdDSA`` headers, which draft-hardt-02 forbids."""
     issuer = make_issuer(clock)
     browser = Browser(clock)
-    evt = issuer.issue(issuer.parse_request(**browser.request()))
+    evt = token(respond(issuer, browser.request()))
     with pytest.raises(EVPError):
         verifier_for(issuer, clock, Profile.draft_hardt_02()).verify(
             present(evt, browser), nonce="n-1", email=None
@@ -183,9 +216,7 @@ def test_chrome_profile_tokens_fail_the_strict_verifier(clock: FixedClock) -> No
 def test_evt_shape(clock: FixedClock, profile: IssuanceProfile, header_alg: str) -> None:
     issuer = make_issuer(clock, profile=profile)
     browser = Browser(clock)
-    evt = issuer.issue(
-        issuer.parse_request(**browser.request("Alice@Example.com", include_alg=True))
-    )
+    evt = token(respond(issuer, browser.request("Alice@Example.com", include_alg=True)))
     header, claims, _ = evt.removesuffix("~").split(".")
     assert decode_json_segment(header) == {"alg": header_alg, "kid": "2026-10", "typ": "evt+jwt"}
     assert decode_json_segment(claims) == {
@@ -199,16 +230,8 @@ def test_evt_shape(clock: FixedClock, profile: IssuanceProfile, header_alg: str)
 
 def test_es256_header_is_unchanged_by_the_chrome_profile(clock: FixedClock) -> None:
     issuer = make_issuer(clock, signer=SigningKey.generate("ES256", kid="k1"))
-    evt = issuer.issue(issuer.parse_request(**Browser(clock).request()))
+    evt = token(respond(issuer, Browser(clock).request()))
     assert decode_json_segment(evt.split(".")[0])["alg"] == "ES256"
-
-
-def test_success_response(clock: FixedClock) -> None:
-    response = Issuer.success_response("a.b.c~")
-    assert response.status == 200
-    assert response.headers["Content-Type"] == "application/json"
-    assert response.headers["Cache-Control"] == "no-store"
-    assert json.loads(response.body) == {"issuance_token": "a.b.c~"}
 
 
 # --- documents ---
@@ -257,7 +280,7 @@ def test_rotation_old_tokens_still_verify(clock: FixedClock) -> None:
     old = SigningKey.generate(kid="old")
     browser = Browser(clock)
     before = make_issuer(clock, signer=old)
-    evt = before.issue(before.parse_request(**browser.request()))
+    evt = token(respond(before, browser.request()))
     after = make_issuer(
         clock, signer=SigningKey.generate(kid="new"), published_keys=[old.public_jwk]
     )
@@ -358,7 +381,7 @@ def test_signing_key_rejects_a_foreign_public_key(alg: str) -> None:
 def test_loaded_signing_key_signs_for_its_public_key(clock: FixedClock, alg: str) -> None:
     signer = SigningKey.from_jwk(SigningKey.generate(alg, kid="k").private_jwk())
     issuer = make_issuer(clock, signer=signer)
-    evt = issuer.issue(issuer.parse_request(**Browser(clock).request())).removesuffix("~")
+    evt = token(respond(issuer, Browser(clock).request())).removesuffix("~")
     header_alg = decode_json_segment(evt.split(".")[0])["alg"]
     assert _jose.verify_compact(evt, dict(signer.public_jwk), header_alg)
 
@@ -425,7 +448,7 @@ def test_body_of_the_maximum_size_is_accepted(clock: FixedClock) -> None:
     raw = raw[:-1] + b" " * (MAX_REQUEST_BODY - len(raw)) + b"}"
     request = signed(clock, raw)
     request["headers"]["Content-Length"] = str(len(raw))
-    assert make_issuer(clock).parse_request(**request).email == "alice@example.com"
+    assert claims(token(respond(make_issuer(clock), request)))["email"] == "alice@example.com"
 
 
 @pytest.mark.parametrize(
@@ -438,13 +461,13 @@ def test_content_type(clock: FixedClock, content_type: str | None) -> None:
         headers["Content-Type"] = content_type
     exc = error(make_issuer(clock), {**request, "headers": headers})
     assert exc.code == IssuanceErrorCode.UNSUPPORTED_MEDIA_TYPE
-    assert exc.to_response().status == 415
+    assert exc.response.status == 415
 
 
 def test_content_type_parameters_are_ignored(clock: FixedClock) -> None:
     request = Browser(clock).request()
     request["headers"]["Content-Type"] = "Application/JSON; charset=utf-8"
-    make_issuer(clock).parse_request(**request)
+    token(respond(make_issuer(clock), request))
 
 
 def test_legacy_request_token_is_refused(clock: FixedClock) -> None:
@@ -459,7 +482,7 @@ def test_legacy_request_token_is_refused(clock: FixedClock) -> None:
             "body": b"request_token=eyJ.eyJ.sig",
         },
     )
-    assert exc.status == 415
+    assert exc.response.status == 415
 
 
 @pytest.mark.parametrize("value", [None, "empty", "document"])
@@ -470,7 +493,7 @@ def test_sec_fetch_dest(clock: FixedClock, value: str | None) -> None:
         request["headers"]["Sec-Fetch-Dest"] = value
     exc = error(make_issuer(clock), request)
     assert exc.code == "invalid_request"
-    assert exc.to_response().status == 400
+    assert exc.response.status == 400
 
 
 def test_bad_signature_sets_signature_error(clock: FixedClock) -> None:
@@ -478,7 +501,8 @@ def test_bad_signature_sets_signature_error(clock: FixedClock) -> None:
     request["body"] = json.dumps({"email": "mallory@example.com"}).encode()
     exc = error(make_issuer(clock), request)
     assert exc.code == "invalid_signature"
-    response = exc.to_response()
+    assert exc.signature_error == "invalid_signature"
+    response = exc.response
     assert response.status == 400
     assert response.headers["Signature-Error"] == "error=invalid_signature"
     assert json.loads(response.body) == {
@@ -508,10 +532,10 @@ def test_headers_may_be_any_iterable(clock: FixedClock, wrap: Any) -> None:
     issuer = make_issuer(clock)
     browser = Browser(clock)
     request = browser.request()
-    issuer.parse_request(**{**request, "headers": wrap(request["headers"])})
+    token(respond(issuer, {**request, "headers": wrap(request["headers"])}))
 
     async def main() -> None:
-        await issuer.aparse_request(**{**request, "headers": wrap(request["headers"])})
+        token(await arespond(issuer, {**request, "headers": wrap(request["headers"])}))
 
     anyio.run(main)
 
@@ -526,7 +550,7 @@ def test_draft_profile_requires_hwk_alg(clock: FixedClock) -> None:
     issuer = make_issuer(clock, profile=IssuanceProfile.draft_hardt_02())
     exc = error(issuer, Browser(clock).request())
     assert exc.signature_error == "invalid_key"
-    issuer.parse_request(**Browser(clock).request(include_alg=True))
+    token(respond(issuer, Browser(clock).request(include_alg=True)))
 
 
 def test_request_alg_limited_by_metadata(clock: FixedClock) -> None:
@@ -575,25 +599,32 @@ def test_malformed_json(clock: FixedClock, raw: bytes) -> None:
 def test_private_email_not_supported(clock: FixedClock, body: dict[str, Any]) -> None:
     exc = error(make_issuer(clock), Browser(clock).request(body=body))
     assert exc.code == "private_email_not_supported"
-    assert exc.to_response().status == 400
+    assert exc.response.status == 400
 
 
 def test_private_email_false_is_fine(clock: FixedClock) -> None:
     body = {"email": "alice@example.com", "private_email": False}
-    make_issuer(clock).parse_request(**Browser(clock).request(body=body))
+    token(respond(make_issuer(clock), Browser(clock).request(body=body)))
 
 
 def test_foreign_domain_looks_like_an_unknown_account(clock: FixedClock) -> None:
     issuer = make_issuer(clock)
-    foreign = error(issuer, Browser(clock).request("alice@other.example")).to_response()
-    unknown = IssuanceError.authentication_required("no session").to_response()
-    assert foreign == unknown
+    browser = Browser(clock)
+    foreign = error(issuer, browser.request("alice@other.example"))
+    assert foreign.detail == "email domain not served"
+    unknown = respond(issuer, browser.request(), [])
+    assert (foreign.response.status, foreign.response.headers, foreign.response.body) == (
+        unknown.status,
+        unknown.headers,
+        unknown.body,
+    )
     assert unknown.status == 401
 
 
 def test_domains_compare_case_insensitively(clock: FixedClock) -> None:
     issuer = make_issuer(clock, email_domains=["Example.COM"])
-    assert issuer.parse_request(**Browser(clock).request("a@EXAMPLE.com")).email == "a@EXAMPLE.com"
+    evt = token(respond(issuer, Browser(clock).request("a@EXAMPLE.com"), ["a@example.com"]))
+    assert claims(evt)["email"] == "a@EXAMPLE.com"
 
 
 _INVALID_DOMAINS = [
@@ -627,13 +658,15 @@ def test_domains_from_a_callable_follow_changes(
     domains: list[Any] = []  # data from a database is not always a str
     issuer = make_issuer(clock, email_domains=lambda: domains)
     assert issuer.dns_txt_records() == {}
-    assert error(issuer, Browser(clock).request()).code is IssuanceErrorCode.AUTHENTICATION_REQUIRED
+    refused = error(issuer, Browser(clock).request())
+    assert refused.code == IssuanceErrorCode.AUTHENTICATION_REQUIRED
+    assert refused.detail == "email domain not served"
 
     domains[:] = ["Example.COM", "bücher.example", "ü..example", *_INVALID_DOMAINS]
     assert issuer.email_domains == {"example.com", "xn--bcher-kva.example"}
     for name in ["ü..example", *_INVALID_DOMAINS]:
         assert repr(name) in caplog.text
-    assert issuer.parse_request(**Browser(clock).request()).email == "alice@example.com"
+    token(respond(issuer, Browser(clock).request()))
     assert set(issuer.dns_txt_records()) == {
         "_email-verification.example.com",
         "_email-verification.xn--bcher-kva.example",
@@ -661,13 +694,6 @@ def test_is_valid_email(value: str, valid: bool) -> None:
 # --- replay and observability ---
 
 
-def test_replay_guard(clock: FixedClock) -> None:
-    issuer = make_issuer(clock, replay_guard=InMemoryReplayGuard(clock=clock))
-    request = Browser(clock).request()
-    issuer.parse_request(**request)
-    assert error(issuer, request).code == "invalid_signature"
-
-
 # The order of the P-256 group; (r, n - s) is as valid as (r, s).
 P256_N = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 
@@ -687,38 +713,20 @@ def _malleated(request: dict[str, Any]) -> dict[str, Any]:
 def test_replay_guard_survives_signature_malleability(clock: FixedClock) -> None:
     request = Browser(clock, "ES256").request()
     twin = _malleated(request)
-    make_issuer(clock).parse_request(**twin)  # a valid signature in its own right
+    token(respond(make_issuer(clock), twin))  # a valid signature in its own right
 
     issuer = make_issuer(clock, replay_guard=InMemoryReplayGuard(clock=clock))
-    issuer.parse_request(**request)
-    assert error(issuer, twin).code == "invalid_signature"
+    token(respond(issuer, request))
+    assert error(issuer, twin).detail == "request was already used"
 
     async def main() -> None:
-        issuer = make_issuer(clock, replay_guard=InMemoryReplayGuard(clock=clock))
-        await issuer.aparse_request(**twin)
-        with pytest.raises(IssuanceError, match="already used"):
-            await issuer.aparse_request(**request)
-
-    anyio.run(main)
-
-
-def test_async_replay_guard(clock: FixedClock) -> None:
-    class AsyncGuard:
-        def __init__(self) -> None:
-            self.inner = InMemoryReplayGuard(clock=clock)
-
-        async def mark_used(self, key: str, expires_at: Any) -> bool:
-            return self.inner.mark_used(key, expires_at)
-
-    issuer = make_issuer(clock, replay_guard=AsyncGuard())
-    request = Browser(clock).request()
-    with pytest.raises(TypeError):
-        issuer.parse_request(**request)
-
-    async def main() -> None:
-        await issuer.aparse_request(**request)
-        with pytest.raises(IssuanceError):
-            await issuer.aparse_request(**request)
+        events: list[IssuanceEvent] = []
+        issuer = make_issuer(
+            clock, replay_guard=InMemoryReplayGuard(clock=clock), observer=events.append
+        )
+        token(await arespond(issuer, twin))
+        assert refusal(await arespond(issuer, request)) == "invalid_signature"
+        assert events[-1].detail == "request was already used"
 
     anyio.run(main)
 
@@ -737,8 +745,32 @@ def test_request_expiring_in_the_replay_guard_is_refused(clock: FixedClock) -> N
             return self.inner.mark_used(key, expires_at)
 
     issuer = make_issuer(clock, replay_guard=SlowGuard())
-    with pytest.raises(IssuanceError, match="expired during validation"):
-        issuer.parse_request(**Browser(clock).request())
+    refused = error(issuer, Browser(clock).request())
+    assert (refused.code, refused.signature_error) == ("invalid_signature", "invalid_signature")
+    assert refused.detail == "request expired during validation"
+
+
+@pytest.mark.parametrize(("delay", "issued"), [(300, True), (301, False)])
+def test_slow_address_lookup_cannot_outlive_the_request(
+    clock: FixedClock, delay: int, issued: bool
+) -> None:
+    # No replay guard: freshness is still checked again once the addresses are known.
+    def emails() -> list[str]:
+        clock.advance(timedelta(seconds=delay))
+        return ["alice@example.com"]
+
+    response = respond(make_issuer(clock), Browser(clock).request(), emails)
+    assert (response.status == 200) is issued
+    if not issued:
+        assert refusal(response) == "invalid_signature"
+
+
+def test_duplicate_members_are_not_echoed(clock: FixedClock) -> None:
+    raw = b'{"email": "alice@example.com", "bob@example.com": 1, "bob@example.com": 2}'
+    refused = error(make_issuer(clock), signed(clock, raw))
+    assert refused.code == "invalid_request"
+    assert refused.detail is not None
+    assert "bob" not in refused.detail
 
 
 def test_signature_expires_sets_the_deadline(clock: FixedClock) -> None:
@@ -756,8 +788,7 @@ def test_signature_expires_sets_the_deadline(clock: FixedClock) -> None:
     guard = SlowGuard()
     issuer = make_issuer(clock, replay_guard=guard)
     request = Browser(clock).request(expires=clock() + timedelta(seconds=10))
-    with pytest.raises(IssuanceError, match="expired during validation"):
-        issuer.parse_request(**request)
+    assert error(issuer, request).detail == "request expired during validation"
     assert guard.expires_at == clock() - timedelta(seconds=1)
 
 
@@ -776,17 +807,13 @@ def test_concurrent_copies_crossing_the_deadline_are_refused(clock: FixedClock) 
             await both_in.wait()
             return inner.mark_used(key, expires_at)
 
-    issuer = make_issuer(clock, replay_guard=SlowGuard())
+    events: list[IssuanceEvent] = []
+    issuer = make_issuer(clock, replay_guard=SlowGuard(), observer=events.append)
     request = Browser(clock).request()
-    outcomes: list[str] = []
+    outcomes: list[IssuerResponse] = []
 
     async def attempt() -> None:
-        try:
-            await issuer.aparse_request(**request)
-        except IssuanceError as exc:
-            outcomes.append(str(exc))
-        else:
-            outcomes.append("accepted")
+        outcomes.append(await arespond(issuer, request))
 
     async def main() -> None:
         async with anyio.create_task_group() as tg:
@@ -794,36 +821,18 @@ def test_concurrent_copies_crossing_the_deadline_are_refused(clock: FixedClock) 
             tg.start_soon(attempt)
 
     anyio.run(main)
-    assert len(outcomes) == 2
-    assert "accepted" not in outcomes
-
-
-def test_observer(clock: FixedClock) -> None:
-    events: list[IssuanceEvent] = []
-    issuer = make_issuer(clock, observer=events.append)
-    browser = Browser(clock)
-    issuer.issue(issuer.parse_request(**browser.request()))
-    request = browser.request()
-    request["method"] = "GET"
-    with pytest.raises(IssuanceError):
-        issuer.parse_request(**request)
-    assert events == [
-        IssuanceEvent(True, "request", None, "example.com"),
-        IssuanceEvent(True, "issue", None, "example.com"),
-        IssuanceEvent(
-            False, "request", IssuanceErrorCode.INVALID_REQUEST, None, "method GET not allowed"
-        ),
-    ]
+    assert arrived == 2  # both got past validation and ownership to the guard
+    assert [refusal(r) for r in outcomes] == ["invalid_signature"] * 2
+    assert [(e.ok, e.stage) for e in events] == [(False, "request")] * 2
 
 
 def test_refusals_are_logged_without_the_address(
     clock: FixedClock, caplog: pytest.LogCaptureFixture
 ) -> None:
-    events: list[IssuanceEvent] = []
-    issuer = make_issuer(clock, observer=events.append)
+    issuer = make_issuer(clock)
     with caplog.at_level("DEBUG", logger="pyevp"):
-        error(issuer, Browser(clock).request("alice@elsewhere.example"))
-    assert events[-1].detail == "email domain not served"
+        refused = error(issuer, Browser(clock).request("alice@elsewhere.example"))
+    assert refused.detail == "email domain not served"
     assert "email domain not served" in caplog.text
     assert "alice" not in caplog.text
 
@@ -832,24 +841,23 @@ def test_observer_reports_replays(clock: FixedClock) -> None:
     events: list[IssuanceEvent] = []
     request = Browser(clock).request()
     expected = [
-        IssuanceEvent(True, "request", None, "example.com"),
+        IssuanceEvent(True, "issue", None, "example.com"),
         IssuanceEvent(
             False, "request", IssuanceErrorCode.INVALID_SIGNATURE, None, "request was already used"
         ),
     ]
     guard = InMemoryReplayGuard(clock=clock)
     issuer = make_issuer(clock, observer=events.append, replay_guard=guard)
-    issuer.parse_request(**request)
-    error(issuer, request)
+    token(respond(issuer, request))
+    assert refusal(respond(issuer, request)) == "invalid_signature"
     assert events == expected
 
     async def main() -> None:
         events.clear()
         guard = InMemoryReplayGuard(clock=clock)
         issuer = make_issuer(clock, observer=events.append, replay_guard=guard)
-        await issuer.aparse_request(**request)
-        with pytest.raises(IssuanceError):
-            await issuer.aparse_request(**request)
+        token(await arespond(issuer, request))
+        assert refusal(await arespond(issuer, request)) == "invalid_signature"
 
     anyio.run(main)
     assert events == expected
@@ -860,44 +868,38 @@ def test_observer_errors_are_swallowed(clock: FixedClock) -> None:
         raise RuntimeError("boom")
 
     issuer = make_issuer(clock, observer=broken)
-    issuer.parse_request(**Browser(clock).request())
+    browser = Browser(clock)
+    token(respond(issuer, browser.request()))
+    assert refusal(respond(issuer, {**browser.request(), "method": "GET"})) == "invalid_request"
 
 
 def test_issued_token_does_not_verify_for_another_key(clock: FixedClock) -> None:
     issuer = make_issuer(clock)
     browser = Browser(clock)
-    evt = issuer.issue(issuer.parse_request(**browser.request()))
+    evt = token(respond(issuer, browser.request()))
     with pytest.raises(EVPError):
         verifier_for(issuer, clock).verify(present(evt, Browser(clock)), nonce="n-1", email=None)
-
-
-def test_request_repr_hides_signature(clock: FixedClock) -> None:
-    request = make_issuer(clock).parse_request(**Browser(clock).request())
-    assert isinstance(request, IssuanceRequest)
-    assert "signature" not in repr(request)
 
 
 @pytest.mark.parametrize("alg", ["Ed25519", "EdDSA", "ES256"])
 def test_fake_browser_issuance_request(clock: FixedClock, alg: Any) -> None:
     issuer = make_issuer(clock)
     browser = FakeBrowser(alg=alg, clock=clock)
-    request = issuer.parse_request(**browser.issuance_request("bob@example.com", endpoint=ENDPOINT))
-    evt = issuer.issue(request)
-    token = browser.present(evt, audience=RP, nonce="n-1")
+    bob = ["bob@example.com"]
+    request = browser.issuance_request("bob@example.com", endpoint=ENDPOINT)
+    evt = token(respond(issuer, request, bob))
+    presentation = browser.present(evt, audience=RP, nonce="n-1")
     assert (
-        verifier_for(issuer, clock).verify(token, nonce="n-1", email=None).email
+        verifier_for(issuer, clock).verify(presentation, nonce="n-1", email=None).email
         == "bob@example.com"
     )
     strict = make_issuer(clock, profile=IssuanceProfile.draft_hardt_02())
-    strict.parse_request(
-        **browser.issuance_request("bob@example.com", endpoint=ENDPOINT, include_alg=True)
+    request = browser.issuance_request("bob@example.com", endpoint=ENDPOINT, include_alg=True)
+    token(respond(strict, request, bob))
+    private = browser.issuance_request(
+        "bob@example.com", endpoint=ENDPOINT, extra={"private_email": True}
     )
-    with pytest.raises(IssuanceError):
-        issuer.parse_request(
-            **browser.issuance_request(
-                "bob@example.com", endpoint=ENDPOINT, extra={"private_email": True}
-            )
-        )
+    assert error(issuer, private, bob).code == "private_email_not_supported"
 
 
 def test_fedcm_documents() -> None:
@@ -907,9 +909,6 @@ def test_fedcm_documents() -> None:
     ) == {
         "accounts_endpoint": "https://issuer.example/fedcm/accounts",
         "login_url": "https://issuer.example/login",
-    }
-    assert accounts_document(["a@example.com"]) == {
-        "accounts": [{"id": "a@example.com", "email": "a@example.com", "name": "a@example.com"}]
     }
     response = web_identity_response(
         accounts_endpoint="https://issuer.example/fedcm/accounts",
@@ -935,7 +934,7 @@ def test_addresses_compare_case_insensitively(clock: FixedClock, emails: Any) ->
     request = Browser(clock).request("ALICE@example.com")
     evt = token(respond(make_issuer(clock), request, emails))
     # The EVT asserts the address as requested.
-    assert json.loads(_jose.b64url_decode(evt.split(".")[1]))["email"] == "ALICE@example.com"
+    assert claims(evt)["email"] == "ALICE@example.com"
 
 
 @pytest.mark.parametrize(

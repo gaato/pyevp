@@ -194,7 +194,8 @@ class FakeBrowser:
         extra: Mapping[str, Any] | None = None,
         created: datetime | None = None,
     ) -> dict[str, Any]:
-        """A signed issuance request, as keyword arguments for ``Issuer.parse_request``.
+        """A signed issuance request: ``method``, ``headers`` and ``body`` for
+        :meth:`Issuer.issuance_response <pyevp.issuer.Issuer.issuance_response>`.
 
         Like Chrome 153, the ``hwk`` key omits ``alg`` unless ``include_alg`` is set.
         ``extra`` adds members to the JSON body.

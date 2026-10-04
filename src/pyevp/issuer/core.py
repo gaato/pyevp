@@ -1,15 +1,13 @@
-"""The issuer: validate a browser's issuance request, mint an EVT, publish metadata.
+"""The issuer: answer a browser's requests, mint EVTs, publish metadata.
 
-Authenticating the user is the application's job and happens between
-:meth:`Issuer.parse_request` and :meth:`Issuer.issue`::
+The issuer answers every endpoint itself; a web framework only passes the request in and
+sends the :class:`~pyevp.issuer.IssuerResponse` back.  Which addresses the signed-in user
+controls is the one thing it has to be told::
 
-    try:
-        request = issuer.parse_request(method=..., headers=..., body=...)
-        if not session_user_controls(request.email):   # your code, from cookies
-            raise IssuanceError.authentication_required()
-        response = issuer.success_response(issuer.issue(request))
-    except IssuanceError as exc:
-        response = exc.to_response()
+    response = issuer.issuance_response(
+        method=..., headers=..., body=...,
+        user_emails=lambda: addresses_of(session_user),   # your code, from cookies
+    )
 """
 
 from __future__ import annotations
@@ -30,7 +28,7 @@ import idna
 from pyevp import _httpsig, _jose, discovery
 from pyevp._httpsig import Headers
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
-from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, accounts_document
+from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, _accounts_document
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, public_jwk
 from pyevp.issuer.profile import DEFAULT_ISSUANCE_PROFILE, IssuanceProfile
 from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
@@ -43,7 +41,6 @@ __all__ = [
     "AsyncUserEmails",
     "IssuanceEvent",
     "IssuanceObserver",
-    "IssuanceRequest",
     "Issuer",
     "UserEmails",
     "is_valid_email",
@@ -348,7 +345,7 @@ class Issuer:
         ]
         if not listed:
             return IssuerResponse.json(401, {"accounts": []})
-        return IssuerResponse.json(200, accounts_document(listed))
+        return IssuerResponse.json(200, _accounts_document(listed))
 
     # --- issuance ---
 
@@ -403,44 +400,8 @@ class Issuer:
             return self._refuse(exc)
         return self._grant(request)
 
-    def parse_request(self, *, method: str, headers: Headers, body: bytes) -> IssuanceRequest:
-        """Validate a request with a synchronous (or no) replay guard."""
-        guard = self.replay_guard
-        if guard is not None and inspect.iscoroutinefunction(guard.mark_used):
-            raise TypeError("use aparse_request with an asynchronous replay guard")
-        try:
-            request = self._validate(method, headers, body)
-            if guard is not None:
-                key, expires_at = self._replay_key(request)
-                fresh = cast(ReplayGuard, guard).mark_used(key, expires_at)
-                self._check_replay(fresh)
-                self._check_fresh(request)
-        except IssuanceError as exc:
-            self._rejected(exc)
-            raise
-        self._accepted(request)
-        return request
-
-    async def aparse_request(
-        self, *, method: str, headers: Headers, body: bytes
-    ) -> IssuanceRequest:
-        """Validate a request with a synchronous or asynchronous replay guard."""
-        try:
-            request = self._validate(method, headers, body)
-            if self.replay_guard is not None:
-                key, expires_at = self._replay_key(request)
-                marked = self.replay_guard.mark_used(key, expires_at)
-                fresh = await marked if inspect.isawaitable(marked) else marked
-                self._check_replay(fresh)
-                self._check_fresh(request)
-        except IssuanceError as exc:
-            self._rejected(exc)
-            raise
-        self._accepted(request)
-        return request
-
-    def issue(self, request: IssuanceRequest) -> str:
-        """Sign an EVT for ``request``.  Call only after authenticating the user."""
+    def _issue(self, request: IssuanceRequest) -> str:
+        """Sign an EVT for ``request``, whose address the user has been found to control."""
         header = {
             "alg": self._header_alg(self.signer.alg),
             "kid": self.signer.kid,
@@ -460,10 +421,6 @@ class Issuer:
         signature = self.signer.sign(signing_input.encode("ascii"))
         self._notify(IssuanceEvent(True, "issue", None, discovery.email_domain(request.email)))
         return f"{signing_input}.{_jose.b64url_encode(signature)}~"
-
-    @staticmethod
-    def success_response(evt: str) -> IssuerResponse:
-        return IssuerResponse.json(200, {"issuance_token": evt})
 
     # --- internals ---
 
@@ -487,18 +444,10 @@ class Issuer:
         return exc.to_response()
 
     def _grant(self, request: IssuanceRequest) -> IssuerResponse:
-        return IssuerResponse.json(200, {"issuance_token": self.issue(request)})
+        return IssuerResponse.json(200, {"issuance_token": self._issue(request)})
 
     def _header_alg(self, alg: str) -> str:
         return "EdDSA" if alg == "Ed25519" and self.profile.polymorphic_eddsa_header else alg
-
-    def _rejected(self, exc: IssuanceError) -> None:
-        detail = str(exc.args[0])
-        _logger.debug("EVP issuer refused a request: %s (%s)", exc.code, detail)
-        self._notify(IssuanceEvent(False, "request", exc.code, None, detail))
-
-    def _accepted(self, request: IssuanceRequest) -> None:
-        self._notify(IssuanceEvent(True, "request", None, discovery.email_domain(request.email)))
 
     def _notify(self, event: IssuanceEvent) -> None:
         if self.observer is None:

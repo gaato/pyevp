@@ -17,6 +17,10 @@ signed in to the issuer with the address they typed (Chrome 154; see
 Chrome also skips issuers it knows the user is signed out of (FedCM Login Status
 API): send ``Set-Login: logged-in`` on a normal page response after login, or call
 ``navigator.login.setStatus("logged-in")``, and ``logged-out`` on logout.
+
+:meth:`Issuer.accounts_response <pyevp.issuer.Issuer.accounts_response>` answers the
+accounts request, :func:`web_identity_response` serves the well-known document, and
+:func:`login_status_headers` gives the ``Set-Login`` header.
 """
 
 from __future__ import annotations
@@ -28,7 +32,6 @@ from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
 
 __all__ = [
     "FEDCM_FETCH_DEST",
-    "accounts_document",
     "login_status_headers",
     "web_identity_document",
     "web_identity_response",
@@ -49,12 +52,8 @@ def web_identity_response(*, accounts_endpoint: str, login_url: str) -> IssuerRe
     return IssuerResponse.json(200, document, PUBLIC_CACHE)
 
 
-def accounts_document(emails: Iterable[str]) -> dict[str, Any]:
-    """The accounts endpoint's response for a signed-in user's addresses.
-
-    Pass every address the session's user may get EVTs for.  Return this only for
-    requests with the session cookie; without a session, answer 401.
-    """
+def _accounts_document(emails: Iterable[str]) -> dict[str, Any]:
+    """The accounts endpoint's document; see :meth:`Issuer.accounts_response`."""
     return {"accounts": [{"id": email, "email": email, "name": email} for email in emails]}
 
 
