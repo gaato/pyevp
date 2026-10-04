@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 19:05+0900\n"
+"POT-Creation-Date: 2026-10-04 19:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -106,7 +106,7 @@ msgstr ""
 #: pyevp.profile.Profile.compat_2026_10 pyevp.profile.Profile.draft_hardt_02
 #: pyevp.profile.Profile.emails_match pyevp.profile.Profile.named
 #: pyevp.profile.Profile.replace pyevp.replay.ReplayGuard.mark_used
-#: pyevp.testing.FakeBrowser.issuance_request
+#: pyevp.testing.FakeBrowser.issuance_request pyevp.testing.FakeBrowser.present
 #: pyevp.testing.FakeIssuer.gmail_like pyevp.testing.FakeIssuer.issue
 #: pyevp.testing.make_verifier pyevp.token.build_kb pyevp.token.sign_jwt
 #: pyevp.verifier.AsyncVerifier.default pyevp.verifier.AsyncVerifier.verify
@@ -575,11 +575,11 @@ msgstr ""
 msgid "The profile verifiers use unless told otherwise: ``compat-2026-10``."
 msgstr "verifier が特に指定のない場合に使うプロファイルです（``compat-2026-10``）。"
 
-#: ../../api.md:20
+#: ../../api.md:21
 msgid "All presets by name; see :meth:`Profile.named`."
 msgstr "名前をキーにしたすべてのプリセットです。{meth}`Profile.named` を参照してください。"
 
-#: ../../api.md:27
+#: ../../api.md:28
 msgid "Verification core"
 msgstr "検証のコア"
 
@@ -795,7 +795,7 @@ msgid ""
 "are dropped."
 msgstr "JWK Set のうち使える公開鍵を返します。未知のエントリーや秘密鍵のエントリーは除きます。"
 
-#: ../../api.md:39
+#: ../../api.md:40
 msgid "Diagnostics"
 msgstr "診断"
 
@@ -835,7 +835,7 @@ msgstr ""
 "内容の問題は {attr}`IssuerReport.problems` に集められます。通信の失敗は、ドライバーから "
 "{class}`~pyevp.DiscoveryError` として送出されます。"
 
-#: ../../api.md:45
+#: ../../api.md:46
 msgid "Adapters"
 msgstr "アダプター"
 
@@ -1006,7 +1006,7 @@ msgstr ""
 "と同じく、``require_global_addresses=False`` "
 "でない限り、グローバルにルーティング可能なアドレスだけに解決されるホスト以外は拒否します。"
 
-#: ../../api.md:58
+#: ../../api.md:59
 msgid "Integrations"
 msgstr "フレームワーク連携"
 
@@ -1369,7 +1369,7 @@ msgid ""
 "registrable domain."
 msgstr "``/.well-known/web-identity`` です。Chrome は発行者の登録可能ドメイン上でこれを読みます。"
 
-#: ../../api.md:68
+#: ../../api.md:69
 msgid "Issuer"
 msgstr "発行者"
 
@@ -1496,6 +1496,32 @@ msgstr ""
 "で拒否します。データベースで管理しているなど、ドメインが実行中に変わる場合は、現在のドメインを返す callable "
 "を渡します。ドメインが必要になるたびに呼び出され、空を返してもかまいません。ドメインとして正しくない名前は、callable "
 "が返した場合は警告を出して読み飛ばし、コレクションに含まれる場合は `ValueError` を送出します。"
+
+#: of pyevp.issuer.core.Issuer:16
+msgid "the algorithms the metadata advertises; the signer's must be one of them."
+msgstr "メタデータで公開するアルゴリズムです。署名鍵のアルゴリズムはこのいずれかである必要があります。"
+
+#: of pyevp.issuer.core.Issuer:18
+msgid "what is accepted from browsers and how EVTs are written."
+msgstr "ブラウザーから何を受け付け、EVT をどう書くかを決めます。"
+
+#: of pyevp.issuer.core.Issuer:19
+msgid ""
+"refuses a signed request seen before.  Share it between all processes.  "
+"Only requests from users who control the address are recorded, keyed on "
+"what was signed, so a re-encoded signature is the same request.  An "
+"asynchronous guard needs :meth:`aissuance_response`."
+msgstr ""
+"一度見た署名付きリクエストを拒否します。すべてのプロセスで共有してください。記録するのはアドレスを管理しているユーザーからのリクエストだけで、署名された内容をキーにするため、署名をエンコードし直しても同じリクエストとして扱います。非同期のガードには"
+" {meth}`aissuance_response` が必要です。"
+
+#: of pyevp.issuer.core.Issuer:23
+msgid "receives one :class:`IssuanceEvent` per request."
+msgstr "リクエストごとに {class}`IssuanceEvent` を1つ受け取ります。"
+
+#: of pyevp.issuer.core.Issuer:24
+msgid "the current time, for tests."
+msgstr "現在時刻を返す関数です。テスト用です。"
 
 #: of pyevp.issuer.Issuer.email_domains:1
 msgid "The domains EVTs may be issued for now, as lowercase A-labels."
@@ -1651,7 +1677,77 @@ msgstr "``https://<registrable domain>/.well-known/web-identity`` で配信し�
 msgid ":func:`web_identity_document` as a response, cacheable for five minutes."
 msgstr "{func}`web_identity_document` をレスポンスにしたものです。5 分間キャッシュできます。"
 
-#: ../../api.md:76
+#: ../../api.md:78
+msgid ""
+"The addresses whose mail the signed-in user receives, or a function "
+"returning them, which is called at most once and only for a request that "
+"is otherwise valid.  Empty when nobody is signed in.  Return ASCII "
+"addresses with A-label domains: they are compared with the requested "
+"address case-insensitively, and addresses the issuer could not issue for "
+"are ignored."
+msgstr ""
+"サインイン中のユーザーがメールを受け取るアドレス、またはそれを返す関数です。関数は、ほかの点で有効なリクエストに対してだけ、多くとも1回呼ばれます。誰もサインインしていなければ空にします。ドメインが"
+" A-label の ASCII "
+"アドレスを返してください。リクエストされたアドレスとは大文字小文字を区別せずに比べ、発行者が発行できないアドレスは無視します。"
+
+#: ../../api.md:86
+msgid "Like :data:`UserEmails`; the function may also be ``async``."
+msgstr "{data}`UserEmails` と同じです。関数は ``async`` でもかまいません。"
+
+#: ../../api.md:90
+msgid ""
+"The request body, or a function reading at most ``n`` bytes of it, such "
+"as Django's ``request.read``.  The issuer reads only for a ``POST`` whose"
+" ``Content-Length`` allows it, and then no more than "
+":data:`MAX_REQUEST_BODY` and one byte."
+msgstr ""
+"リクエストのボディ、または Django の ``request.read`` のように多くとも ``n`` "
+"バイトを読む関数です。発行者が読むのは ``Content-Length`` が許す ``POST`` のときだけで、それも "
+"{data}`MAX_REQUEST_BODY` より1バイト多い分までです。"
+
+#: ../../api.md:96
+msgid ""
+"Like :data:`RequestBody`; it may also be read asynchronously, or be an "
+"asynchronous iterable of chunks such as Starlette's ``request.stream()``."
+msgstr ""
+"{data}`RequestBody` と同じです。非同期に読む関数や、Starlette の ``request.stream()`` "
+"のようなチャンクの非同期イテラブルでもかまいません。"
+
+#: ../../api.md:101
+msgid ""
+"Called with one :class:`IssuanceEvent` per request.  It must not block; "
+"what it raises is logged and ignored."
+msgstr ""
+"リクエストごとに {class}`IssuanceEvent` "
+"を1つ受け取って呼ばれます。ブロックしてはいけません。送出した例外はログに記録され、無視されます。"
+
+#: ../../api.md:107
+msgid ""
+"The largest issuance request body accepted, in bytes.  Larger requests "
+"are refused before their signature is checked."
+msgstr "受け付ける発行リクエストのボディの最大バイト数です。これより大きいリクエストは、署名を確認する前に拒否します。"
+
+#: ../../api.md:113
+msgid ""
+"The profile issuers use unless told otherwise: ``chrome-153``, what "
+"Chrome sends and accepts."
+msgstr "発行者が特に指定のない場合に使うプロファイルです（``chrome-153``）。Chrome が送り、受け付ける形式です。"
+
+#: ../../api.md:119
+msgid "Where an issuer serves its metadata, relative to its identifier."
+msgstr "発行者がメタデータを配信する場所です。発行者の識別子からの相対パスです。"
+
+#: ../../api.md:124
+msgid ""
+"Where Chrome reads :func:`web_identity_document`, on the issuer's "
+"registrable domain."
+msgstr "Chrome が発行者の登録可能ドメイン上で {func}`web_identity_document` を読む場所です。"
+
+#: ../../api.md:129
+msgid "The ``Sec-Fetch-Dest`` of Chrome's accounts request."
+msgstr "Chrome の accounts リクエストの ``Sec-Fetch-Dest`` です。"
+
+#: ../../api.md:132
 msgid "Testing"
 msgstr "テスト"
 
@@ -1685,6 +1781,20 @@ msgid ""
 msgstr ""
 "Chrome 153 と同じく、``include_alg`` を指定しない限り ``hwk`` 鍵には ``alg`` "
 "を含めません。``extra`` は JSON のボディにメンバーを追加します。"
+
+#: of pyevp.testing.FakeBrowser.present:1
+msgid ""
+"The token a form submits: ``evt`` with a key-binding JWT for ``audience``"
+" and ``nonce``, signed with this browser's key."
+msgstr ""
+"フォームが送るトークンです。``evt`` に、このブラウザーの鍵で署名した ``audience`` と ``nonce`` の key-"
+"binding JWT を付けたものです。"
+
+#: of pyevp.testing.FakeBrowser.present:4
+msgid ""
+"``issued_at`` and ``typ`` let tests make the key-binding JWT stale or "
+"mistyped."
+msgstr "``issued_at`` と ``typ`` で、テスト用に古い key-binding JWT や型の違うものを作れます。"
 
 #: of pyevp.testing.FakeIssuer:1
 msgid ""

@@ -294,6 +294,15 @@ class Issuer:
         in a database.  It is called whenever the domains are needed, may return none, and
         names that are not valid domains are skipped with a warning; in a collection they
         raise ``ValueError``.
+    :param signing_alg_values_supported: the algorithms the metadata advertises; the
+        signer's must be one of them.
+    :param profile: what is accepted from browsers and how EVTs are written.
+    :param replay_guard: refuses a signed request seen before.  Share it between all
+        processes.  Only requests from users who control the address are recorded, keyed on
+        what was signed, so a re-encoded signature is the same request.  An asynchronous
+        guard needs :meth:`aissuance_response`.
+    :param observer: receives one :class:`IssuanceEvent` per request.
+    :param clock: the current time, for tests.
     """
 
     def __init__(

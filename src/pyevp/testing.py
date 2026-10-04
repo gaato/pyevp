@@ -224,6 +224,11 @@ class FakeBrowser:
         issued_at: datetime | None = None,
         typ: str = "kb+jwt",
     ) -> str:
+        """The token a form submits: ``evt`` with a key-binding JWT for ``audience`` and
+        ``nonce``, signed with this browser's key.
+
+        ``issued_at`` and ``typ`` let tests make the key-binding JWT stale or mistyped.
+        """
         return build_kb(
             evt,
             private_key=self.key,
