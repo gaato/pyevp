@@ -70,6 +70,6 @@ strict = Profile.named("draft-hardt-02")
 short_lived = Profile.compat_2026_10().replace(max_token_age=timedelta(minutes=2))
 ```
 
-Following a spec change means adding a new preset. Existing presets never change behaviour (see
-{doc}`compatibility`). Run `pyevp discover <domain> --profile <name>` to see how an issuer fares
+Following a spec change usually means adding a new preset rather than changing an existing one,
+so that you can choose when to switch. Run `pyevp discover <domain> --profile <name>` to see how an issuer fares
 under a profile.

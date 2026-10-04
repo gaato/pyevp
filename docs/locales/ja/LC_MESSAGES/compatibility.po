@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:36+0900\n"
+"POT-Creation-Date: 2026-10-04 14:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -25,61 +25,25 @@ msgstr "互換性ポリシー"
 
 #: ../../compatibility.md:3
 msgid ""
-"Before 1.0, minor releases may contain breaking changes. From 1.0 on, the"
-" project follows [Semantic Versioning]."
+"PyEVP makes no compatibility promises yet. The protocol is still an "
+"Internet-Draft and browser support is an origin trial, so any release may"
+" change or remove any part of the library, including profile presets, "
+"error codes and the output of the command line. Every release lists its "
+"changes, breaking ones included, in the [changelog]."
 msgstr ""
-"1.0 より前は、マイナーリリースに破壊的変更が含まれることがあります。1.0 以降は [Semantic "
-"Versioning](https://semver.org/) に従います。"
+"PyEVP は、まだ互換性について何も約束しません。プロトコルはまだ Internet-Draft "
+"で、ブラウザーの対応もオリジントライアルの段階です。そのため、どのリリースでも、プロファイルのプリセット、エラーコード、コマンドラインの出力を含め、ライブラリのどの部分も変更・削除されることがあります。破壊的変更を含め、各リリースの変更点は"
+" [変更履歴](https://github.com/gaato/pyevp/blob/main/CHANGELOG.md) に記載します。"
 
-#: ../../compatibility.md:5
+#: ../../compatibility.md:8
 msgid ""
-"Until 1.0, the low-level modules `pyevp.core`, `pyevp.token` and "
-"`pyevp.discovery`, and the JSON the command line prints with `--json`, "
-"may change in any minor release."
+"Pin the minor version you tested with, for example `pyevp>=0.1,<0.2`, and"
+" read the changelog before upgrading. Once the protocol settles, this "
+"page will say what stays stable."
 msgstr ""
-"1.0 までは、低レベルのモジュールである `pyevp.core`、`pyevp.token`、`pyevp.discovery` "
-"と、コマンドラインが `--json` で出力する JSON は、どのマイナーリリースでも変わることがあります。"
+"動作を確認したマイナーバージョンに固定し（たとえば "
+"`pyevp>=0.1,<0.2`）、アップグレードの前に変更履歴を確認してください。プロトコルが固まったら、何を安定させるかをこのページに記載します。"
 
-#: ../../compatibility.md:7
-msgid ""
-"Profile presets are only ever added. An existing preset never changes "
-"behaviour; following the protocol means adding a new one. The only "
-"exception is a fix for a security problem, which the changelog calls out."
-msgstr "プロファイルのプリセットは追加されるだけです。既存のプリセットの挙動は変わらず、プロトコルの変更には新しいプリセットを追加して追従します。唯一の例外はセキュリティ上の問題の修正で、その場合は変更履歴に明記します。"
-
-#: ../../compatibility.md:10
-msgid ""
-"Switching `DEFAULT_PROFILE` to a newer preset is a breaking change, so "
-"after 1.0 it only happens in a major release."
-msgstr "`DEFAULT_PROFILE` を新しいプリセットに切り替えるのは破壊的変更なので、1.0 以降はメジャーリリースでのみ行います。"
-
-#: ../../compatibility.md:12
-msgid ""
-"`ErrorCode` values are stable. New codes may be added in minor releases, "
-"so handle unknown codes."
-msgstr "`ErrorCode` の値は安定しています。マイナーリリースで新しいコードが追加されることがあるので、未知のコードも処理できるようにしてください。"
-
-#: ../../compatibility.md:14
-msgid ""
-"Supported Pythons: 3.11 and newer. A version is dropped only after its "
-"upstream end of life."
-msgstr "対応する Python は 3.11 以降です。サポートを打ち切るのは、そのバージョンが上流でサポート終了（EOL）を迎えた後に限ります。"
-
-#: ../../compatibility.md:15
-msgid ""
-"Every release lists its changes, breaking ones included, in the "
-"[changelog]."
-msgstr ""
-"リリースごとの変更点は、破壊的変更も含めて "
-"[変更履歴](https://github.com/gaato/pyevp/blob/main/CHANGELOG.md) に記載します。"
-
-#: ../../compatibility.md:17
-msgid "Depending on PyEVP from a library"
-msgstr "ライブラリから PyEVP に依存する"
-
-#: ../../compatibility.md:19
-msgid ""
-"Libraries that still support Python 3.10 can offer EVP as an optional "
-"extra by gating it with an environment marker:"
-msgstr "Python 3.10 をまだサポートしているライブラリでは、環境マーカーで条件を付けて、EVP をオプションの extra として提供できます。"
-
+#: ../../compatibility.md:11
+msgid "Supported Pythons: 3.11 and newer."
+msgstr "対応する Python は 3.11 以降です。"

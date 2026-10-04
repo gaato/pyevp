@@ -1,8 +1,8 @@
 # Changelog
 
 All notable changes to PyEVP are recorded here. The format follows
-[Keep a Changelog]. Before 1.0, minor releases may contain breaking changes; see the
-[compatibility policy].
+[Keep a Changelog]. While the protocol is a draft, any release may contain breaking changes;
+see the [compatibility policy].
 
 ## [Unreleased]
 

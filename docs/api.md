@@ -26,9 +26,6 @@ Everything most applications need is importable from the top-level package.
 
 ## Verification core
 
-These low-level modules may change in any minor release before 1.0 (see the
-{doc}`compatibility`).
-
 ```{eval-rst}
 .. automodule:: pyevp.core
    :members: verification_steps, ResolveTxt, FetchJson, MarkUsed, Effect, Steps, replay_key

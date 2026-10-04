@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:36+0900\n"
+"POT-Creation-Date: 2026-10-04 14:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -69,14 +69,8 @@ msgid "Output and exit status"
 msgstr "出力と終了ステータス"
 
 #: ../../guides/cli.md:42
-#, python-brace-format
-msgid ""
-"Every command accepts `--json` for scripts. Until 1.0, the shape of the "
-"JSON may change in any minor release (see the {doc}`../compatibility`); "
-"the exit statuses below stay as they are."
-msgstr ""
-"どのコマンドも、スクリプト向けに `--json` を受け付けます。1.0 までは、JSON "
-"の形がどのマイナーリリースでも変わることがあります（{doc}`../compatibility` を参照）。下の終了ステータスは変わりません。"
+msgid "Every command accepts `--json` for scripts."
+msgstr "どのコマンドも、スクリプト向けに `--json` を受け付けます。"
 
 #: ../../guides/cli.md
 msgid "Status"
@@ -118,11 +112,10 @@ msgstr "3"
 msgid "the `cli` extra is not installed"
 msgstr "`cli` extra がインストールされていない"
 
-#: ../../guides/cli.md:53
+#: ../../guides/cli.md:52
 msgid ""
 "Tokens contain email addresses. Treat them as personal data, and avoid "
 "pasting real users' tokens into shared terminals or issue trackers."
 msgstr ""
 "トークンにはメールアドレスが含まれます。個人情報として扱い、実際のユーザーのトークンを共有のターミナルや issue "
 "トラッカーに貼り付けないでください。"
-

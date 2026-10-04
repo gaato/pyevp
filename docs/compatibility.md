@@ -1,28 +1,13 @@
 # Compatibility policy
 
-- Before 1.0, minor releases may contain breaking changes. From 1.0 on, the project follows
-  [Semantic Versioning].
-- Until 1.0, the low-level modules `pyevp.core`, `pyevp.token` and `pyevp.discovery`, and the
-  JSON the command line prints with `--json`, may change in any minor release.
-- Profile presets are only ever added. An existing preset never changes behaviour; following the
-  protocol means adding a new one. The only exception is a fix for a security problem, which
-  the changelog calls out.
-- Switching `DEFAULT_PROFILE` to a newer preset is a breaking change, so after 1.0 it only happens
-  in a major release.
-- `ErrorCode` values are stable. New codes may be added in minor releases, so handle unknown
-  codes.
-- Supported Pythons: 3.11 and newer. A version is dropped only after its upstream end of life.
-- Every release lists its changes, breaking ones included, in the [changelog].
+PyEVP makes no compatibility promises yet. The protocol is still an Internet-Draft and browser
+support is an origin trial, so any release may change or remove any part of the library,
+including profile presets, error codes and the output of the command line. Every release lists
+its changes, breaking ones included, in the [changelog].
 
-## Depending on PyEVP from a library
+Pin the minor version you tested with, for example `pyevp>=0.1,<0.2`, and read the changelog
+before upgrading. Once the protocol settles, this page will say what stays stable.
 
-Libraries that still support Python 3.10 can offer EVP as an optional extra by gating it with an
-environment marker:
+Supported Pythons: 3.11 and newer.
 
-```toml
-[project.optional-dependencies]
-pyevp = ["pyevp>=1,<2; python_version >= '3.11'"]
-```
-
-[Semantic Versioning]: https://semver.org/
 [changelog]: https://github.com/gaato/pyevp/blob/main/CHANGELOG.md

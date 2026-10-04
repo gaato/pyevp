@@ -58,9 +58,8 @@ To start your own project from an example, copy it out and replace
 ## Following the protocol
 
 CI runs the network checks weekly (`.github/workflows/drift.yml`) and opens a `spec-drift` issue
-when the deployed ecosystem diverges from the default profile. Behaviour changes go into a new
-profile preset; existing presets are never changed incompatibly (see the
-[compatibility policy](https://docs.pyevp.dev/en/latest/compatibility.html)).
+when the deployed ecosystem diverges from the default profile. Behaviour changes usually go into a
+new profile preset rather than changing an existing one, so that users can choose when to switch.
 
 ## Translations
 

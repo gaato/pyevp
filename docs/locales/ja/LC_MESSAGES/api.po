@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:37+0900\n"
+"POT-Creation-Date: 2026-10-04 14:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -450,13 +450,6 @@ msgstr "名前をキーにしたすべてのプリセットです。{meth}`Profi
 msgid "Verification core"
 msgstr "検証のコア"
 
-#: ../../api.md:29
-#, python-brace-format
-msgid ""
-"These low-level modules may change in any minor release before 1.0 (see "
-"the {doc}`compatibility`)."
-msgstr "これらの低レベルのモジュールは、1.0 より前はどのマイナーリリースでも変わることがあります（{doc}`compatibility` を参照）。"
-
 #: of pyevp.core:1
 msgid "Sans-I/O verification core."
 msgstr "Sans-I/O の検証コアです。"
@@ -664,7 +657,7 @@ msgid ""
 "are dropped."
 msgstr "JWK Set のうち使える公開鍵を返します。未知のエントリーや秘密鍵のエントリーは除きます。"
 
-#: ../../api.md:42
+#: ../../api.md:39
 msgid "Diagnostics"
 msgstr "診断"
 
@@ -704,7 +697,7 @@ msgstr ""
 "内容の問題は {attr}`IssuerReport.problems` に集められます。通信の失敗は、ドライバーから "
 "{class}`~pyevp.DiscoveryError` として送出されます。"
 
-#: ../../api.md:48
+#: ../../api.md:45
 msgid "Adapters"
 msgstr "アダプター"
 
@@ -875,7 +868,7 @@ msgstr ""
 "と同じく、``require_global_addresses=False`` "
 "でない限り、グローバルにルーティング可能なアドレスだけに解決されるホスト以外は拒否します。"
 
-#: ../../api.md:61
+#: ../../api.md:58
 msgid "Integrations"
 msgstr "フレームワーク連携"
 
@@ -1235,7 +1228,7 @@ msgid ""
 "registrable domain."
 msgstr "``/.well-known/web-identity`` です。Chrome は発行者の登録可能ドメイン上でこれを読みます。"
 
-#: ../../api.md:71
+#: ../../api.md:68
 msgid "Issuer"
 msgstr "発行者"
 
@@ -1486,7 +1479,7 @@ msgstr "公開用に公開鍵を正規化します。秘密のメンバーを除
 msgid "Serve at ``https://<registrable domain>/.well-known/web-identity``."
 msgstr "``https://<registrable domain>/.well-known/web-identity`` で配信します。"
 
-#: ../../api.md:79
+#: ../../api.md:76
 msgid "Testing"
 msgstr "テスト"
 
@@ -1560,18 +1553,3 @@ msgstr "URL ごとにドキュメントを返します。値が呼び出し可�
 #: of pyevp.testing.make_verifier:1
 msgid "A :class:`Verifier` wired to in-memory DNS/HTTP serving ``issuers``."
 msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につないだ {class}`Verifier` を返します。"
-
-#~ msgid "Decode a JSON-API TXT ``data`` value into one string."
-#~ msgstr "JSON API の TXT の ``data`` の値を 1 つの文字列にデコードします。"
-
-#~ msgid ""
-#~ "Cloudflare returns presentation format: each"
-#~ " character-string quoted, with ``\\\"``,"
-#~ " ``\\\\`` and ``\\DDD`` escapes, separated"
-#~ " by spaces.  Google returns the "
-#~ "strings already joined and unquoted."
-#~ msgstr ""
-#~ "Cloudflare はプレゼンテーション形式で返します。各 character-string "
-#~ "は引用符で囲まれ、``\\\"``、``\\\\``、``\\DDD`` "
-#~ "のエスケープを含み、スペースで区切られています。Google は、引用符を外して連結済みの文字列を返します。"
-
