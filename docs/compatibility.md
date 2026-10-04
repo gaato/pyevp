@@ -2,8 +2,11 @@
 
 - Before 1.0, minor releases may contain breaking changes. From 1.0 on, the project follows
   [Semantic Versioning].
+- Until 1.0, the low-level modules `pyevp.core`, `pyevp.token` and `pyevp.discovery`, and the
+  JSON the command line prints with `--json`, may change in any minor release.
 - Profile presets are only ever added. An existing preset never changes behaviour; following the
-  protocol means adding a new one.
+  protocol means adding a new one. The only exception is a fix for a security problem, which
+  the changelog calls out.
 - Switching `DEFAULT_PROFILE` to a newer preset is a breaking change, so after 1.0 it only happens
   in a major release.
 - `ErrorCode` values are stable. New codes may be added in minor releases, so handle unknown

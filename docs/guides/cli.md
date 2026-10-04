@@ -39,7 +39,8 @@ pyevp verify "$TOKEN" --audience https://example.com --nonce "$NONCE" --email al
 
 ## Output and exit status
 
-Every command accepts `--json` for scripts.
+Every command accepts `--json` for scripts. Until 1.0, the shape of the JSON may change in any
+minor release (see the {doc}`../compatibility`); the exit statuses below stay as they are.
 
 | Status | Meaning |
 |---|---|
