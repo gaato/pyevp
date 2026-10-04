@@ -289,11 +289,9 @@ urlpatterns = [path("", include(evp.urls)), ...]
 ```
 
 Include `evp.urls` at the root of the issuer's origin. It serves the metadata at
-`/.well-known/email-verification`, the JWKS at `/email-verification/jwks`, issuance at
-`/email-verification/issuance`, the FedCM accounts endpoint at `/fedcm/accounts`, and
-`/.well-known/web-identity`. The issuer's `issuance_endpoint` and `jwks_uri` must use these
-paths. `IssuerSite` raises `ImproperlyConfigured` otherwise. To use other paths, set
-`issuance_path`, `jwks_path` and the other `*_path` attributes in a subclass.
+`/.well-known/email-verification`, issuance and the JWKS where the issuer's
+`issuance_endpoint` and `jwks_uri` say, the FedCM accounts endpoint at `/fedcm/accounts`
+(`accounts_path`), and `/.well-known/web-identity`.
 
 Subclass {class}`~pyevp.contrib.django.issuer.IssuerSite` to adapt it:
 

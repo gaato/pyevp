@@ -109,7 +109,7 @@ class FakeIssuer:
 
     @property
     def metadata_url(self) -> str:
-        return discovery.metadata_url(self.issuer, DEFAULT_PROFILE)
+        return discovery.metadata_url(self.issuer)
 
     @property
     def jwks_uri(self) -> str:

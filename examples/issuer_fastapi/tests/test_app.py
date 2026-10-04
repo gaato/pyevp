@@ -193,3 +193,24 @@ def test_oversized_requests(client: TestClient) -> None:
         response = client.post(ISSUANCE_PATH, content=content)
         assert response.status_code == 400
         assert response.json()["error"] == "invalid_request"
+
+
+def test_routes_follow_the_issuer(clock: FixedClock) -> None:
+    issuer = Issuer(
+        issuer="https://issuer.example",
+        issuance_endpoint=PUBLIC_URL + "/evp/issue",
+        jwks_uri=PUBLIC_URL + "/keys.json",
+        signer=SigningKey.generate(kid="2026-10"),
+        email_domains=["example.com"],
+        clock=clock,
+    )
+    app = create_app(issuer, {"alice@example.com": "hunter2"}, session_secret="test")
+    with TestClient(app, base_url=PUBLIC_URL) as client:
+        assert client.get("/keys.json").json() == issuer.jwks_document()
+        assert client.get(JWKS_PATH).status_code == 404
+        _login(client)
+        request = FakeBrowser(clock=clock).issuance_request(
+            "alice@example.com", endpoint=PUBLIC_URL + "/evp/issue"
+        )
+        response = client.post("/evp/issue", headers=request["headers"], content=request["body"])
+        assert response.status_code == 200, response.text

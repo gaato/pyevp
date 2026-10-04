@@ -29,7 +29,7 @@ from collections.abc import (
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal, TypeAlias, cast
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import idna
 
@@ -229,6 +229,10 @@ def _require_https_url(value: str, what: str) -> str:
         raise ValueError(f"{what} must be an https URL, got {value!r}")
     if url.fragment or url.query:
         raise ValueError(f"{what} must not have a query or fragment")
+    # Frameworks route the decoded path: an encoded "/" would split it differently, and
+    # these characters would be read as route parameters.
+    if "%2f" in url.path.lower() or any(c in unquote(url.path) for c in "<>{}"):
+        raise ValueError(f"{what} must not encode '/' or contain '<', '>', '{{' or '}}'")
     return value
 
 
@@ -374,6 +378,20 @@ class Issuer:
     def jwks_document(self) -> dict[str, Any]:
         """Serve at ``jwks_uri``."""
         return {"keys": [dict(k) for k in self._jwks["keys"]]}
+
+    @property
+    def issuance_path(self) -> str:
+        """The path of :attr:`issuance_endpoint`, to route issuance requests to.
+
+        Decoded, as frameworks match it.  It is the public URL's path: behind a proxy that
+        strips a prefix, the application sees another one.
+        """
+        return unquote(urlsplit(self.issuance_endpoint).path) or "/"
+
+    @property
+    def jwks_path(self) -> str:
+        """The path of :attr:`jwks_uri`, as for :attr:`issuance_path`."""
+        return unquote(urlsplit(self.jwks_uri).path) or "/"
 
     def metadata_response(self) -> IssuerResponse:
         """:meth:`metadata_document` as a response, cacheable for five minutes."""

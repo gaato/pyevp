@@ -299,7 +299,7 @@ def verification_steps(
         )
 
     metadata = discovery.validate_metadata(
-        (yield FetchJson(discovery.metadata_url(issuer, profile), "metadata")), issuer
+        (yield FetchJson(discovery.metadata_url(issuer), "metadata")), issuer
     )
     alg = parsed.evt.alg
     assert alg is not None

@@ -22,6 +22,7 @@ from joserfc import jwk
 from rich.console import Console
 from rich.table import Table
 
+from pyevp import discovery
 from pyevp.diagnostics import IssuerReport, discover
 from pyevp.errors import EVPError
 from pyevp.issuer import SIGNING_ALGORITHMS, Issuer, SigningKey
@@ -239,7 +240,7 @@ def _issuer_app() -> typer.Typer:
             raise typer.BadParameter(str(exc)) from None
         _json(
             {
-                "metadata_url": f"{built.issuer}/.well-known/email-verification",
+                "metadata_url": discovery.metadata_url(built.issuer),
                 "metadata": built.metadata_document(),
                 "jwks_uri": built.jwks_uri,
                 "jwks": built.jwks_document(),

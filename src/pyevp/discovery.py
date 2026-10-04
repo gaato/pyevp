@@ -14,6 +14,7 @@ from pyevp.profile import IssuerFormat, Profile
 from pyevp.types import IssuerMetadata, JSONObject
 
 __all__ = [
+    "METADATA_PATH",
     "canonical_issuer",
     "email_domain",
     "is_public_hostname",
@@ -23,6 +24,9 @@ __all__ = [
     "validate_jwks",
     "validate_metadata",
 ]
+
+METADATA_PATH = "/.well-known/email-verification"
+"""The path of an issuer's metadata, relative to its identifier."""
 
 _FORBIDDEN_HOST_CHARS = frozenset("/:@?#\\ \t\r\n")
 # Special-use names (RFC 6761, RFC 6762, RFC 8375) and the name ICANN reserved for
@@ -89,8 +93,9 @@ def parse_txt_records(records: Sequence[str]) -> str:
     return issuer
 
 
-def metadata_url(issuer: str, profile: Profile) -> str:
-    return issuer + profile.metadata_path
+def metadata_url(issuer: str) -> str:
+    """Where ``issuer`` serves its metadata."""
+    return issuer + METADATA_PATH
 
 
 def _require_https_url(value: Any, field: str) -> str:

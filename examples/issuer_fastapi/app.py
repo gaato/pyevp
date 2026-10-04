@@ -35,6 +35,8 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 
 from pyevp.issuer import (
+    METADATA_PATH,
+    WEB_IDENTITY_PATH,
     Issuer,
     IssuerResponse,
     SigningKey,
@@ -42,6 +44,7 @@ from pyevp.issuer import (
     web_identity_response,
 )
 
+# Where _from_environment() puts the issuer's endpoints; the routes follow the issuer.
 ISSUANCE_PATH = "/email-verification/issuance"
 JWKS_PATH = "/email-verification/jwks"
 ACCOUNTS_PATH = "/fedcm/accounts"
@@ -69,15 +72,15 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
         user = request.session.get(SESSION_USER)
         return [user] if user else []
 
-    @app.get("/.well-known/email-verification")
+    @app.get(METADATA_PATH)
     async def metadata() -> Response:
         return _response(issuer.metadata_response())
 
-    @app.get(JWKS_PATH)
+    @app.get(issuer.jwks_path)
     async def jwks() -> Response:
         return _response(issuer.jwks_response())
 
-    @app.get("/.well-known/web-identity")
+    @app.get(WEB_IDENTITY_PATH)
     async def web_identity() -> Response:
         base = issuer.issuer
         return _response(
@@ -94,7 +97,7 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
         )
         return _response(result)
 
-    @app.api_route(ISSUANCE_PATH, methods=ISSUANCE_METHODS)
+    @app.api_route(issuer.issuance_path, methods=ISSUANCE_METHODS)
     async def issuance(request: Request) -> Response:
         # Put per-IP rate limiting in front of this endpoint (proxy or middleware).
         result = await issuer.aissuance_response(

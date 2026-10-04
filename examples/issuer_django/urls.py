@@ -20,8 +20,8 @@ def _signer() -> SigningKey:
 
 issuer = Issuer(
     issuer=settings.EVP_ISSUER,
-    issuance_endpoint=f"{settings.EVP_PUBLIC_URL}/{IssuerSite.issuance_path}",
-    jwks_uri=f"{settings.EVP_PUBLIC_URL}/{IssuerSite.jwks_path}",
+    issuance_endpoint=f"{settings.EVP_PUBLIC_URL}/email-verification/issuance",
+    jwks_uri=f"{settings.EVP_PUBLIC_URL}/email-verification/jwks",
     signer=_signer(),
     email_domains=settings.EVP_EMAIL_DOMAINS,
 )

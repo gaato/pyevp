@@ -87,7 +87,7 @@ def discovery_steps(target: str, profile: Profile = DEFAULT_PROFILE) -> ReportSt
 
     try:
         metadata = discovery.validate_metadata(
-            (yield FetchJson(discovery.metadata_url(issuer, profile), "metadata")), issuer
+            (yield FetchJson(discovery.metadata_url(issuer), "metadata")), issuer
         )
     except DiscoveryError as exc:
         return done(f"metadata: {exc.args[0]}")

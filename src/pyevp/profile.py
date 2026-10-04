@@ -60,7 +60,6 @@ class Profile:
     They are covered by ``sd_hash`` but never decoded, so they add no claims.
     """
     dns_label: str = "_email-verification"
-    metadata_path: str = "/.well-known/email-verification"
 
     @classmethod
     def compat_2026_10(cls) -> Self:
@@ -141,7 +140,6 @@ class ProfileChanges(TypedDict, total=False):
     require_exp: bool
     allow_disclosures: bool
     dns_label: str
-    metadata_path: str
 
 
 PROFILES: Mapping[str, Profile] = MappingProxyType(

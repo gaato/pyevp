@@ -238,6 +238,9 @@ def test_hooks_choose_issuer_and_addresses(client: Client, clock: FixedClock) ->
     issuers = {"issuer.example": _make_issuer(clock)}
 
     class BrandSite(EmailSite):
+        issuance_path = "email-verification/issuance"
+        jwks_path = "email-verification/jwks"
+
         def get_issuer(self, request: HttpRequest) -> Issuer:
             return issuers[request.get_host()]
 
@@ -276,22 +279,40 @@ def test_views_mount_on_their_own(client: Client, issuer: Issuer) -> None:
         assert response.json()["accounts"][0]["email"] == EMAIL
 
 
-def test_paths_must_match_the_issuer(clock: FixedClock) -> None:
+def test_routes_follow_the_issuer(client: Client, clock: FixedClock) -> None:
     issuer = Issuer(
         issuer=ORIGIN,
         issuance_endpoint=ORIGIN + "/evp/issue",
-        jwks_uri=JWKS,
+        jwks_uri=ORIGIN + "/keys.json",
         signer=SigningKey.generate(kid="k"),
         email_domains=["example.com"],
         clock=clock,
     )
-    with pytest.raises(ImproperlyConfigured, match="/evp/issue"):
-        EmailSite(issuer)
+    with _mount(*EmailSite(issuer).urls):
+        assert client.get("/keys.json").json() == issuer.jwks_document()
+        assert client.get("/email-verification/jwks").status_code == 404
+        _login(client)
+        request = FakeBrowser(clock=clock).issuance_request(EMAIL, endpoint=ORIGIN + "/evp/issue")
+        response = client.post(
+            "/evp/issue",
+            request["body"],
+            content_type="application/json",
+            headers=request["headers"],
+        )
+        assert response.status_code == 200, response.content
 
     class Site(EmailSite):
-        issuance_path = "evp/issue"
+        issuance_path = "email-verification/issuance"
 
-    assert Site(issuer).issuer is issuer
+    with pytest.raises(ImproperlyConfigured, match="/evp/issue"):
+        Site(issuer)
+
+
+def test_routes_match_decoded_paths(client: Client, clock: FixedClock) -> None:
+    issuer = _make_issuer(clock)
+    issuer.jwks_uri = ORIGIN + "/keys%20current.json"
+    with _mount(*EmailSite(issuer).urls):
+        assert client.get("/keys current.json").json() == issuer.jwks_document()
 
 
 def test_async_replay_guard_is_refused(clock: FixedClock) -> None:
@@ -309,7 +330,14 @@ def test_user_emails_must_be_overridden(issuer: Issuer) -> None:
 
 
 def test_site_without_issuer(client: Client) -> None:
-    with _mount(*EmailSite().urls), pytest.raises(ImproperlyConfigured):
+    with pytest.raises(ImproperlyConfigured, match="issuance_path and jwks_path"):
+        EmailSite()
+
+    class Site(EmailSite):
+        issuance_path = "email-verification/issuance"
+        jwks_path = "email-verification/jwks"
+
+    with _mount(*Site().urls), pytest.raises(ImproperlyConfigured):
         client.get("/.well-known/email-verification")
 
 

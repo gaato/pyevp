@@ -32,6 +32,7 @@ from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
 
 __all__ = [
     "FEDCM_FETCH_DEST",
+    "WEB_IDENTITY_PATH",
     "login_status_headers",
     "web_identity_document",
     "web_identity_response",
@@ -39,6 +40,9 @@ __all__ = [
 
 FEDCM_FETCH_DEST = "webidentity"
 """``Sec-Fetch-Dest`` of Chrome's accounts request; refuse other requests."""
+
+WEB_IDENTITY_PATH = "/.well-known/web-identity"
+"""Where Chrome reads :func:`web_identity_document`, on the issuer's registrable domain."""
 
 
 def web_identity_document(*, accounts_endpoint: str, login_url: str) -> dict[str, Any]:

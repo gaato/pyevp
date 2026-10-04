@@ -1224,3 +1224,23 @@ def test_reading_the_body_must_give_bytes(clock: FixedClock) -> None:
         make_issuer(clock).issuance_response(
             **{**Browser(clock).request(), "body": body}, user_emails=OWNER
         )
+
+
+def test_endpoint_paths_are_decoded_for_routing(clock: FixedClock) -> None:
+    issuer = make_issuer(
+        clock,
+        issuance_endpoint="https://accounts.issuer.example/evp%20issue",
+        jwks_uri="https://accounts.issuer.example/",
+    )
+    assert issuer.issuance_path == "/evp issue"
+    assert issuer.jwks_path == "/"
+    # The signature still covers the URL as configured.
+    assert issuer.metadata_document()["issuance_endpoint"].endswith("/evp%20issue")
+
+
+@pytest.mark.parametrize(
+    "path", ["/%2Fkeys.json", "/a%2fb", "/keys/%3Cint:version%3E", "/issue/%7Bversion:int%7D"]
+)
+def test_endpoint_paths_must_route_as_written(clock: FixedClock, path: str) -> None:
+    with pytest.raises(ValueError, match="must not encode"):
+        make_issuer(clock, jwks_uri="https://accounts.issuer.example" + path)

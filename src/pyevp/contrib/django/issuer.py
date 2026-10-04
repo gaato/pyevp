@@ -30,7 +30,6 @@ from __future__ import annotations
 import weakref
 from collections.abc import Callable, Sequence
 from typing import Any, ClassVar
-from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core import checks
@@ -43,6 +42,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from pyevp._drive import is_async
 from pyevp.issuer import (
+    METADATA_PATH,
+    WEB_IDENTITY_PATH,
     Issuer,
     IssuerResponse,
     login_status_headers,
@@ -62,6 +63,14 @@ __all__ = [
 _sites: weakref.WeakSet[IssuerSite] = weakref.WeakSet()
 
 
+def _route(path: str, declared: str | None) -> str:
+    """The issuer's ``path`` as a route, which must be ``declared`` if that is set."""
+    route = path.removeprefix("/")
+    if declared is not None and declared != route:
+        raise ImproperlyConfigured(f"the issuer's {path} is not served at /{declared}")
+    return route
+
+
 def _overrides(cls: type, name: str) -> bool:
     return getattr(cls, name) is not getattr(IssuerSite, name)
 
@@ -74,24 +83,29 @@ class IssuerSite:
     :param login_url: where Chrome sends users who are not signed in; defaults to
         ``settings.LOGIN_URL``.  A path is taken relative to the issuer's origin.
 
-    :attr:`urls` must be included at the root of the issuer's origin, and the paths
-    below must match the issuer's ``issuance_endpoint`` and ``jwks_uri``.
+    :attr:`urls` must be included at the root of the issuer's origin.  The issuance and JWKS
+    endpoints are served where the issuer's ``issuance_endpoint`` and ``jwks_uri`` say.
+    Without an issuer, :attr:`issuance_path` and :attr:`jwks_path` must say where, for every
+    issuer :meth:`get_issuer` returns.
     """
 
-    metadata_path: ClassVar[str] = ".well-known/email-verification"
-    jwks_path: ClassVar[str] = "email-verification/jwks"
-    issuance_path: ClassVar[str] = "email-verification/issuance"
+    issuance_path: ClassVar[str | None] = None
+    """Where issuance requests are routed, without the leading ``/``; the issuer's by default."""
+    jwks_path: ClassVar[str | None] = None
+    """Where the JWKS is served, as for :attr:`issuance_path`."""
     accounts_path: ClassVar[str] = "fedcm/accounts"
-    web_identity_path: ClassVar[str] = ".well-known/web-identity"
+    """Where the FedCM accounts endpoint is served."""
 
     def __init__(self, issuer: Issuer | None = None, *, login_url: str | None = None) -> None:
-        if issuer is not None:
-            for url, route in (
-                (issuer.issuance_endpoint, self.issuance_path),
-                (issuer.jwks_uri, self.jwks_path),
-            ):
-                if urlsplit(url).path != "/" + route:
-                    raise ImproperlyConfigured(f"{url} is not served at /{route}")
+        if issuer is None:
+            if self.issuance_path is None or self.jwks_path is None:
+                raise ImproperlyConfigured(
+                    "without an Issuer, set issuance_path and jwks_path on the IssuerSite"
+                )
+            self._issuance_route, self._jwks_route = self.issuance_path, self.jwks_path
+        else:
+            self._issuance_route = _route(issuer.issuance_path, self.issuance_path)
+            self._jwks_route = _route(issuer.jwks_path, self.jwks_path)
             guard = issuer.replay_guard
             if is_async(getattr(guard, "mark_used", None)):
                 raise ImproperlyConfigured(
@@ -138,11 +152,11 @@ class IssuerSite:
     @property
     def urls(self) -> list[URLPattern]:
         return [
-            path(self.metadata_path, MetadataView.as_view(site=self)),
-            path(self.jwks_path, JWKSView.as_view(site=self)),
-            path(self.issuance_path, IssuanceView.as_view(site=self)),
+            path(METADATA_PATH.lstrip("/"), MetadataView.as_view(site=self)),
+            path(self._jwks_route, JWKSView.as_view(site=self)),
+            path(self._issuance_route, IssuanceView.as_view(site=self)),
             path(self.accounts_path, AccountsView.as_view(site=self)),
-            path(self.web_identity_path, WebIdentityView.as_view(site=self)),
+            path(WEB_IDENTITY_PATH.lstrip("/"), WebIdentityView.as_view(site=self)),
         ]
 
 

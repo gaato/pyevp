@@ -5,6 +5,7 @@ issuance and FedCM accounts requests and serves the metadata and JWKS, as
 framework-neutral :class:`IssuerResponse` objects, and lists the DNS records to publish.
 """
 
+from pyevp.discovery import METADATA_PATH
 from pyevp.issuer.core import (
     MAX_REQUEST_BODY,
     AsyncUserEmails,
@@ -17,6 +18,7 @@ from pyevp.issuer.core import (
 from pyevp.issuer.errors import IssuanceErrorCode
 from pyevp.issuer.fedcm import (
     FEDCM_FETCH_DEST,
+    WEB_IDENTITY_PATH,
     login_status_headers,
     web_identity_document,
     web_identity_response,
@@ -30,7 +32,9 @@ __all__ = [
     "FEDCM_FETCH_DEST",
     "ISSUANCE_PROFILES",
     "MAX_REQUEST_BODY",
+    "METADATA_PATH",
     "SIGNING_ALGORITHMS",
+    "WEB_IDENTITY_PATH",
     "AsyncUserEmails",
     "IssuanceErrorCode",
     "IssuanceEvent",

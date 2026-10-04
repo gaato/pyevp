@@ -61,6 +61,8 @@ from pyevp.adapters import httpx as httpx_adapter
 from pyevp.adapters.dnspython import AsyncDnsPythonResolver
 from pyevp.cache import InMemoryCache
 from pyevp.issuer import (
+    METADATA_PATH,
+    WEB_IDENTITY_PATH,
     Issuer,
     IssuerResponse,
     SigningKey,
@@ -318,7 +320,7 @@ def _site_app(
             media_type="application/xml",
         )
 
-    @site.get("/.well-known/web-identity")
+    @site.get(WEB_IDENTITY_PATH)
     async def web_identity() -> Response:
         return _response(
             web_identity_response(
@@ -407,11 +409,11 @@ def _mail_app(
             headers=NO_STORE,
         )
 
-    @mail.get("/.well-known/email-verification")
+    @mail.get(METADATA_PATH)
     async def metadata() -> Response:
         return _response(issuer.metadata_response())
 
-    @mail.get(JWKS_PATH)
+    @mail.get(issuer.jwks_path)
     async def jwks() -> Response:
         return _response(issuer.jwks_response())
 
@@ -422,7 +424,7 @@ def _mail_app(
         )
         return _response(result)
 
-    @mail.api_route(ISSUANCE_PATH, methods=ISSUANCE_METHODS)
+    @mail.api_route(issuer.issuance_path, methods=ISSUANCE_METHODS)
     async def issuance(request: Request) -> Response:
         return await _issuance(request, issuer)
 
