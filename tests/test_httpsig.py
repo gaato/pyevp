@@ -65,6 +65,13 @@ def test_round_trip(alg: str) -> None:
     assert signed.label == "sig"
     assert signed.created == NOW
     assert signed.public_jwk == {**key.as_dict(private=False), "alg": alg}
+    assert signed.deadline == NOW + timedelta(seconds=300)
+
+
+@pytest.mark.parametrize(("expires", "deadline"), [(10, 10), (300, 300), (1000, 300)])
+def test_deadline_is_the_earlier_of_max_age_and_expires(expires: int, deadline: int) -> None:
+    signed = _verify(_sign(expires=NOW + timedelta(seconds=expires)))
+    assert signed.deadline == NOW + timedelta(seconds=deadline)
 
 
 def test_header_names_are_case_insensitive_and_pairs_are_accepted() -> None:

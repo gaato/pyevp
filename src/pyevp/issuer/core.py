@@ -22,7 +22,7 @@ import re
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, TypeAlias, cast
+from typing import Any, Literal, TypeAlias, cast
 from urllib.parse import urlsplit
 
 import idna
@@ -96,6 +96,8 @@ class IssuanceRequest:
     """The browser's public key, bound into the EVT as ``cnf.jwk``."""
     alg: str
     created: datetime
+    deadline: datetime
+    """When the request goes stale, ``created`` plus the maximum age or ``expires``."""
     signature: bytes = field(repr=False)
     signature_base: bytes = field(repr=False)
     """What ``signature`` covers; it identifies the request for the replay guard."""
@@ -104,10 +106,12 @@ class IssuanceRequest:
 @dataclass(frozen=True, slots=True)
 class IssuanceEvent:
     ok: bool
-    stage: str
+    stage: Literal["request", "issue"]
     """``"request"`` (validation) or ``"issue"`` (an EVT was signed)."""
     code: IssuanceErrorCode | None
     email_domain: str | None
+    detail: str | None = None
+    """Why a request was refused, for logs.  It does not repeat the requested address."""
 
 
 # TODO(py3.12): back to a ``type`` statement once 3.11 support is dropped.
@@ -353,7 +357,9 @@ class Issuer:
         return "EdDSA" if alg == "Ed25519" and self.profile.polymorphic_eddsa_header else alg
 
     def _rejected(self, exc: IssuanceError) -> None:
-        self._notify(IssuanceEvent(False, "request", exc.code, None))
+        detail = str(exc.args[0])
+        _logger.debug("EVP issuer refused a request: %s (%s)", exc.code, detail)
+        self._notify(IssuanceEvent(False, "request", exc.code, None, detail))
 
     def _accepted(self, request: IssuanceRequest) -> None:
         self._notify(IssuanceEvent(True, "request", None, discovery.email_domain(request.email)))
@@ -423,16 +429,22 @@ class Issuer:
             )
         if discovery.email_domain(email) not in self.email_domains:
             # Same answer as for an unknown account, so domains cannot be probed either.
-            raise IssuanceError.authentication_required(f"not authoritative for {email!r}")
+            raise IssuanceError.authentication_required("email domain not served")
         return IssuanceRequest(
-            email, signed.public_jwk, signed.alg, signed.created, signed.signature, signed.base
+            email,
+            signed.public_jwk,
+            signed.alg,
+            signed.created,
+            signed.deadline,
+            signed.signature,
+            signed.base,
         )
 
     def _replay_key(self, request: IssuanceRequest) -> tuple[str, datetime]:
         # Keyed on what was signed, not on the signature: anyone can re-encode an ECDSA
         # signature ((r, s) -> (r, n - s)) into another valid one for the same request.
         key = "issuance:" + hashlib.sha256(request.signature_base).hexdigest()
-        return key, request.created + self.profile.max_request_age + timedelta(seconds=1)
+        return key, request.deadline + timedelta(seconds=1)
 
     def _check_replay(self, fresh: bool, expires_at: datetime) -> None:
         if not fresh:

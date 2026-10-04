@@ -722,6 +722,26 @@ def test_request_expiring_in_the_replay_guard_is_refused(clock: FixedClock) -> N
         issuer.parse_request(**Browser(clock).request())
 
 
+def test_signature_expires_sets_the_deadline(clock: FixedClock) -> None:
+    # Fresh by max_request_age, but past the signature's own expires once marked.
+    class SlowGuard:
+        def __init__(self) -> None:
+            self.inner = InMemoryReplayGuard(clock=clock)
+            self.expires_at: Any = None
+
+        def mark_used(self, key: str, expires_at: Any) -> bool:
+            self.expires_at = expires_at
+            clock.advance(timedelta(seconds=12))
+            return self.inner.mark_used(key, expires_at)
+
+    guard = SlowGuard()
+    issuer = make_issuer(clock, replay_guard=guard)
+    request = Browser(clock).request(expires=clock() + timedelta(seconds=10))
+    with pytest.raises(IssuanceError, match="expired during validation"):
+        issuer.parse_request(**request)
+    assert guard.expires_at == clock() - timedelta(seconds=1)
+
+
 def test_concurrent_copies_crossing_the_deadline_are_refused(clock: FixedClock) -> None:
     inner = InMemoryReplayGuard(clock=clock)
     arrived = 0
@@ -771,8 +791,22 @@ def test_observer(clock: FixedClock) -> None:
     assert events == [
         IssuanceEvent(True, "request", None, "example.com"),
         IssuanceEvent(True, "issue", None, "example.com"),
-        IssuanceEvent(False, "request", IssuanceErrorCode.INVALID_REQUEST, None),
+        IssuanceEvent(
+            False, "request", IssuanceErrorCode.INVALID_REQUEST, None, "method GET not allowed"
+        ),
     ]
+
+
+def test_refusals_are_logged_without_the_address(
+    clock: FixedClock, caplog: pytest.LogCaptureFixture
+) -> None:
+    events: list[IssuanceEvent] = []
+    issuer = make_issuer(clock, observer=events.append)
+    with caplog.at_level("DEBUG", logger="pyevp"):
+        error(issuer, Browser(clock).request("alice@elsewhere.example"))
+    assert events[-1].detail == "email domain not served"
+    assert "email domain not served" in caplog.text
+    assert "alice" not in caplog.text
 
 
 def test_observer_reports_replays(clock: FixedClock) -> None:
@@ -780,7 +814,9 @@ def test_observer_reports_replays(clock: FixedClock) -> None:
     request = Browser(clock).request()
     expected = [
         IssuanceEvent(True, "request", None, "example.com"),
-        IssuanceEvent(False, "request", IssuanceErrorCode.INVALID_SIGNATURE, None),
+        IssuanceEvent(
+            False, "request", IssuanceErrorCode.INVALID_SIGNATURE, None, "request was already used"
+        ),
     ]
     guard = InMemoryReplayGuard(clock=clock)
     issuer = make_issuer(clock, observer=events.append, replay_guard=guard)

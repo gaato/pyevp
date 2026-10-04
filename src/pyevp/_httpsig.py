@@ -54,6 +54,8 @@ class SignedRequest:
     public_jwk: dict[str, str]
     """The signer's key as a JWK, always with ``alg``."""
     created: datetime
+    deadline: datetime
+    """The last moment the request is fresh: ``created`` plus the maximum age, or ``expires``."""
     signature: bytes
     base: bytes
     """The signature base that ``signature`` was verified over."""
@@ -231,6 +233,9 @@ def verify_request(
         not isinstance(expires, int) or isinstance(expires, bool) or expires < now.timestamp()
     ):
         raise SignatureError("invalid_signature", "signature has expired")
+    deadline = created_at + max_age
+    if expires is not None and expires < deadline.timestamp():
+        deadline = datetime.fromtimestamp(expires, UTC)
 
     base = _signature_base(components, method=method, endpoint=endpoint, lines=lines)
     if not _jose.verify_raw(base, signature.value, jwk, alg):
@@ -239,7 +244,7 @@ def verify_request(
         raise SignatureError("invalid_signature", "HTTP Message Signature verification failed")
     # Only now that the body is known to be what was signed is the digest worth checking.
     _check_digest(lines.get("content-digest"), body)
-    return SignedRequest(label, alg, jwk, created_at, signature.value, base)
+    return SignedRequest(label, alg, jwk, created_at, deadline, signature.value, base)
 
 
 def sign_request(
@@ -251,6 +256,7 @@ def sign_request(
     public_jwk: Mapping[str, Any],
     alg: str,
     created: datetime,
+    expires: datetime | None = None,
     label: str = "sig",
     include_alg: bool = True,
     signature_key: str | None = None,
@@ -272,9 +278,10 @@ def sign_request(
         "Content-Digest": content_digest(body) if digest is None else digest,
         "Signature-Key": signature_key,
     }
-    components = _sf.InnerList(
-        tuple(_sf.Item(c) for c in REQUIRED_COMPONENTS), {"created": int(created.timestamp())}
-    )
+    params: dict[str, Any] = {"created": int(created.timestamp())}
+    if expires is not None:
+        params["expires"] = int(expires.timestamp())
+    components = _sf.InnerList(tuple(_sf.Item(c) for c in REQUIRED_COMPONENTS), params)
     base = _signature_base(
         components, method=method, endpoint=endpoint, lines=_field_lines(headers)
     )
