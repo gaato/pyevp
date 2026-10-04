@@ -19,7 +19,7 @@ import inspect
 import json
 import logging
 import re
-from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal, TypeAlias, cast
@@ -39,10 +39,12 @@ from pyevp.replay import AsyncReplayGuard, ReplayGuard
 
 __all__ = [
     "MAX_REQUEST_BODY",
+    "AsyncUserEmails",
     "IssuanceEvent",
     "IssuanceObserver",
     "IssuanceRequest",
     "Issuer",
+    "UserEmails",
     "is_valid_email",
 ]
 
@@ -105,18 +107,51 @@ class IssuanceRequest:
 
 @dataclass(frozen=True, slots=True)
 class IssuanceEvent:
+    """What became of one issuance request."""
+
     ok: bool
-    stage: Literal["request", "issue"]
-    """``"request"`` (validation) or ``"issue"`` (an EVT was signed)."""
+    stage: Literal["request", "ownership", "issue"]
+    """The stage the request ended at, ``"request"`` (refused by validation), ``"ownership"``
+    (the signed-in user does not control the address) or ``"issue"`` (an EVT was signed)."""
     code: IssuanceErrorCode | None
     email_domain: str | None
     detail: str | None = None
     """Why a request was refused, for logs.  It does not repeat the requested address."""
 
 
-# TODO(py3.12): back to a ``type`` statement once 3.11 support is dropped.
+# TODO(py3.12): back to ``type`` statements once 3.11 support is dropped.
 IssuanceObserver: TypeAlias = Callable[[IssuanceEvent], None]
-"""Receives one event per validated request and per issued EVT; must not block or raise."""
+"""Receives one event per request; must not block or raise."""
+
+UserEmails: TypeAlias = Iterable[str] | Callable[[], Iterable[str]]
+"""The addresses whose mail the signed-in user receives, or a function returning them.
+
+A function is called at most once, and only for a request that is otherwise valid.
+"""
+
+AsyncUserEmails: TypeAlias = Iterable[str] | Callable[[], Iterable[str] | Awaitable[Iterable[str]]]
+"""Like :data:`UserEmails`; the function may also be ``async``."""
+
+
+def _owns(email: str, emails: Iterable[str]) -> bool:
+    """Whether ``email`` (already valid) is one of ``emails``, compared case-insensitively.
+
+    Addresses EVP cannot carry are ignored: lowercasing a non-ASCII one can turn it into
+    someone else's (``\u212aate@`` with a KELVIN SIGN becomes ``kate@``).
+    """
+    wanted = email.lower()
+    return any(isinstance(e, str) and is_valid_email(e) and e.lower() == wanted for e in emails)
+
+
+def _require_iterable(value: object) -> None:
+    if isinstance(value, str | bytes):
+        raise TypeError("user_emails must be a collection of addresses, not one string")
+
+
+class _OwnershipError(IssuanceError):
+    def __init__(self, email_domain: str, detail: str) -> None:
+        super().__init__(IssuanceErrorCode.AUTHENTICATION_REQUIRED, detail)
+        self.email_domain = email_domain
 
 
 def _require_https_url(value: str, what: str) -> str:
@@ -139,7 +174,7 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
         if key in out:
-            raise ValueError(f"duplicate member {key!r}")
+            raise ValueError("duplicate member")
         out[key] = value
     return out
 
@@ -291,6 +326,57 @@ class Issuer:
 
     # --- issuance ---
 
+    def issuance_response(
+        self, *, method: str, headers: Headers, body: bytes, user_emails: UserEmails
+    ) -> IssuerResponse:
+        """Answer a request to the issuance endpoint.
+
+        Route every method here, with the raw body and the request's header lines.
+        ``user_emails`` are the addresses of the user signed in to this issuer; pass an
+        empty collection when nobody is.  An EVT is issued only for one of them.
+        """
+        _require_iterable(user_emails)
+        guard = self.replay_guard
+        if guard is not None and inspect.iscoroutinefunction(guard.mark_used):
+            raise TypeError("use aissuance_response with an asynchronous replay guard")
+        try:
+            request = self._validate(method, headers, body)
+            emails = user_emails() if callable(user_emails) else user_emails
+            if inspect.isawaitable(emails):
+                if inspect.iscoroutine(emails):
+                    emails.close()
+                raise TypeError("use aissuance_response with asynchronous user_emails")
+            self._authorize(request, emails)
+            if guard is not None:
+                key, expires_at = self._replay_key(request)
+                fresh = cast(ReplayGuard, guard).mark_used(key, expires_at)
+                self._check_replay(fresh)
+            self._check_fresh(request)
+        except IssuanceError as exc:
+            return self._refuse(exc)
+        return self._grant(request)
+
+    async def aissuance_response(
+        self, *, method: str, headers: Headers, body: bytes, user_emails: AsyncUserEmails
+    ) -> IssuerResponse:
+        """:meth:`issuance_response` for asynchronous replay guards and ``user_emails``."""
+        _require_iterable(user_emails)
+        try:
+            request = self._validate(method, headers, body)
+            emails = user_emails() if callable(user_emails) else user_emails
+            if inspect.isawaitable(emails):
+                emails = await emails
+            self._authorize(request, emails)
+            if self.replay_guard is not None:
+                key, expires_at = self._replay_key(request)
+                marked = self.replay_guard.mark_used(key, expires_at)
+                fresh = await marked if inspect.isawaitable(marked) else marked
+                self._check_replay(fresh)
+            self._check_fresh(request)
+        except IssuanceError as exc:
+            return self._refuse(exc)
+        return self._grant(request)
+
     def parse_request(self, *, method: str, headers: Headers, body: bytes) -> IssuanceRequest:
         """Validate a request with a synchronous (or no) replay guard."""
         guard = self.replay_guard
@@ -301,7 +387,8 @@ class Issuer:
             if guard is not None:
                 key, expires_at = self._replay_key(request)
                 fresh = cast(ReplayGuard, guard).mark_used(key, expires_at)
-                self._check_replay(fresh, expires_at)
+                self._check_replay(fresh)
+                self._check_fresh(request)
         except IssuanceError as exc:
             self._rejected(exc)
             raise
@@ -318,7 +405,8 @@ class Issuer:
                 key, expires_at = self._replay_key(request)
                 marked = self.replay_guard.mark_used(key, expires_at)
                 fresh = await marked if inspect.isawaitable(marked) else marked
-                self._check_replay(fresh, expires_at)
+                self._check_replay(fresh)
+                self._check_fresh(request)
         except IssuanceError as exc:
             self._rejected(exc)
             raise
@@ -352,6 +440,28 @@ class Issuer:
         return IssuerResponse.json(200, {"issuance_token": evt})
 
     # --- internals ---
+
+    def _authorize(self, request: IssuanceRequest, user_emails: object) -> None:
+        # Before the replay guard: only signed-in users' requests are worth recording.
+        _require_iterable(user_emails)
+        emails = list(cast("Iterable[str]", user_emails))
+        if not _owns(request.email, emails):
+            detail = "address not the user's" if emails else "no addresses"
+            # One answer for every way this can fail, so responses do not reveal accounts.
+            raise _OwnershipError(discovery.email_domain(request.email), detail)
+
+    def _refuse(self, exc: IssuanceError) -> IssuerResponse:
+        detail = str(exc.args[0])
+        _logger.debug("EVP issuer refused a request: %s (%s)", exc.code, detail)
+        if isinstance(exc, _OwnershipError):
+            event = IssuanceEvent(False, "ownership", exc.code, exc.email_domain, detail)
+        else:
+            event = IssuanceEvent(False, "request", exc.code, None, detail)
+        self._notify(event)
+        return exc.to_response()
+
+    def _grant(self, request: IssuanceRequest) -> IssuerResponse:
+        return IssuerResponse.json(200, {"issuance_token": self.issue(request)})
 
     def _header_alg(self, alg: str) -> str:
         return "EdDSA" if alg == "Ed25519" and self.profile.polymorphic_eddsa_header else alg
@@ -446,16 +556,19 @@ class Issuer:
         key = "issuance:" + hashlib.sha256(request.signature_base).hexdigest()
         return key, request.deadline + timedelta(seconds=1)
 
-    def _check_replay(self, fresh: bool, expires_at: datetime) -> None:
+    def _check_replay(self, fresh: bool) -> None:
         if not fresh:
             raise IssuanceError(
                 IssuanceErrorCode.INVALID_SIGNATURE,
                 "request was already used",
                 signature_error="invalid_signature",
             )
-        # Freshness was judged before the guard ran.  If the request expired since, the
-        # record just written may already be gone, and a concurrent copy found nothing.
-        if self.clock() >= expires_at:
+
+    def _check_fresh(self, request: IssuanceRequest) -> None:
+        # Freshness was judged before the user's addresses were looked up and the guard ran,
+        # either of which can be slow.  Still fresh now also means the guard's record (kept a
+        # second longer) is still there, so a concurrent copy cannot have missed it.
+        if self.clock() > request.deadline:
             raise IssuanceError(
                 IssuanceErrorCode.INVALID_SIGNATURE,
                 "request expired during validation",
