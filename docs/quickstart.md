@@ -94,8 +94,8 @@ as verification: the local part is case-folded, and domains are compared as DNS 
 
 ## 3. Handle failures
 
-A rejected token raises a subclass of {class}`pyevp.EVPError` with a stable
-{class}`pyevp.ErrorCode`:
+A rejected token raises a subclass of {class}`pyevp.EVPError` whose {class}`pyevp.ErrorCode`
+says why:
 
 | Exception | Meaning | Typical codes |
 |---|---|---|

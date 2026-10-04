@@ -1,7 +1,7 @@
 """Exception hierarchy.
 
-Every rejected token raises an :class:`EVPError` with a stable :class:`ErrorCode`, so
-that web frameworks can map it to a form error or an HTTP status without parsing
+Every rejected token raises an :class:`EVPError` with an :class:`ErrorCode`, so that
+web frameworks can map it to a form error or an HTTP status without parsing
 messages.  Failures of the application's own cache or replay store are not
 ``EVPError``: they propagate unchanged.
 """

@@ -18,7 +18,7 @@ The first release.
   the default fetchers check that the host resolves only to public addresses; the
   [transport guide](https://docs.pyevp.dev/en/latest/guides/transport.html#ssrf) explains what
   this check does not catch (DNS rebinding).
-- Every rejected token raises an `EVPError` with a stable `ErrorCode`.
+- Every rejected token raises an `EVPError` whose `ErrorCode` says why.
 - Profile presets `compat-2026-10` (the default) and `draft-hardt-02` hold every point where the
   drafts and deployed issuers differ.
 - DNS adapters for dnspython and DNS over HTTPS, HTTP adapters for httpx2 and httpx, and a setup

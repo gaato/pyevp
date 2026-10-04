@@ -44,7 +44,7 @@ verifier = Verifier.default(audience="https://example.com")  # your origin
 try:
     result = verifier.verify(form["evt"], nonce=session.pop("evp_nonce"), email=form["email"])
 except EVPError as exc:
-    ...  # exc.code is a stable ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
+    ...  # exc.code is an ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
 else:
     result.email, result.issuer  # verified
 ```

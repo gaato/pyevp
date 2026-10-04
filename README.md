@@ -63,7 +63,7 @@ library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
    try:
        result = verifier.verify(form["evt"], nonce=session.pop("evp_nonce"), email=form["email"])
    except EVPError as exc:
-       ...  # exc.code is a stable ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
+       ...  # exc.code is an ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
    else:
        result.email, result.issuer  # verified
    ```
@@ -78,7 +78,7 @@ default fetchers also check that the host resolves only to public addresses; see
 [private networks](https://docs.pyevp.dev/en/latest/guides/transport.html#ssrf) for what this check
 does not catch.
 
-Every rejected token raises an `EVPError` with a stable `ErrorCode`. The safe default is to fall back to your existing
+Every rejected token raises an `EVPError` with an `ErrorCode`. The safe default is to fall back to your existing
 verification flow; the [error table](https://docs.pyevp.dev/en/latest/quickstart.html#handle-failures) tells which codes
 the user can retry and which point at your configuration.
 

@@ -2,8 +2,8 @@
 
 The protocol is still moving (algorithm names, ``iss`` format, ``kid`` rules, …)
 and deployed issuers lag behind the drafts.  Every such knob lives here so that
-following a spec change means adding a new preset rather than touching the
-verification code.  Existing presets are never changed in incompatible ways.
+following a spec change usually means adding a new preset rather than changing an
+existing one or the verification code.
 """
 
 from __future__ import annotations

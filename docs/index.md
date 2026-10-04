@@ -14,7 +14,7 @@ versioned {doc}`profile <concepts>`, so the library can follow along without sil
 changes.
 ```
 
-- **Typed:** frozen dataclasses, protocols and stable error codes.
+- **Typed:** frozen dataclasses, protocols and an enum of error codes.
 - **Sync and async from one core:** the verification logic does no I/O itself; thin drivers
   serve Django and FastAPI alike.
 - **Testable:** `pyevp.testing` ships a fake issuer and a fake browser, so your application's tests

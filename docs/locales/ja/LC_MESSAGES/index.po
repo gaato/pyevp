@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:22+0900\n"
+"POT-Creation-Date: 2026-10-04 15:03+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -74,8 +74,8 @@ msgstr ""
 "にまとめてあるので、挙動を知らないうちに変えることなく仕様の変更に追従できます。"
 
 #: ../../index.md:17
-msgid "**Typed:** frozen dataclasses, protocols and stable error codes."
-msgstr "**型付き**：frozen なデータクラス、プロトコル、安定したエラーコードを備えています。"
+msgid "**Typed:** frozen dataclasses, protocols and an enum of error codes."
+msgstr "**型付き**：frozen なデータクラス、プロトコル、エラーコードの列挙型を備えています。"
 
 #: ../../index.md:18
 msgid ""
@@ -98,4 +98,3 @@ msgid ""
 msgstr ""
 "**軽量**：必須の依存は [joserfc](https://jose.authlib.org/) と idna だけです。DNS と HTTP"
 " は差し替えられます。"
-

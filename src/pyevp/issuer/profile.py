@@ -1,8 +1,8 @@
 """Issuance profiles: what an issuer accepts from browsers and how it writes EVTs.
 
 Like :mod:`pyevp.profile` on the verifying side, every point where browsers and the
-drafts disagree is a field here, and existing presets are never changed in
-incompatible ways.
+drafts disagree is a field here, and following a change usually means adding a
+preset rather than changing an existing one.
 """
 
 from __future__ import annotations

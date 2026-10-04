@@ -75,7 +75,7 @@ The container listens on port 8080.
 |---|---|
 | `GET /` | Landing page rendered once at startup; no nonce or session |
 | `GET /demo` | Demo page rendered per request, with a fresh nonce in the form and site session |
-| `POST /verify` | Demo page with the verification result: verified email and issuer, stable error code and explanation (400), expired session (400), or missing-token explanation (200) |
+| `POST /verify` | Demo page with the verification result: verified email and issuer, error code and explanation (400), expired session (400), or missing-token explanation (200) |
 | `GET /robots.txt` | Allows all crawlers and names `https://<site host>/sitemap.xml` |
 | `GET /sitemap.xml` | `https://<site host>/` and `https://<site host>/demo` |
 | `GET /.well-known/web-identity` | `web_identity_document(accounts_endpoint="https://<mail host>/fedcm/accounts", login_url="https://<mail host>/login")`, `application/json` |
