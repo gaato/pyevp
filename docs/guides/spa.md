@@ -28,14 +28,12 @@ Hand the nonce out from an endpoint and keep a copy in an HttpOnly cookie. A sma
 - When they are on different origins, the frontend sends its requests with credentials
   (`fetch(url, {credentials: "include"})`, or `withCredentials: true` in axios), and the API
   allows them with CORS: name the frontend's origin and allow credentials.
-- Over HTTPS, the cookie is named with the `__Host-` prefix, which requires `Secure` and
-  `Path=/` and forbids `Domain`. Other hosts on the same site, and plain HTTP, then cannot set
-  it: otherwise they could plant a nonce of their choosing.
+- Over HTTPS the example names the cookie with the `__Host-` prefix, so that other hosts on the
+  same site cannot plant a nonce. Keep that.
 
 ## In the browser
 
-A sketch with React and TanStack Query. It follows code that worked in a real application, but
-this sketch itself is not tested:
+A sketch with React and TanStack Query, not tested itself:
 
 ```tsx
 const nonce = useQuery({
@@ -71,19 +69,14 @@ return (
 )
 ```
 
-What worked in that application, with React 19 and Chrome 154 on a page without a
-Content-Security-Policy header:
+React 19 renders the `nonce` prop as a content attribute, which is what the browser reads.
+Read the token in the submit handler, for example with `FormData` inside react-hook-form's
+`handleSubmit`; sending it in a JSON body is fine.
 
-- React renders the `nonce` prop as a content attribute, and Chrome picked it up.
-- A token field rendered only after the nonce arrived worked.
-- The token could be read from the submit event with `FormData`, inside react-hook-form's
-  `handleSubmit`. Sending it to the API in a JSON body is fine, since the API reads JSON.
-- A second request for the nonce, from React's StrictMode or from refetching when the window
-  regains focus, replaces the cookie and can leave the page with a stale nonce. TanStack Query
-  with `staleTime: Infinity` avoids both.
-
-Submitting before the token arrived was not tested. Such a submission carries no token and falls
-back to your usual flow.
+Request the nonce once. A second request, from React's StrictMode or from refetching when the
+window regains focus, replaces the cookie and leaves the page with a stale nonce;
+`staleTime: Infinity` in TanStack Query avoids both. A form submitted before the nonce arrives
+carries no token and falls back to your usual flow.
 
 ## Linting
 
@@ -100,6 +93,3 @@ on the attribute:
   nonce={nonce}
 />
 ```
-
-`jsx-a11y/autocomplete-valid` in eslint-plugin-jsx-a11y 6.10 skips hidden inputs, so it does not
-report the token field.

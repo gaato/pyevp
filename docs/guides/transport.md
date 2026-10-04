@@ -8,6 +8,8 @@ through {class}`~pyevp.TxtResolver` / {class}`~pyevp.JsonFetcher` and their asyn
 Verifier.default(audience=..., resolver=..., fetcher=..., cache=...)
 ```
 
+PyEVP's fetchers refuse redirects and compressed responses, and cap the size of bodies.
+
 ## HTTP: httpx2 or httpx
 
 {mod}`pyevp.adapters.httpx` works with [httpx2](https://github.com/pydantic/httpx2) (pydantic's
@@ -19,9 +21,8 @@ pip install "pyevp[dns,httpx]"
 ```
 
 A client from either library can be passed explicitly, for example to share connection pools
-or set proxies: `HttpxFetcher(httpx2.Client(...))`. Redirects are never followed, even when the
-client was configured to follow them. Responses are requested uncompressed, compressed ones
-are refused, and bodies are size-capped.
+or set proxies: `HttpxFetcher(httpx2.Client(...))`. Redirects stay off even when the client is
+configured to follow them.
 
 (ssrf)=
 
@@ -51,10 +52,8 @@ UrllibFetcher(require_global_addresses=False)
 `resolve_host=` replaces the resolver used for the check, for example with one that matches
 your HTTP stack's.
 
-If you only want tokens from issuers you know, such as your company's identity provider, pass
-`allowed_issuers=["accounts.example.com", ...]` to the verifier. A token naming any other
-issuer is refused with `issuer_not_allowed` before anything is looked up, so the verifier then
-only ever contacts those issuers and the hosts their metadata names.
+To contact only the issuers you trust, also restrict them with `allowed_issuers` (see
+{doc}`../concepts`).
 
 ## DNS: system resolver
 
@@ -75,20 +74,17 @@ verifier = AsyncVerifier.default(audience=..., resolver=AsyncDohResolver())  # G
 verifier = AsyncVerifier.default(audience=..., resolver=AsyncDohResolver(CLOUDFLARE))
 ```
 
-`require_dnssec=True` trusts the provider's AD flag. Unsigned zones such as gmail.com never pass
-it. With `dnspython[doh]` installed, an RFC 8484 resolver can be used instead:
-
-```python
-resolver = dns.resolver.Resolver(configure=False)
-resolver.nameservers = ["https://cloudflare-dns.com/dns-query"]
-DnsPythonResolver(resolver)
-```
+The provider sees which domains you look up, and `require_dnssec=True` trusts its AD flag.
+Unsigned zones such as gmail.com never pass it. With `dnspython[doh]`, a
+{class}`~pyevp.adapters.dnspython.DnsPythonResolver` whose nameserver is an RFC 8484 URL works
+too.
 
 ## Standard library only
 
 {mod}`pyevp.adapters.urllib` needs nothing beyond PyEVP's core dependencies, for applications
 that already chose an HTTP stack and do not want httpx or dnspython added. Without dnspython
-there is no stdlib way to query TXT records, so it resolves them over DoH:
+there is no stdlib way to query TXT records, so it resolves them over DoH, with the same
+trade-offs:
 
 ```python
 from pyevp import Verifier
@@ -98,10 +94,8 @@ verifier = Verifier(audience=..., resolver=UrllibDohResolver(), fetcher=UrllibFe
 verifier = Verifier(audience=..., resolver=UrllibDohResolver(CLOUDFLARE), fetcher=UrllibFetcher())
 ```
 
-They behave like the httpx adapters: no redirects, no compressed responses, size-capped bodies.
-The DoH trade-offs above apply: the provider sees which domains you look up, and
-`require_dnssec=True` means trusting it. Both adapters are synchronous. Proxies from the
-environment are honoured; pass `handlers` to configure proxies or TLS explicitly:
+Both adapters are synchronous. Proxies from the environment are honoured; pass `handlers` to
+configure proxies or TLS explicitly:
 
 ```python
 UrllibFetcher(handlers=[urllib.request.HTTPSHandler(context=ssl_context)])
@@ -115,4 +109,4 @@ workers; {class}`pyevp.contrib.django.EVPCache` is one backed by Django's cache.
 {class}`~pyevp.AsyncVerifier` also accepts an {class}`~pyevp.AsyncCache`, whose methods are
 coroutines, for stores that must not be called on the event loop. When a signature does not verify,
 the keys are fetched again to pick up key rotation, at most once per `min_refresh_interval`
-and URL, even when the fetch fails or verifications run concurrently.
+and URL.

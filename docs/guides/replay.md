@@ -18,15 +18,8 @@ from pyevp import AsyncVerifier, InMemoryReplayGuard
 verifier = AsyncVerifier.default(audience="https://example.com", replay_guard=InMemoryReplayGuard())
 ```
 
-The key identifies the presentation, not its bytes: it is a hash of the KB-JWT header and
-payload, which carry the nonce, audience and a hash of the EVT. Re-encoding a signature, for
-example turning an ECDSA `s` into `n - s`, therefore does not produce a new key.
-
-The guard is only consulted after every other check has passed, so rejected tokens never fill
+The guard is consulted only after every other check has passed, so rejected tokens never fill
 the store. Errors raised by the guard itself, such as a store outage, propagate unchanged.
-Freshness is checked before any I/O, so a token that expires while DNS and HTTP are in flight
-is rejected with `ErrorCode.TOKEN_EXPIRED` after it has been marked: its record may already be
-gone, and a replay would not find it.
 
 ## Shared stores
 
@@ -51,5 +44,21 @@ class RedisReplayGuard:
 The store must keep each record until it expires. Do not build a guard on a cache that evicts
 under memory pressure: once the record is evicted, the token is accepted again. For Redis this
 means `maxmemory-policy noeviction` (the `volatile-*` policies evict exactly these keys, which
-have a TTL), so that a full Redis rejects the write and verification fails instead. With Django, use {class}`~pyevp.contrib.django.EVPReplayGuard`,
-which keeps records in a database table; see {doc}`frameworks`.
+have a TTL), so that a full Redis rejects the write and verification fails instead.
+
+## Django
+
+{class}`~pyevp.contrib.django.EVPReplayGuard` (or {class}`~pyevp.contrib.django.AsyncEVPReplayGuard`
+for an {class}`~pyevp.AsyncVerifier`) keeps records in a database table, which needs
+`"pyevp.contrib.django"` in `INSTALLED_APPS` and `manage.py migrate`. Database errors
+propagate, so verification fails closed.
+
+Each record is committed in its own transaction, so a rollback of the request cannot undo it.
+Inside a transaction on the same database, whether `ATOMIC_REQUESTS`, `transaction.atomic()` or
+autocommit turned off, the guard raises `RuntimeError` instead. In that case give it a second
+alias for the same database:
+
+```python
+DATABASES["evp"] = {**DATABASES["default"], "ATOMIC_REQUESTS": False, "AUTOCOMMIT": True}
+replay_guard = EVPReplayGuard(using="evp")
+```

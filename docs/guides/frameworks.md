@@ -15,13 +15,6 @@ example enables a replay guard.
 :start-at: "@asynccontextmanager"
 ```
 
-## Single-page apps
-
-An API without server sessions, for example one that authenticates with JWTs, keeps the nonce in
-a cookie. [`examples/fastapi_spa`](https://github.com/gaato/pyevp/tree/main/examples/fastapi_spa)
-is such an API, with password recovery that skips the email. See {doc}`spa` and
-{doc}`password-recovery`.
-
 ## Flask
 
 Build the synchronous {class}`~pyevp.Verifier` in the application factory and keep it in
@@ -56,9 +49,11 @@ When the verified address *is* the login, replay protection is essential.
 
 ## Django
 
-{mod}`pyevp.contrib.django` renders the hidden input with a template tag and verifies what the
-form submitted with {func}`~pyevp.contrib.django.verify_request`. Add `"pyevp.contrib.django"`
-to `INSTALLED_APPS` and enable the `request` context processor, then put the tag inside the
+{mod}`pyevp.contrib.django` (`pip install "pyevp[django]"`) renders the hidden input with a
+template tag and verifies what the form submitted with
+{func}`~pyevp.contrib.django.verify_request`, which works like
+{meth}`~pyevp.Verifier.verify_submission`. Add `"pyevp.contrib.django"` to `INSTALLED_APPS`,
+enable the `request` context processor, run `manage.py migrate`, and put the tag inside the
 form:
 
 ```{literalinclude} ../../examples/django/templates/signup.html
@@ -72,67 +67,20 @@ In the view, verify before rendering the form again:
 :start-at: "@cache"
 ```
 
-- All tags on a page share one nonce, so a page may have several forms. The session keeps the
-  nonces of the last few pages, so forms in other tabs work too.
-- `verify_request` is {meth}`pyevp.Verifier.verify_submission` for the form's field: it returns
-  `None` when the form carried no token, and leaves the session alone. Otherwise it uses up the
-  token's nonce and raises {class}`~pyevp.EVPError` on failure.
-- In async views, call `await aget_nonce(request)` before rendering, because Django refuses
-  session access from async code, including from a template tag. Then verify with
-  `await averify_request(request, verifier, email=...)` and an {class}`~pyevp.AsyncVerifier`.
+In async views, call `await aget_nonce(request)` before rendering, because Django refuses
+session access from async code, including from a template tag. Then verify with
+`await averify_request(request, verifier, email=...)` and an {class}`~pyevp.AsyncVerifier`.
 
-## django-allauth
+The app also provides storage that works across workers:
 
-Override `DefaultAccountAdapter.is_email_verified`. A valid token makes the new `EmailAddress`
-verified, so no confirmation mail is sent; anything else falls back to allauth's normal flow.
+- {class}`~pyevp.contrib.django.EVPCache` keeps issuer metadata and key sets in Django's cache
+  framework. It takes a `CACHES` alias and a key prefix: `EVPCache("evp", prefix="evp:")`.
+- {class}`~pyevp.contrib.django.EVPReplayGuard` remembers accepted tokens in a database table.
+  With `ATOMIC_REQUESTS` or `AUTOCOMMIT=False` it needs a second database alias; see
+  {doc}`replay`.
 
-```{literalinclude} ../../examples/django_allauth/evp_allauth.py
-:language: python
-:start-at: "@cache"
-```
-
-Add `{% load pyevp %}` and `{% evp_token_input %}` to the signup form template. In the settings,
-add `"pyevp.contrib.django"` to `INSTALLED_APPS` and set `ACCOUNT_ADAPTER`,
-`ACCOUNT_FORMS["signup"]` and `EVP_ORIGIN` (see `examples/django_allauth/settings.py`).
-
-## Django building blocks
-
-{mod}`pyevp.contrib.django` (`pip install "pyevp[django]"`) provides the parts every Django
-integration needs:
-
-- {class}`~pyevp.contrib.django.EVPCache` shares issuer metadata and key sets between workers
-  through Django's cache framework. It takes a `CACHES` alias and a key prefix,
-  `EVPCache("evp", prefix="evp:")`, and hashes keys so that long URLs fit Memcached's key
-  limit. An evicted entry is simply fetched again.
-- {class}`~pyevp.contrib.django.EVPReplayGuard` remembers accepted tokens in a database
-  table, not in the cache. Caches evict entries before their TTL when they fill up, which would
-  let a still-valid token be accepted again; a table keeps every row until the token expires,
-  and a duplicate insert fails on the primary key even across workers. Add the app and create
-  the table:
-
-  ```python
-  INSTALLED_APPS = [..., "pyevp.contrib.django"]
-  ```
-
-  then run `manage.py migrate`. Database errors propagate, so verification fails closed.
-
-  Each record is committed in its own transaction as soon as the token is accepted, so a
-  rollback of the request cannot undo it. That is impossible inside a transaction on the same
-  database, whether an atomic block or a manual one with autocommit off, so there the guard
-  raises `RuntimeError` rather than write a record that a rollback could erase. With
-  `ATOMIC_REQUESTS` or `AUTOCOMMIT=False`, give the guard a second alias for the same
-  database; both are set per alias:
-
-  ```python
-  DATABASES["evp"] = {**DATABASES["default"], "ATOMIC_REQUESTS": False, "AUTOCOMMIT": True}
-  replay_guard = EVPReplayGuard(using="evp")
-  ```
-
-  Django's `TestCase` transactions are exempt, so tests need no extra setup.
-
-With {class}`~pyevp.AsyncVerifier`, use {class}`~pyevp.contrib.django.AsyncEVPCache` and
-{class}`~pyevp.contrib.django.AsyncEVPReplayGuard`. They keep database access off the event
-loop, where Django would raise `SynchronousOnlyOperation`.
+With an {class}`~pyevp.AsyncVerifier`, use {class}`~pyevp.contrib.django.AsyncEVPCache` and
+{class}`~pyevp.contrib.django.AsyncEVPReplayGuard`.
 
 Combined with the {doc}`standard-library adapters <transport>`, a Django project needs no
 dependency beyond PyEVP's core:
@@ -151,12 +99,30 @@ verifier = Verifier(
 )
 ```
 
+## django-allauth
+
+Override `DefaultAccountAdapter.is_email_verified`. A valid token makes the new `EmailAddress`
+verified, so no confirmation mail is sent; anything else falls back to allauth's normal flow.
+
+```{literalinclude} ../../examples/django_allauth/evp_allauth.py
+:language: python
+:start-at: "@cache"
+```
+
+Add `{% load pyevp %}` and `{% evp_token_input %}` to the signup form template. In the settings,
+add `"pyevp.contrib.django"` to `INSTALLED_APPS` and set `ACCOUNT_ADAPTER`,
+`ACCOUNT_FORMS["signup"]` and `EVP_ORIGIN` (see `examples/django_allauth/settings.py`).
+
 ## Other frameworks
 
 Anything else works the same way: issue a nonce with {class}`~pyevp.SessionNonces` into any
 session that has `get` and item assignment, render it with {func}`~pyevp.token_input`, and pass
 the hidden `evt` field to {meth}`pyevp.Verifier.verify_submission` with a `SessionNonces` for
-the same session. Create one `SessionNonces` per request. Without a server session, implement
-{class}`~pyevp.NonceStore` over a cookie, as in {doc}`spa`. Use {class}`~pyevp.Verifier` in
+the same session. Create one `SessionNonces` per request. Use {class}`~pyevp.Verifier` in
 synchronous code and {class}`~pyevp.AsyncVerifier` under asyncio, which also takes an
 {class}`~pyevp.AsyncNonceStore`.
+
+An API without server sessions, such as one that authenticates with JWTs, implements
+{class}`~pyevp.NonceStore` over a cookie instead:
+[`examples/fastapi_spa`](https://github.com/gaato/pyevp/tree/main/examples/fastapi_spa), described
+in {doc}`spa` and {doc}`password-recovery`.
