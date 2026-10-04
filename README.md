@@ -45,30 +45,43 @@ library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
 
 ## How it works
 
-1. Render a form with a fresh nonce stored in the user's session:
+1. Render a form with a nonce kept in the user's session:
+
+   ```python
+   from pyevp import SessionNonces, token_input
+
+   nonce = SessionNonces(session).issue()  # Flask, Starlette and Django sessions all work
+   ```
 
    ```html
    <input type="email" name="email" autocomplete="email">
    <input type="hidden" name="evt" autocomplete="email-verification-token" nonce="{{ nonce }}">
    ```
 
+   (`token_input(nonce)` renders the hidden input.)
+
 2. When the user picks an address, the browser fills `evt` with `<EVT>~<KB-JWT>`.
 3. On submit, verify it:
 
    ```python
-   from pyevp import Verifier, EVPError, generate_nonce
+   from pyevp import EVPError, SessionNonces, Verifier
 
    verifier = Verifier.default(audience="https://example.com")  # your origin
 
    try:
-       result = verifier.verify(form["evt"], nonce=session.pop("evp_nonce"), email=form["email"])
+       result = verifier.verify_submission(
+           form.get("evt"), nonces=SessionNonces(session), email=form["email"]
+       )
    except EVPError as exc:
        ...  # exc.code is an ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
    else:
-       result.email, result.issuer  # verified
+       if result is None:
+           ...  # no token: fall back to email confirmation
+       else:
+           result.email, result.issuer  # verified
    ```
 
-   `AsyncVerifier` has the same API with `await verifier.verify(...)`.
+   `AsyncVerifier` has the same API with `await verifier.verify_submission(...)`.
 
 Verification checks the key-binding JWT (audience, nonce, freshness, `sd_hash`, holder signature)
 before doing any I/O. It then discovers the issuer from DNS (`_email-verification.<domain>`

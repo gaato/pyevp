@@ -8,8 +8,9 @@ which has tests.
 
 ## Keeping the nonce in a cookie
 
-Hand the nonce out from an endpoint and keep a copy in an HttpOnly cookie. On submission, read it
-back from the cookie and verify the token as you would with a session nonce:
+Hand the nonce out from an endpoint and keep a copy in an HttpOnly cookie. A small
+{class}`~pyevp.NonceStore` over the cookie lets
+{meth}`~pyevp.AsyncVerifier.verify_submission` take it, as it would from a session:
 
 ```{literalinclude} ../../examples/fastapi_spa/app.py
 :language: python
@@ -18,7 +19,8 @@ back from the cookie and verify the token as you would with a session nonce:
 ```
 
 - The audience is the origin of the frontend, where the form is, not the origin of the API.
-- As with a session, consume the nonce only when a token arrived.
+- As with a session, the nonce is used up only when a token arrived and presents it. The cookie
+  holds one nonce, so a form opened in another tab replaces it.
 - The cookie is client-side state, so enable {doc}`replay protection <replay>`. Otherwise a
   captured token can be sent again together with the old cookie.
 - The frontend and the API must be on the same site, for example `app.example.com` and
@@ -26,9 +28,9 @@ back from the cookie and verify the token as you would with a session nonce:
 - When they are on different origins, the frontend sends its requests with credentials
   (`fetch(url, {credentials: "include"})`, or `withCredentials: true` in axios), and the API
   allows them with CORS: name the frontend's origin and allow credentials.
-- Other hosts on the same site can overwrite or clear the cookie. The worst they can do is make
-  the next submission fall back to your usual flow. Over HTTPS, the `__Secure-` prefix stops
-  hosts served over plain HTTP from setting it.
+- Over HTTPS, the cookie is named with the `__Host-` prefix, which requires `Secure` and
+  `Path=/` and forbids `Domain`. Other hosts on the same site, and plain HTTP, then cannot set
+  it: otherwise they could plant a nonce of their choosing.
 
 ## In the browser
 

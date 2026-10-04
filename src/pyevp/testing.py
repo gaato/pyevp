@@ -6,9 +6,10 @@ access::
     issuer = FakeIssuer()
     browser = FakeBrowser()
     verifier = make_verifier(issuer, audience="https://rp.example")
+    nonces = SessionNonces({})          # a dict stands in for the session
     token = browser.present(issuer.issue("alice@example.com", browser.public_jwk),
-                            audience="https://rp.example", nonce=nonce)
-    verifier.verify(token, nonce=nonce, email="alice@example.com")
+                            audience="https://rp.example", nonce=nonces.issue())
+    verifier.verify_submission(token, nonces=nonces, email="alice@example.com")
 """
 
 from __future__ import annotations

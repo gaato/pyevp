@@ -51,6 +51,11 @@ UrllibFetcher(require_global_addresses=False)
 `resolve_host=` replaces the resolver used for the check, for example with one that matches
 your HTTP stack's.
 
+If you only want tokens from issuers you know, such as your company's identity provider, pass
+`allowed_issuers=["accounts.example.com", ...]` to the verifier. A token naming any other
+issuer is refused with `issuer_not_allowed` before anything is looked up, so the verifier then
+only ever contacts those issuers and the hosts their metadata names.
+
 ## DNS: system resolver
 
 {mod}`pyevp.adapters.dnspython` uses the system resolver configuration. With

@@ -11,15 +11,16 @@ pip install "pyevp[dns,httpx2]"
 
 ## 1. Put a nonce on the form
 
-Generate a nonce each time you render the page, keep it in the user's session, and add two
-inputs to the form: the email field the user fills in, and a hidden field the browser fills with
-the token.
+Each time you render the page, issue a nonce into the user's session and add two inputs to the
+form: the email field the user fills in, and a hidden field the browser fills with the token.
+{class}`~pyevp.SessionNonces` works with any session that has `get` and item assignment, such
+as Flask's, Starlette's or Django's.
 
 ```python
-from pyevp import generate_nonce
+from pyevp import SessionNonces, token_input
 
-nonce = generate_nonce()
-session["evp_nonce"] = nonce
+nonce = SessionNonces(session).issue()
+hidden_input = token_input(nonce)  # HTML that Jinja and Django templates insert as is
 ```
 
 ```html
@@ -34,10 +35,11 @@ Chrome writes the token into the hidden field only when the form is submitted. B
 page scripts read an empty value, so check the token on the server, not in client-side
 validation.
 
-The session holds one nonce, so all forms on a page share it. For the same reason, only the tab
-opened last can be verified; forms in older tabs fall back to your usual flow. Storing the nonce
-gives each visitor a session, so add the inputs only to pages that have a form. An API without
-server sessions can keep the nonce in a cookie instead; see {doc}`guides/spa`.
+Use one `SessionNonces` per request: all forms on a page share the nonce of its first
+`issue()`. The session keeps the nonces of the last five pages for ten minutes, so a form in any
+open tab can be verified. Storing the nonce gives each visitor a session, so add the inputs only
+to pages that have a form. Elsewhere, implement {class}`~pyevp.NonceStore` yourself: an API
+without server sessions can keep the nonce in a cookie, for example; see {doc}`guides/spa`.
 
 ### Fitting EVP into an existing form
 
@@ -67,22 +69,27 @@ verifier.aclose()` for `AsyncVerifier`), or use it as a context manager. It clos
 Then, in the form handler:
 
 ```python
-token = form.get("evt")
-# Single use, once a token arrives; without one, the browser did not use the nonce.
-nonce = session.pop("evp_nonce", None) if token else None
-if token and nonce:
-    try:
-        result = verifier.verify(token, nonce=nonce, email=form["email"])
-    except EVPError as exc:
-        log.info("EVP rejected: %s", exc.code)  # fall back to a confirmation email
+try:
+    result = verifier.verify_submission(
+        form.get("evt"), nonces=SessionNonces(session), email=form["email"]
+    )
+except EVPError as exc:
+    log.info("EVP rejected: %s", exc.code)  # fall back to a confirmation email
+else:
+    if result is None:
+        ...  # no token: fall back to a confirmation email
     else:
         mark_verified(result.email)  # result.issuer, result.claims, ...
 ```
 
-Keeping the nonce when no token arrived matters when the page is not rendered again, for
-example a form sent with `fetch()`: its next submission still has a nonce to check.
+{meth}`~pyevp.Verifier.verify_submission` takes the nonce the token presents out of the
+session, whether or not the token then verifies, so each nonce is used once. A nonce the
+session does not hold is `nonce_mismatch`. Without a token it returns `None` and leaves the
+session alone: the browser did not use the nonce, and a form that is not rendered again, such as
+one sent with `fetch()`, still has it for its next submission.
 
-`AsyncVerifier` has the same API: `await verifier.verify(...)`.
+`AsyncVerifier` has the same API: `await verifier.verify_submission(...)`. To pass the nonce
+yourself, use {meth}`~pyevp.Verifier.verify`.
 
 `result.email` is the address the issuer asserted. Under the default profile it may differ from
 the submitted one in case. To find the account, compare addresses with
@@ -101,7 +108,7 @@ says why:
 |---|---|---|
 | {class}`~pyevp.TokenError` | Malformed, stale, mis-bound or badly signed token | `nonce_mismatch`, `token_expired`, `token_replayed` |
 | {class}`~pyevp.DiscoveryError` | The issuer could not be discovered or used | `issuer_mismatch`, `issuer_unreachable` |
-| {class}`~pyevp.PolicyError` | Not acceptable to your profile; checked before the signature, so not a sign of authenticity | `email_mismatch`, `email_not_verified` |
+| {class}`~pyevp.PolicyError` | Not acceptable to your policy; checked before the signature, so not a sign of authenticity | `email_mismatch`, `email_not_verified`, `issuer_not_allowed` |
 
 `issuer_unreachable` may be transient. Everything else means "do not trust this token".
 Exceptions from your own cache or replay guard are not `EVPError`s; they propagate unchanged,
@@ -114,7 +121,7 @@ simply try again and whether something on your side needs attention:
 
 | Code | Usually means | What to do |
 |---|---|---|
-| `nonce_mismatch` | The session expired or the form was submitted twice | Render a fresh form, or fall back |
+| `nonce_mismatch` | The session expired, the form was submitted twice, or it is older than the last five forms | Render a fresh form, or fall back |
 | `token_expired` | The user took longer than `max_token_age` to submit | Render a fresh form, or fall back |
 | `token_not_yet_valid` | Clock skew between the browser and your server | Fall back; if frequent, check your server clock |
 | `email_mismatch` | The email field was edited after picking an address | Ask the user to pick the address again |
@@ -124,6 +131,7 @@ simply try again and whether something on your side needs attention:
 | `metadata_invalid`, `key_not_found` | The issuer's metadata or keys are broken or rotating | Fall back; `pyevp discover <domain>` shows details |
 | `unsupported_alg`, `bad_type` | The issuer signs in a way your profile does not accept | Fall back; compare with `pyevp discover` |
 | `email_not_verified` | The issuer does not vouch for the address | Fall back |
+| `issuer_not_allowed` | The email provider is not in your `allowed_issuers` | Fall back |
 | `token_replayed` | The token was already accepted once | Reject; this is a resubmission or an attack |
 | `malformed_token` | The field did not contain an EVP token | Fall back; if frequent, check the form markup |
 | `issuer_mismatch`, `evt_signature_invalid`, `kb_signature_invalid`, `sd_hash_mismatch` | Forged or tampered token | Fall back and log; do not trust the address |
@@ -132,6 +140,6 @@ Codes may be added in minor releases, so treat unknown codes as "fall back".
 
 ```{important}
 If the nonce is stored client-side, in a session kept in a signed cookie such as Starlette's
-`SessionMiddleware` or in a cookie of its own, popping it does not make it single-use. Enable
-{doc}`replay protection <guides/replay>`.
+`SessionMiddleware` or in a cookie of its own, taking it out does not make it single-use: the old
+cookie can be sent again. Enable {doc}`replay protection <guides/replay>`.
 ```

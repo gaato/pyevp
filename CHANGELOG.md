@@ -6,7 +6,27 @@ see the [compatibility policy].
 
 ## [Unreleased]
 
-### Changed
+### Relying party
+
+- `Verifier.verify_submission` (and the async one) verifies the token a form submitted, taking
+  its nonce from a `NonceStore`. Without a token it returns `None` and leaves the store alone.
+  Otherwise the nonce the token presents is used up, whether or not the token verifies, and a
+  nonce the store did not issue, or that was used, is `nonce_mismatch`, reported to observers
+  before anything else is checked.
+- `SessionNonces` keeps the nonces in any session with `get` and item assignment (Flask,
+  Starlette, Django). It holds the last five for ten minutes, so forms open in several tabs can
+  all be verified, where the session used to hold one nonce and only the tab opened last
+  worked. `token_input` renders the hidden input as HTML that templates insert as is.
+- The Django helpers (`get_nonce`, `verify_request`, the template tag) are built on these, and
+  so are all the examples, which used to consume the nonce even without a token and disagreed
+  on what a missing nonce meant. The SPA example's cookie now uses the `__Host-` prefix.
+- `allowed_issuers=` on `Verifier` and `AsyncVerifier` accepts tokens only from the issuers
+  listed. Any other is refused as `PolicyError` with the new code `issuer_not_allowed`, before
+  any DNS lookup or HTTP request. The demo's own resolver wrapper is gone.
+
+### Issuer
+
+#### Changed
 
 - The issuer answers its endpoints itself, so that web frameworks only pass requests in and
   send responses back. `Issuer.issuance_response` (and `aissuance_response`) takes the
@@ -29,7 +49,7 @@ see the [compatibility policy].
   addresses the issuer would issue for, and `IssuerSite` refuses an asynchronous replay guard
   at startup.
 
-### Added
+#### Added
 
 - `Issuer.accounts_response` answers Chrome's FedCM accounts request: it checks
   `Sec-Fetch-Dest`, lists only valid addresses in `email_domains`, and is never cached.
@@ -39,7 +59,7 @@ see the [compatibility policy].
 - The Django deployment check `pyevp.W003` warns when `DATA_UPLOAD_MAX_MEMORY_SIZE` is too small
   for issuance requests.
 
-### Removed
+#### Removed
 
 - `Issuer.parse_request`, `aparse_request`, `issue` and `success_response`: there is no way to
   issue an EVT without the ownership check. `IssuanceRequest`, `IssuanceError` and

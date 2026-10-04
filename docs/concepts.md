@@ -19,7 +19,8 @@ browser's public key (`cnf.jwk`). The KB-JWT is signed with that browser key and
 
 1. **Offline checks.** It parses the token, then checks the EVT's header and claims and its
    freshness. It verifies the KB-JWT signature against `cnf.jwk`, and checks `aud`, `nonce`, `iat`
-   and `sd_hash`. It also compares the submitted email when one is given.
+   and `sd_hash`. It also compares the submitted email when one is given, and, with
+   `allowed_issuers`, refuses a token whose `iss` is not listed.
 2. **Discovery.** It looks up the DNS TXT record `_email-verification.<domain>`, which must hold
    exactly one `iss=` entry. The token's `iss` must equal that issuer.
 3. **Issuer metadata and keys.** It fetches `<issuer>/.well-known/email-verification` and then

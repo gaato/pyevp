@@ -37,16 +37,25 @@ HTTP のアダプターも入ります。`[all]` を付けると、Django 連携
 セッションに保存した nonce をフォームに埋め込んでおき、送信されたトークンを検証します。
 
 ```python
-from pyevp import Verifier, EVPError, generate_nonce
+from pyevp import EVPError, SessionNonces, Verifier, token_input
 
 verifier = Verifier.default(audience="https://example.com")  # your origin
 
+# フォームを表示するとき
+nonce = SessionNonces(session).issue()  # token_input(nonce) が hidden input を返す
+
+# 送信されたとき
 try:
-    result = verifier.verify(form["evt"], nonce=session.pop("evp_nonce"), email=form["email"])
+    result = verifier.verify_submission(
+        form.get("evt"), nonces=SessionNonces(session), email=form["email"]
+    )
 except EVPError as exc:
     ...  # exc.code is an ErrorCode, e.g. "nonce_mismatch"; fall back to email confirmation
 else:
-    result.email, result.issuer  # verified
+    if result is None:
+        ...  # トークンなし: 確認メールにフォールバック
+    else:
+        result.email, result.issuer  # verified
 ```
 
 検証に失敗すると `EVPError` が送出され、`exc.code` で理由がわかります。失敗したときは、既存の

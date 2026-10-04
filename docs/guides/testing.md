@@ -17,6 +17,9 @@ token = browser.present(
 )
 ```
 
+To exercise {meth}`~pyevp.Verifier.verify_submission` without a web framework, a plain `dict`
+stands in for the session: `nonces = SessionNonces({})`, then `nonce=nonces.issue()`.
+
 - {class}`~pyevp.testing.FakeIssuer` serves DNS records, metadata and keys to
   {func}`~pyevp.testing.make_verifier` / {func}`~pyevp.testing.make_async_verifier`. You can override
   claims and headers (`claims={"email_verified": False}`) and rotate keys. To mimic Gmail's current

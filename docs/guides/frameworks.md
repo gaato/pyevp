@@ -72,10 +72,11 @@ In the view, verify before rendering the form again:
 :start-at: "@cache"
 ```
 
-- All tags on a page share one nonce, so a page may have several forms.
-- `verify_request` returns `None` when the form carried no token, and leaves the nonce in the
-  session for the next submission. Otherwise it consumes the nonce and raises
-  {class}`~pyevp.EVPError` like {meth}`pyevp.Verifier.verify` does.
+- All tags on a page share one nonce, so a page may have several forms. The session keeps the
+  nonces of the last few pages, so forms in other tabs work too.
+- `verify_request` is {meth}`pyevp.Verifier.verify_submission` for the form's field: it returns
+  `None` when the form carried no token, and leaves the session alone. Otherwise it uses up the
+  token's nonce and raises {class}`~pyevp.EVPError` on failure.
 - In async views, call `await aget_nonce(request)` before rendering, because Django refuses
   session access from async code, including from a template tag. Then verify with
   `await averify_request(request, verifier, email=...)` and an {class}`~pyevp.AsyncVerifier`.
@@ -152,7 +153,10 @@ verifier = Verifier(
 
 ## Other frameworks
 
-Anything else works the same way: keep a nonce in the session (or, without one, in a cookie: see
-{doc}`spa`), read the hidden `evt` field,
-and call {meth}`pyevp.Verifier.verify`. Use {class}`~pyevp.Verifier` in synchronous code and
-{class}`~pyevp.AsyncVerifier` under asyncio.
+Anything else works the same way: issue a nonce with {class}`~pyevp.SessionNonces` into any
+session that has `get` and item assignment, render it with {func}`~pyevp.token_input`, and pass
+the hidden `evt` field to {meth}`pyevp.Verifier.verify_submission` with a `SessionNonces` for
+the same session. Create one `SessionNonces` per request. Without a server session, implement
+{class}`~pyevp.NonceStore` over a cookie, as in {doc}`spa`. Use {class}`~pyevp.Verifier` in
+synchronous code and {class}`~pyevp.AsyncVerifier` under asyncio, which also takes an
+{class}`~pyevp.AsyncNonceStore`.
