@@ -78,7 +78,7 @@ The container listens on port 8080.
 | `POST /verify` | Demo page with the verification result: verified email and issuer, error code and explanation (400), expired session (400), or missing-token explanation (200) |
 | `GET /robots.txt` | Allows all crawlers and names `https://<site host>/sitemap.xml` |
 | `GET /sitemap.xml` | `https://<site host>/` and `https://<site host>/demo` |
-| `GET /.well-known/web-identity` | `web_identity_document(accounts_endpoint="https://<mail host>/fedcm/accounts", login_url="https://<mail host>/login")`, `application/json` |
+| `GET /.well-known/web-identity` | `web_identity_response(accounts_endpoint="https://<mail host>/fedcm/accounts", login_url="https://<mail host>/login")`: `application/json`, `Cache-Control: public, max-age=300` |
 
 The relying-party session cookie is host-only on the site host, named `pyevp_site_session`,
 with `SameSite=Lax; Secure; HttpOnly`. It is separate from the mail host's cookie. The nonce
@@ -173,10 +173,10 @@ Paths follow `examples/issuer_fastapi`.
 | `POST /logout` | Clears the session, answers with the provider page and `Set-Login: logged-out` (plus `setStatus`) |
 | `GET /robots.txt` | Disallows all crawlers |
 | `GET /me` | `{"email": "demo@pyevp.dev" or null, "issued": <tokens issued in this session>, "build_sha": "..."}`, `Cache-Control: no-store` |
-| `GET /.well-known/email-verification` | Issuer metadata |
-| `GET /email-verification/jwks` | JWKS |
-| `GET /fedcm/accounts` | FedCM accounts: requires `Sec-Fetch-Dest: webidentity`; the signed-in address or an empty list; `Cache-Control: no-store`; no CORS headers |
-| `POST /email-verification/issuance` | Issuance, as in `examples/issuer_fastapi`. The email in the request must equal the session's address, compared case-insensitively |
+| `GET /.well-known/email-verification` | Issuer metadata, `Cache-Control: public, max-age=300` |
+| `GET /email-verification/jwks` | JWKS, `Cache-Control: public, max-age=300` |
+| `GET /fedcm/accounts` | `Issuer.accounts_response`: requires `Sec-Fetch-Dest: webidentity`; the signed-in address or an empty list; `Cache-Control: no-store`; no CORS headers |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE /email-verification/issuance` | `Issuer.aissuance_response`, as in `examples/issuer_fastapi`: only a `POST` can succeed, and the email in the request must equal the session's address, compared case-insensitively. `issued` counts successes |
 
 Every response on the mail host, including `/healthz` and errors, carries
 `X-Robots-Tag: noindex`, and the provider page also has `<meta name="robots" content="noindex">`.

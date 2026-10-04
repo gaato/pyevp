@@ -65,13 +65,12 @@ from pyevp.adapters.dnspython import AsyncDnsPythonResolver
 from pyevp.cache import InMemoryCache
 from pyevp.discovery import canonical_issuer
 from pyevp.issuer import (
-    FEDCM_FETCH_DEST,
-    IssuanceError,
-    IssuanceErrorCode,
+    MAX_REQUEST_BODY,
     Issuer,
+    IssuerResponse,
     SigningKey,
-    accounts_document,
-    web_identity_document,
+    login_status_headers,
+    web_identity_response,
 )
 from pyevp.ports import system_clock
 from pyevp.profile import IssuerFormat
@@ -81,7 +80,8 @@ ISSUANCE_PATH = "/email-verification/issuance"
 JWKS_PATH = "/email-verification/jwks"
 ACCOUNTS_PATH = "/fedcm/accounts"
 LOGIN_PATH = "/login"
-MAX_BODY = 16 * 1024
+# The issuer answers every method itself; HEAD and OPTIONS are left to the framework.
+ISSUANCE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 SESSION_USER = "email"
 SESSION_NONCE = "evp_nonce"
 HERE = Path(__file__).resolve().parent
@@ -337,9 +337,9 @@ def _site_app(
         )
 
     @site.get("/.well-known/web-identity")
-    async def web_identity() -> JSONResponse:
-        return JSONResponse(
-            web_identity_document(
+    async def web_identity() -> Response:
+        return _response(
+            web_identity_response(
                 accounts_endpoint=issuer.issuer + ACCOUNTS_PATH,
                 login_url=issuer.issuer + LOGIN_PATH,
             )
@@ -348,21 +348,40 @@ def _site_app(
     return site
 
 
-async def _issuance(request: Request, issuer: Issuer) -> Response:
-    body = await request.body()
-    headers = [(k.decode("latin-1"), v.decode("latin-1")) for k, v in request.headers.raw]
-    try:
-        if len(body) > MAX_BODY:
-            raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
-        parsed = await issuer.aparse_request(method=request.method, headers=headers, body=body)
-        email = request.session.get(SESSION_USER)
-        if email is None or email.casefold() != parsed.email.casefold():
-            raise IssuanceError.authentication_required()
-        result = issuer.success_response(issuer.issue(parsed))
-        request.session["issued"] = request.session.get("issued", 0) + 1
-    except IssuanceError as exc:
-        result = exc.to_response()
+def _user_emails(request: Request) -> list[str]:
+    email = request.session.get(SESSION_USER)
+    return [email] if email else []
+
+
+async def _read_body(request: Request) -> bytes:
+    """The body, but no more of it than the issuer accepts."""
+    length = request.headers.get("content-length", "")
+    if len(length) > 9 or (
+        length.isascii() and length.isdigit() and int(length) > MAX_REQUEST_BODY
+    ):
+        return b""  # refused from Content-Length
+    body = b""
+    async for chunk in request.stream():
+        body += chunk[: MAX_REQUEST_BODY + 1 - len(body)]
+        if len(body) > MAX_REQUEST_BODY:
+            break
+    return body
+
+
+def _response(result: IssuerResponse) -> Response:
     return Response(result.body, status_code=result.status, headers=result.headers)
+
+
+async def _issuance(request: Request, issuer: Issuer) -> Response:
+    result = await issuer.aissuance_response(
+        method=request.method,
+        headers=request.headers.items(),
+        body=await _read_body(request) if request.method == "POST" else b"",
+        user_emails=_user_emails(request),
+    )
+    if result.status == 200:
+        request.session["issued"] = request.session.get("issued", 0) + 1
+    return _response(result)
 
 
 def _mail_app(
@@ -395,14 +414,16 @@ def _mail_app(
             return JSONResponse({"error": "forbidden"}, status_code=403, headers=NO_STORE)
         request.session.clear()
         request.session.update({SESSION_USER: email, "issued": 0})
-        return HTMLResponse(pages["logged-in"], headers={**NO_STORE, "Set-Login": "logged-in"})
+        headers = {**NO_STORE, **login_status_headers(signed_in=True)}
+        return HTMLResponse(pages["logged-in"], headers=headers)
 
     @mail.post("/logout")
     async def logout(request: Request) -> Response:
         if request.headers.get("sec-fetch-site", "same-origin") != "same-origin":
             return JSONResponse({"error": "forbidden"}, status_code=403, headers=NO_STORE)
         request.session.clear()
-        return HTMLResponse(pages["logged-out"], headers={**NO_STORE, "Set-Login": "logged-out"})
+        headers = {**NO_STORE, **login_status_headers(signed_in=False)}
+        return HTMLResponse(pages["logged-out"], headers=headers)
 
     @mail.get("/robots.txt")
     async def robots() -> PlainTextResponse:
@@ -420,23 +441,21 @@ def _mail_app(
         )
 
     @mail.get("/.well-known/email-verification")
-    async def metadata() -> JSONResponse:
-        return JSONResponse(issuer.metadata_document())
+    async def metadata() -> Response:
+        return _response(issuer.metadata_response())
 
     @mail.get(JWKS_PATH)
-    async def jwks() -> JSONResponse:
-        return JSONResponse(issuer.jwks_document())
+    async def jwks() -> Response:
+        return _response(issuer.jwks_response())
 
     @mail.get(ACCOUNTS_PATH)
-    async def accounts(request: Request) -> JSONResponse:
-        if request.headers.get("sec-fetch-dest") != FEDCM_FETCH_DEST:
-            return JSONResponse({"error": "not a FedCM request"}, status_code=400, headers=NO_STORE)
-        user = request.session.get(SESSION_USER)
-        if user is None:
-            return JSONResponse({"accounts": []}, status_code=401, headers=NO_STORE)
-        return JSONResponse(accounts_document([user]), headers=NO_STORE)
+    async def accounts(request: Request) -> Response:
+        result = issuer.accounts_response(
+            headers=request.headers.items(), user_emails=_user_emails(request)
+        )
+        return _response(result)
 
-    @mail.post(ISSUANCE_PATH)
+    @mail.api_route(ISSUANCE_PATH, methods=ISSUANCE_METHODS)
     async def issuance(request: Request) -> Response:
         return await _issuance(request, issuer)
 

@@ -34,7 +34,7 @@ from verification_trace import (
 from pyevp import AsyncVerifier, ErrorCode, EVPError, InMemoryReplayGuard, VerifiedEmail, Verifier
 from pyevp.adapters import httpx as httpx_adapter
 from pyevp.cache import InMemoryCache
-from pyevp.issuer import Issuer, SigningKey
+from pyevp.issuer import MAX_REQUEST_BODY, Issuer, SigningKey
 from pyevp.profile import DEFAULT_PROFILE
 from pyevp.testing import (
     AsyncInMemoryDns,
@@ -156,6 +156,7 @@ def test_web_identity(client: TestClient) -> None:
         "accounts_endpoint": MAIL + site.ACCOUNTS_PATH,
         "login_url": MAIL + site.LOGIN_PATH,
     }
+    assert response.headers["cache-control"] == "public, max-age=300"
     assert client.get("/.well-known/web-identity").status_code == 404
 
 
@@ -166,7 +167,9 @@ def test_metadata_and_jwks(client: TestClient, issuer: Issuer) -> None:
     assert response.json() == issuer.metadata_document()
     assert response.json()["issuer"] == MAIL
     assert response.json()["issuance_endpoint"] == MAIL + site.ISSUANCE_PATH
+    assert response.headers["cache-control"] == "public, max-age=300"
     response = client.get(site.JWKS_PATH)
+    assert response.headers["cache-control"] == "public, max-age=300"
     assert response.headers["content-type"] == "application/json"
     assert response.json() == issuer.jwks_document()
     assert "d" not in response.json()["keys"][0]
@@ -343,11 +346,19 @@ def test_unsigned_and_oversized_requests(client: TestClient) -> None:
     assert response.json()["error"] == "invalid_signature"
     assert response.headers["signature-error"] == "error=invalid_signature"
     assert "private-request-detail" not in response.text
-    response = client.post(site.ISSUANCE_PATH, content=b"private-request-detail" * site.MAX_BODY)
+    response = client.post(site.ISSUANCE_PATH, content=b"private-request-detail" * MAX_REQUEST_BODY)
     assert response.status_code == 400
     assert response.json()["error"] == "invalid_request"
     assert response.headers["cache-control"] == "no-store"
     assert "private-request-detail" not in response.text
+
+
+def test_issuance_refuses_other_methods(client: TestClient) -> None:
+    client.post("/login")
+    response = client.get(site.ISSUANCE_PATH)
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_request"
+    assert client.get("/me").json()["issued"] == 0
 
 
 @pytest.mark.parametrize("missing", ["key", "secret"])
