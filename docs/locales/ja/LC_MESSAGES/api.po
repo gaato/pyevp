@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 16:48+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -46,6 +46,10 @@ msgstr "メソッドがコルーチンの {class}`Cache` です。イベント�
 #: of pyevp.cache.AsyncCache:3
 msgid ":class:`~pyevp.AsyncVerifier` accepts either kind."
 msgstr "{class}`~pyevp.AsyncVerifier` はどちらの種類も受け付けます。"
+
+#: of pyevp.nonce.AsyncNonceStore:1
+msgid ":class:`NonceStore` with asynchronous methods."
+msgstr "メソッドが非同期の {class}`NonceStore` です。"
 
 #: of pyevp.verifier.AsyncVerifier:1
 msgid "Asynchronous verifier (FastAPI, Starlette, Django async views)."
@@ -94,16 +98,18 @@ msgstr ""
 #: pyevp.issuer.keys.SigningKey.private_jwk pyevp.issuer.keys.public_jwk
 #: pyevp.issuer.profile.IssuanceProfile.chrome_153
 #: pyevp.issuer.profile.IssuanceProfile.draft_hardt_02
-#: pyevp.issuer.profile.IssuanceProfile.replace pyevp.nonce.generate_nonce
-#: pyevp.nonce.nonces_equal pyevp.ports.JsonFetcher.fetch_json
-#: pyevp.ports.TxtResolver.resolve_txt pyevp.profile.Profile.compat_2026_10
-#: pyevp.profile.Profile.draft_hardt_02 pyevp.profile.Profile.emails_match
-#: pyevp.profile.Profile.named pyevp.profile.Profile.replace
-#: pyevp.replay.ReplayGuard.mark_used
+#: pyevp.issuer.profile.IssuanceProfile.replace pyevp.nonce.NonceStore.issue
+#: pyevp.nonce.NonceStore.take pyevp.nonce.generate_nonce
+#: pyevp.nonce.nonces_equal pyevp.nonce.token_input
+#: pyevp.ports.JsonFetcher.fetch_json pyevp.ports.TxtResolver.resolve_txt
+#: pyevp.profile.Profile.compat_2026_10 pyevp.profile.Profile.draft_hardt_02
+#: pyevp.profile.Profile.emails_match pyevp.profile.Profile.named
+#: pyevp.profile.Profile.replace pyevp.replay.ReplayGuard.mark_used
 #: pyevp.testing.FakeBrowser.issuance_request
 #: pyevp.testing.FakeIssuer.gmail_like pyevp.testing.FakeIssuer.issue
 #: pyevp.testing.make_verifier pyevp.token.build_kb pyevp.token.sign_jwt
 #: pyevp.verifier.AsyncVerifier.default pyevp.verifier.AsyncVerifier.verify
+#: pyevp.verifier.AsyncVerifier.verify_submission
 #: pyevp.verifier.Verifier.default pyevp.verifier.Verifier.verify
 msgid "Return type"
 msgstr "戻り値の型"
@@ -121,6 +127,14 @@ msgstr "渡されたポートは呼び出し側のものなので、呼び出し
 #: of pyevp.verifier.AsyncVerifier.verify:1
 msgid "Async counterpart of :meth:`Verifier.verify`."
 msgstr "{meth}`Verifier.verify` の非同期版です。"
+
+#: of pyevp.verifier.AsyncVerifier.verify_submission:1
+msgid "Async counterpart of :meth:`Verifier.verify_submission`."
+msgstr "{meth}`Verifier.verify_submission` の非同期版です。"
+
+#: of pyevp.verifier.AsyncVerifier.verify_submission:3
+msgid "``nonces`` may be synchronous or asynchronous."
+msgstr "``nonces`` は同期でも非同期でもかまいません。"
 
 #: of pyevp.cache.Cache:1
 msgid "Key/value store for decoded JSON documents."
@@ -223,6 +237,18 @@ msgstr "通信エラー、200 以外のレスポンス、不正な JSON の場�
 msgid "Log one line per verification to the ``pyevp`` logger (or ``logger``)."
 msgstr "検証 1 回につき 1 行を ``pyevp`` ロガー（または ``logger``）に記録します。"
 
+#: of pyevp.nonce.NonceStore:1
+msgid "Where the nonces a user was shown are kept until a token presents one."
+msgstr "ユーザーに表示した nonce を、トークンがそれを提示するまで保管しておく場所です。"
+
+#: of pyevp.nonce.NonceStore.issue:1
+msgid "A nonce to put on the forms of the page being rendered."
+msgstr "描画中のページのフォームに埋め込む nonce です。"
+
+#: of pyevp.nonce.NonceStore.take:1
+msgid "Forget ``nonce`` and return whether it was issued and is still unused."
+msgstr "``nonce`` を記録から消し、それが発行済みでまだ使われていなかったかどうかを返します。"
+
 #: of pyevp.cache.NullCache:1
 msgid "A cache that stores nothing: every verification fetches metadata and keys."
 msgstr "何も保存しないキャッシュです。検証のたびにメタデータと鍵を取得します。"
@@ -230,10 +256,10 @@ msgstr "何も保存しないキャッシュです。検証のたびにメタデ
 #: of pyevp.errors.PolicyError:1
 msgid ""
 "The token does not satisfy the relying party's policy "
-"(``email_mismatch``, ...)."
-msgstr "トークンが RP のポリシーを満たしていません（``email_mismatch`` など）。"
+"(``email_mismatch``, ``issuer_not_allowed``, ...)."
+msgstr "トークンが RP のポリシーを満たしていません（``email_mismatch``、``issuer_not_allowed`` など）。"
 
-#: of pyevp.errors.PolicyError:3
+#: of pyevp.errors.PolicyError:4
 msgid ""
 "Checked offline, before the issuer's signature, so it says nothing about "
 "whether the token is authentic."
@@ -300,6 +326,42 @@ msgstr "``expires_at`` まで ``key`` を記憶します。"
 msgid "Return ``True`` if the key was not already present, ``False`` otherwise."
 msgstr "キーがまだ記録されていなかった場合は ``True``、記録済みの場合は ``False`` を返します。"
 
+#: of pyevp.nonce.SessionNonces:1
+msgid "Keeps a user's unused nonces in their session."
+msgstr "ユーザーの未使用の nonce を、そのユーザーのセッションに保管します。"
+
+#: of pyevp.nonce.SessionNonces:3
+msgid ""
+"Works with any session that has ``get`` and item assignment: Flask's "
+"``session``, Starlette's ``request.session``, Django's "
+"``request.session``, or a plain ``dict``. Up to ``limit`` nonces are kept"
+" for ``ttl``, so that forms open in several tabs can all be verified; the"
+" oldest give way first.  The session holds them as ``[[nonce, issued_at],"
+" ...]`` under ``key``, which serialises as JSON."
+msgstr ""
+"``get`` と要素への代入に対応したセッションであれば、どれでも使えます。Flask の ``session``、Starlette の "
+"``request.session``、Django の ``request.session``、またはただの ``dict`` などです。最大 "
+"``limit`` 個の nonce を ``ttl`` "
+"の間保管するので、複数のタブで開いたフォームをどれも検証できます。上限を超えると古いものから捨てます。セッションには ``key`` の下に "
+"``[[nonce, issued_at], ...]`` の形で保存するので、JSON にシリアライズできます。"
+
+#: of pyevp.nonce.SessionNonces:9
+msgid ""
+"Use one instance per request: the forms on a page share the nonce of its "
+"first :meth:`issue`."
+msgstr "インスタンスはリクエストごとに 1 つ使ってください。ページ上のフォームは、最初の {meth}`issue` で得た nonce を共有します。"
+
+#: of pyevp.nonce.SessionNonces:12
+msgid ""
+"With a session kept in a signed cookie (the default in Flask and "
+"Starlette), an attacker can send the old cookie again with a captured "
+"token, so taking the nonce does not stop a replay; a replay guard does "
+"(see :doc:`/guides/replay`)."
+msgstr ""
+"署名付き Cookie に保存するセッション（Flask と Starlette の既定）では、攻撃者が盗んだトークンと一緒に古い Cookie "
+"を再送できるので、nonce を取り出してもリプレイは防げません。リプレイを防ぐのはリプレイガードです（{doc}`/guides/replay`"
+" を参照）。"
+
 #: of pyevp.errors.TokenError:1
 msgid "The presented token is malformed, stale, mis-bound or badly signed."
 msgstr "提示されたトークンの形式が不正か、期限切れか、バインディングが誤っているか、署名が不正です。"
@@ -352,6 +414,17 @@ msgstr ""
 "注入したポートとキャッシュがスレッドセーフであれば、スレッドセーフです。コンテキストマネージャーで、抜けると {meth}`close` "
 "を呼びます。"
 
+#: of pyevp.verifier.Verifier:6
+msgid ""
+"``allowed_issuers``, when given, are the only issuers whose tokens are "
+"accepted, as ``https://`` + host or as a host; any other is "
+"``issuer_not_allowed``, refused before anything is looked up.  An empty "
+"collection accepts no token."
+msgstr ""
+"``allowed_issuers`` を指定すると、トークンを受け付けるのはそこに挙げた発行者だけになります。発行者は ``https://``"
+" + ホスト、またはホストだけで指定します。それ以外の発行者は ``issuer_not_allowed`` "
+"となり、何も問い合わせないうちに拒否します。空のコレクションを渡すと、どのトークンも受け付けません。"
+
 #: of pyevp.verifier.Verifier.default:3
 msgid ""
 "``resolver`` and ``fetcher`` default to those adapters, which "
@@ -369,35 +442,41 @@ msgid "Parameters"
 msgstr "パラメータ"
 
 #: of pyevp.verifier.Verifier.verify:3
-msgid "the nonce this server put on the form (from the session)."
-msgstr "このサーバーがフォームに埋め込んだ nonce（セッションから取り出したもの）。"
+msgid ""
+"the nonce this server put on the form.  To take it from where you kept "
+"it, use :meth:`verify_submission` instead."
+msgstr ""
+"このサーバーがフォームに埋め込んだ nonce。保管しておいた場所から nonce を取り出させるには、代わりに "
+"{meth}`verify_submission` を使ってください。"
 
-#: of pyevp.verifier.Verifier.verify:4
+#: of pyevp.verifier.Verifier.verify:5
 msgid ""
 "the address the user submitted; checked against the token.  Pass ``None``"
 " explicitly to skip the check and use the asserted address instead."
 msgstr "ユーザーが送信したアドレス。トークンと照合します。明示的に ``None`` を渡すと照合を省き、代わりにトークンが表明するアドレスを使います。"
 
-#: of pyevp.verifier.Verifier.verify:6
+#: of pyevp.verifier.Verifier.verify:7
 msgid "override the configured origin (multi-host deployments)."
 msgstr "設定したオリジンを上書きします（複数のホストで運用する場合）。"
 
-#: of pyevp.verifier.Verifier.verify
+#: ../../api.md of pyevp.verifier.Verifier.verify
 msgid "Raises"
 msgstr "例外"
 
-#: of pyevp.verifier.Verifier.verify:7
+#: of pyevp.verifier.Verifier.verify:8
 msgid "the token is malformed, stale, mis-bound or badly signed."
 msgstr "トークンの形式が不正か、古いか、バインディングが誤っているか、署名が不正です。"
 
-#: of pyevp.verifier.Verifier.verify:8
+#: of pyevp.verifier.Verifier.verify:9
 msgid ""
-"the token does not satisfy the profile, e.g. it asserts another address."
-"  Raised before the issuer's signature is checked, so it says nothing "
-"about authenticity."
-msgstr "トークンがプロファイルを満たしていません（たとえば別のアドレスを表明している）。発行者の署名を確認する前に送出するため、本物かどうかは示しません。"
+"the token does not satisfy your policy, e.g. it asserts another address "
+"or comes from an issuer outside ``allowed_issuers``.  Raised before the "
+"issuer's signature is checked, so it says nothing about authenticity."
+msgstr ""
+"トークンがポリシーを満たしていません（たとえば別のアドレスを表明している、または ``allowed_issuers`` "
+"に無い発行者のものである）。発行者の署名を確認する前に送出するため、本物かどうかは示しません。"
 
-#: of pyevp.verifier.Verifier.verify:11
+#: of pyevp.verifier.Verifier.verify:12
 msgid ""
 "the issuer could not be used.  ``ISSUER_UNREACHABLE`` means its DNS or "
 "HTTPS failed and may be transient; other codes mean its records, metadata"
@@ -406,15 +485,52 @@ msgstr ""
 "発行者を利用できません。``ISSUER_UNREACHABLE`` は DNS か HTTPS "
 "が失敗したことを示し、一時的な障害の可能性があります。ほかのコードは、レコード、メタデータ、鍵のいずれかが使えないことを示します。"
 
-#: of pyevp.verifier.Verifier.verify:14
+#: of pyevp.verifier.Verifier.verify:15
 msgid ""
 "anything raised by the cache or the replay guard, unchanged: a failure of"
 " your own infrastructure, not a verdict on the token."
 msgstr "キャッシュやリプレイガードが送出した例外は、そのまま伝わります。トークンの判定ではなく、自分の基盤の障害です。"
 
-#: of pyevp.verifier.Verifier.verify:17
+#: of pyevp.verifier.Verifier.verify:18
 msgid "Any :class:`~pyevp.EVPError` means \"do not trust this token\"."
 msgstr "{class}`~pyevp.EVPError` はどれも「このトークンを信頼してはいけない」という意味です。"
+
+#: of pyevp.verifier.Verifier.verify_submission:1
+msgid "Verify the token a form submitted, taking its nonce from ``nonces``."
+msgstr "フォームが送信したトークンを、``nonces`` から nonce を取り出して検証します。"
+
+#: of pyevp.verifier.Verifier.verify_submission:3
+msgid ""
+"Returns ``None`` when ``token`` is empty: the browser does not support "
+"EVP, or the email provider does not issue tokens.  Fall back to your "
+"usual flow, such as a confirmation email; ``nonces`` is left as it was."
+msgstr ""
+"``token`` が空なら ``None`` を返します。ブラウザーが EVP "
+"に対応していないか、メールプロバイダーがトークンを発行していない場合です。確認メールなど、通常の手順にフォールバックしてください。``nonces``"
+" は変更しません。"
+
+#: of pyevp.verifier.Verifier.verify_submission:7
+msgid ""
+"Otherwise the nonce the token presents is taken from ``nonces``, even if "
+"the token then fails, and the token is checked as by :meth:`verify`.  A "
+"nonce that ``nonces`` did not issue, or that was used already, is "
+"``nonce_mismatch``."
+msgstr ""
+"それ以外の場合は、トークンが提示する nonce を ``nonces`` "
+"から取り出し（そのあとトークンの検証に失敗しても戻しません）、{meth}`verify` と同じようにトークンを確認します。``nonces``"
+" が発行していない nonce や、すでに使われた nonce は ``nonce_mismatch`` になります。"
+
+#: of pyevp.verifier.Verifier.verify_submission:11
+msgid "the submitted field, as is."
+msgstr "送信されたフィールドの値。加工せずにそのまま渡します。"
+
+#: of pyevp.verifier.Verifier.verify_submission:12
+msgid "as for :meth:`verify`."
+msgstr "{meth}`verify` と同じです。"
+
+#: of pyevp.verifier.Verifier.verify_submission:13
+msgid "as :meth:`verify` does."
+msgstr "{meth}`verify` と同じ場合に送出します。"
 
 #: of pyevp._email.emails_match:1
 msgid "Whether two addresses name the same mailbox under ``comparison``."
@@ -439,6 +555,20 @@ msgstr "``nbytes`` バイト（16 以上）のエントロピーを持つ URL �
 #: of pyevp.nonce.nonces_equal:1
 msgid "Compare two nonces in constant time."
 msgstr "2 つの nonce を定数時間で比較します。"
+
+#: of pyevp.nonce.token_input:1
+msgid ""
+"The hidden input that receives the browser's token, for a form in your "
+"page."
+msgstr "ページ内のフォームに置く、ブラウザーからトークンを受け取る hidden の入力欄です。"
+
+#: of pyevp.nonce.token_input:3
+msgid ""
+"Name the submitted ``field`` when reading the token.  The result is HTML "
+"that Jinja and Django templates insert as is."
+msgstr ""
+"トークンは、``field`` に指定した名前で送信されたフィールドから読み取ってください。戻り値は、Jinja と Django "
+"のテンプレートがそのまま挿入する HTML です。"
 
 #: ../../api.md:15
 msgid "The profile verifiers use unless told otherwise: ``compat-2026-10``."
@@ -539,11 +669,15 @@ msgid ""
 " the only hosts ever contacted are derived from DNS, never from the "
 "token. With ``replay_protection`` the token is marked as used once "
 "everything else has passed, so that garbage tokens cannot fill the replay"
-" store."
+" store.  With ``allowed_issuers`` (canonical ``https://`` + host), a "
+"token naming any other issuer is refused offline; DNS must later delegate"
+" the same issuer."
 msgstr ""
 "順序には意味があります。オフラインで確認できること（鍵バインディングの署名を含む）はすべて、ネットワークのエフェクトを要求する前に確認します。また、接続するホストは常に"
 " DNS から導出し、トークンから取ることはありません。``replay_protection`` "
-"がある場合は、ほかのチェックをすべて通ったあとでトークンを使用済みとして記録します。こうして、不正なトークンでリプレイ用のストアが埋まらないようにしています。"
+"がある場合は、ほかのチェックをすべて通ったあとでトークンを使用済みとして記録します。こうして、不正なトークンでリプレイ用のストアが埋まらないようにしています。``allowed_issuers``（正規化された"
+" ``https://`` + ホスト）がある場合は、ほかの発行者を名乗るトークンをオフラインで拒否します。そのうえで、DNS "
+"もあとで同じ発行者に委任している必要があります。"
 
 #: of pyevp.core.verify_evt_signature:1
 msgid "Verify the EVT signature against an issuer JWK Set."
@@ -1021,62 +1155,51 @@ msgstr "このページのフォームに使う nonce を返し、セッショ�
 #: of pyevp.contrib.django.get_nonce:3
 #, python-brace-format, python-format
 msgid ""
-"The session holds one nonce, so all forms rendered in a request share it:"
-" the first call creates it and later calls return the same value.  "
-"Opening the page in another tab replaces it, and the older tab's forms "
-"then fall back to your usual flow.  ``{% evp_token_input %}`` calls this "
-"for you."
+"All forms rendered in a request share one nonce: the first call creates "
+"it and later calls return the same value.  The session keeps the nonces "
+"of the last few pages a user opened (see :class:`~pyevp.SessionNonces`), "
+"so a form in any of their tabs can be verified.  ``{% evp_token_input "
+"%}`` calls this for you."
 msgstr ""
-"セッションに置ける nonce は 1 つなので、1 回のリクエストで描画するフォームはすべて同じ nonce "
-"を共有します。最初の呼び出しで生成し、以降の呼び出しは同じ値を返します。別のタブでページを開くと置き換わり、前のタブのフォームは通常の手順にフォールバックします。``{%"
-" evp_token_input %}`` はこれを内部で呼びます。"
+"1 回のリクエストで描画するフォームは、すべて 1 つの nonce "
+"を共有します。最初の呼び出しで生成し、以降の呼び出しは同じ値を返します。セッションはユーザーが最近開いた数ページ分の nonce "
+"を保管するので（{class}`~pyevp.SessionNonces` を参照）、どのタブのフォームでも検証できます。``{% "
+"evp_token_input %}`` はこれを内部で呼びます。"
 
 #: of pyevp.contrib.django.get_nonce:8
 msgid ""
-"It replaces the nonce in the session, so in a view that handles a "
-"submission, call :func:`verify_request` before rendering a form again."
-msgstr ""
-"セッションの nonce を置き換えるので、送信を処理するビューでは、フォームを再描画する前に {func}`verify_request` "
-"を呼んでください。"
-
-#: of pyevp.contrib.django.get_nonce:11
-msgid ""
-"Every call writes the session, so render the token input only on pages "
-"that have a form: anywhere else it gives each visitor a session for "
-"nothing."
-msgstr "呼ぶたびにセッションに書き込むので、トークンの入力欄はフォームのあるページにだけ描画してください。ほかのページでは、訪問者ごとに不要なセッションができるだけです。"
+"The first call in a request writes the session, so render the token input"
+" only on pages that have a form: anywhere else it gives each visitor a "
+"session for nothing."
+msgstr "リクエストの中で最初に呼んだときにセッションに書き込むので、トークンの入力欄はフォームのあるページにだけ描画してください。ほかのページでは、訪問者ごとに不要なセッションができるだけです。"
 
 #: of pyevp.contrib.django.verify_request:1
 msgid "Verify the token that a form submitted, if it carried one."
 msgstr "フォームがトークンを送信していれば検証します。"
 
 #: of pyevp.contrib.django.verify_request:3
+#, python-brace-format, python-format
 msgid ""
-"Returns ``None`` when the ``field`` is empty: the browser does not "
-"support EVP, or the email provider does not issue tokens.  The nonce then"
-" stays in the session, so a form that is not rendered again (one sent "
-"with ``fetch()``) can still be verified on the next submission."
+":meth:`pyevp.Verifier.verify_submission` for the ``field`` of a form "
+"whose nonce came from :func:`get_nonce` or ``{% evp_token_input %}``.  "
+"Returns ``None`` when the field is empty: the browser does not support "
+"EVP, or the email provider does not issue tokens.  Otherwise the token's "
+"nonce is used up, and :class:`~pyevp.EVPError` is raised on failure; a "
+"nonce the session does not hold, for example because it expired, is "
+"``nonce_mismatch``."
 msgstr ""
-"``field`` が空なら ``None`` を返します。ブラウザーが EVP "
-"に対応していないか、メールプロバイダーがトークンを発行していない場合です。このとき nonce "
-"はセッションに残るので、再描画しないフォーム（``fetch()`` で送るものなど）でも次の送信で検証できます。"
-
-#: of pyevp.contrib.django.verify_request:8
-msgid ""
-"Otherwise the nonce is consumed and the token checked with "
-":meth:`pyevp.Verifier.verify`, which raises :class:`~pyevp.EVPError` on "
-"failure.  If the session has no nonce, for example because it expired, "
-"that is ``nonce_mismatch``."
-msgstr ""
-"それ以外の場合は nonce を消費し、{meth}`pyevp.Verifier.verify` でトークンを確認します。失敗すると "
-"{class}`~pyevp.EVPError` を送出します。セッション切れなどでセッションに nonce が無ければ "
+"{func}`get_nonce` または ``{% evp_token_input %}`` で nonce を埋め込んだフォームの "
+"``field`` に対する {meth}`pyevp.Verifier.verify_submission` です。フィールドが空なら "
+"``None`` を返します。ブラウザーが EVP "
+"に対応していないか、メールプロバイダーがトークンを発行していない場合です。それ以外の場合はトークンの nonce を消費し、失敗すると "
+"{class}`~pyevp.EVPError` を送出します。期限切れなどでセッションが保持していない nonce は "
 "``nonce_mismatch`` になります。"
 
-#: of pyevp.contrib.django.verify_request:13
+#: of pyevp.contrib.django.verify_request:10
 msgid "the address the user submitted, as for :meth:`~pyevp.Verifier.verify`."
 msgstr "ユーザーが送信したアドレス。{meth}`~pyevp.Verifier.verify` と同じです。"
 
-#: of pyevp.contrib.django.verify_request:14
+#: of pyevp.contrib.django.verify_request:11
 #, python-brace-format, python-format
 msgid "the name of the hidden input (``{% evp_token_input field=... %}``)."
 msgstr "hidden フィールドの名前（``{% evp_token_input field=... %}``）。"
@@ -1672,4 +1795,41 @@ msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につない�
 
 #~ msgid "Where the request ended"
 #~ msgstr "Where the request ended"
+
+#~ msgid ""
+#~ "It replaces the nonce in the "
+#~ "session, so in a view that handles"
+#~ " a submission, call :func:`verify_request` "
+#~ "before rendering a form again."
+#~ msgstr ""
+#~ "セッションの nonce を置き換えるので、送信を処理するビューでは、フォームを再描画する前に "
+#~ "{func}`verify_request` を呼んでください。"
+
+#~ msgid ""
+#~ "Returns ``None`` when the ``field`` is"
+#~ " empty: the browser does not support"
+#~ " EVP, or the email provider does "
+#~ "not issue tokens.  The nonce then "
+#~ "stays in the session, so a form"
+#~ " that is not rendered again (one "
+#~ "sent with ``fetch()``) can still be "
+#~ "verified on the next submission."
+#~ msgstr ""
+#~ "``field`` が空なら ``None`` を返します。ブラウザーが EVP "
+#~ "に対応していないか、メールプロバイダーがトークンを発行していない場合です。このとき nonce "
+#~ "はセッションに残るので、再描画しないフォーム（``fetch()`` で送るものなど）でも次の送信で検証できます。"
+
+#~ msgid ""
+#~ "Otherwise the nonce is consumed and "
+#~ "the token checked with "
+#~ ":meth:`pyevp.Verifier.verify`, which raises "
+#~ ":class:`~pyevp.EVPError` on failure.  If the"
+#~ " session has no nonce, for example"
+#~ " because it expired, that is "
+#~ "``nonce_mismatch``."
+#~ msgstr ""
+#~ "それ以外の場合は nonce を消費し、{meth}`pyevp.Verifier.verify` "
+#~ "でトークンを確認します。失敗すると {class}`~pyevp.EVPError` "
+#~ "を送出します。セッション切れなどでセッションに nonce が無ければ "
+#~ "``nonce_mismatch`` になります。"
 

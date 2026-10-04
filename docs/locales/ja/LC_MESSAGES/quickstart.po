@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 15:03+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -43,15 +43,20 @@ msgid "1. Put a nonce on the form"
 msgstr "1\\. フォームに nonce を埋め込む"
 
 #: ../../quickstart.md:14
+#, python-brace-format
 msgid ""
-"Generate a nonce each time you render the page, keep it in the user's "
-"session, and add two inputs to the form: the email field the user fills "
-"in, and a hidden field the browser fills with the token."
+"Each time you render the page, issue a nonce into the user's session and "
+"add two inputs to the form: the email field the user fills in, and a "
+"hidden field the browser fills with the token. "
+"{class}`~pyevp.SessionNonces` works with any session that has `get` and "
+"item assignment, such as Flask's, Starlette's or Django's."
 msgstr ""
-"ページを描画するたびに nonce を生成してユーザーのセッションに保存し、フォームに入力欄を 2 "
-"つ追加します。ユーザーが入力するメールアドレス欄と、ブラウザーがトークンを書き込む hidden フィールドです。"
+"ページを描画するたびにユーザーのセッションへ nonce を発行し、フォームに入力欄を 2 "
+"つ追加します。ユーザーが入力するメールアドレス欄と、ブラウザーがトークンを書き込む hidden "
+"フィールドです。{class}`~pyevp.SessionNonces` は、Flask、Starlette、Django "
+"のものなど、`get` と要素への代入に対応したセッションであれば使えます。"
 
-#: ../../quickstart.md:30
+#: ../../quickstart.md:31
 msgid ""
 "The `nonce` must be a content attribute in the HTML. Frameworks that set "
 "it as a DOM property are not picked up by the browser. React 19 renders "
@@ -60,7 +65,7 @@ msgstr ""
 "`nonce` は HTML のコンテンツ属性として書く必要があります。フレームワークが DOM "
 "プロパティとして設定した場合、ブラウザーはそれを読み取りません。React 19 は `nonce` prop をコンテンツ属性として描画します。"
 
-#: ../../quickstart.md:33
+#: ../../quickstart.md:34
 msgid ""
 "Chrome writes the token into the hidden field only when the form is "
 "submitted. Before that, page scripts read an empty value, so check the "
@@ -69,26 +74,29 @@ msgstr ""
 "Chrome がトークンを hidden "
 "フィールドに書き込むのは、フォームを送信するときだけです。それまではページのスクリプトから読んでも空の値なので、トークンはクライアント側のバリデーションではなくサーバーで確認してください。"
 
-#: ../../quickstart.md:37
+#: ../../quickstart.md:38
 #, python-brace-format
 msgid ""
-"The session holds one nonce, so all forms on a page share it. For the "
-"same reason, only the tab opened last can be verified; forms in older "
-"tabs fall back to your usual flow. Storing the nonce gives each visitor a"
-" session, so add the inputs only to pages that have a form. An API "
-"without server sessions can keep the nonce in a cookie instead; see "
-"{doc}`guides/spa`."
+"Use one `SessionNonces` per request: all forms on a page share the nonce "
+"of its first `issue()`. The session keeps the nonces of the last five "
+"pages for ten minutes, so a form in any open tab can be verified. Storing"
+" the nonce gives each visitor a session, so add the inputs only to pages "
+"that have a form. Elsewhere, implement {class}`~pyevp.NonceStore` "
+"yourself: an API without server sessions can keep the nonce in a cookie, "
+"for example; see {doc}`guides/spa`."
 msgstr ""
-"セッションに置ける nonce は 1 つなので、同じページのフォームはすべて同じ nonce "
-"を共有します。同じ理由で、検証できるのは最後に開いたタブだけです。それより前に開いたタブのフォームは、通常の手順にフォールバックします。nonce"
-" を保存すると訪問者ごとにセッションができるので、入力欄はフォームのあるページにだけ追加してください。サーバーセッションの無い API "
-"では、代わりに nonce を Cookie に置けます。{doc}`guides/spa` を参照してください。"
+"`SessionNonces` はリクエストごとに 1 つ使ってください。ページ上のフォームはすべて、最初の `issue()` で得た "
+"nonce を共有します。セッションは直近 5 ページ分の nonce を 10 "
+"分間保管するので、開いているどのタブのフォームでも検証できます。nonce "
+"を保存すると訪問者ごとにセッションができるので、入力欄はフォームのあるページにだけ追加してください。セッションを使わない場合は、{class}`~pyevp.NonceStore`"
+" を自分で実装します。たとえば、サーバーセッションの無い API なら nonce を Cookie "
+"に置けます。{doc}`guides/spa` を参照してください。"
 
-#: ../../quickstart.md:42
+#: ../../quickstart.md:44
 msgid "Fitting EVP into an existing form"
 msgstr "既存のフォームに組み込む"
 
-#: ../../quickstart.md:44
+#: ../../quickstart.md:46
 msgid ""
 "The email field needs `autocomplete=\"email\"`. With "
 "`autocomplete=\"off\"` the browser does not offer verified addresses."
@@ -96,7 +104,7 @@ msgstr ""
 "メールアドレス欄には `autocomplete=\"email\"` が必要です。`autocomplete=\"off\"` "
 "にすると、ブラウザーは確認済みのアドレスを候補に出しません。"
 
-#: ../../quickstart.md:46
+#: ../../quickstart.md:48
 msgid ""
 "Leave the field empty. Chrome asks the email provider for a token only "
 "after the user types an address or picks one from autofill, so a pre-"
@@ -105,7 +113,7 @@ msgstr ""
 "欄は空のままにしてください。Chrome "
 "がメールプロバイダーにトークンを求めるのは、ユーザーがアドレスを入力するか自動入力から選んだときだけです。あらかじめ値を入れておくと、トークンは送られません。"
 
-#: ../../quickstart.md:48
+#: ../../quickstart.md:50
 msgid ""
 "Submit through the form. The token is filled in as part of the form's "
 "submission, so a script that sends the fields with `fetch()` from a click"
@@ -117,15 +125,15 @@ msgstr ""
 "で各欄を送るスクリプトにはトークンが入りません。代わりにフォームの `submit` ハンドラーから、`evt` "
 "フィールドも含めて送信します。サーバーがフォームの値を読むなら `FormData` で送ります。"
 
-#: ../../quickstart.md:53
+#: ../../quickstart.md:55
 msgid "2. Verify on submit"
 msgstr "2\\. 送信時に検証する"
 
-#: ../../quickstart.md:55
+#: ../../quickstart.md:57
 msgid "Create the verifier once, with your origin as the audience:"
 msgstr "`Verifier` は一度だけ作成し、audience には自分のサイトのオリジンを指定します。"
 
-#: ../../quickstart.md:63
+#: ../../quickstart.md:65
 msgid ""
 "The verifier keeps an HTTP client open. On shutdown, call "
 "`verifier.close()` (`await verifier.aclose()` for `AsyncVerifier`), or "
@@ -136,24 +144,37 @@ msgstr ""
 "では `await verifier.aclose()`）を呼ぶか、コンテキストマネージャーとして使ってください。閉じるのは "
 "`default()` が作ったものだけです。自分で渡したリゾルバー、フェッチャー、HTTP クライアントは自分で閉じてください。"
 
-#: ../../quickstart.md:67
+#: ../../quickstart.md:69
 msgid "Then, in the form handler:"
 msgstr "そして、フォームのハンドラーで次のように検証します。"
 
-#: ../../quickstart.md:82
-msgid ""
-"Keeping the nonce when no token arrived matters when the page is not "
-"rendered again, for example a form sent with `fetch()`: its next "
-"submission still has a nonce to check."
-msgstr ""
-"トークンが届かなかったときに nonce を残しておくのは、ページを再描画しない場合のためです。たとえば `fetch()` "
-"で送るフォームでも、次の送信で確認に使う nonce が残ります。"
-
 #: ../../quickstart.md:85
-msgid "`AsyncVerifier` has the same API: `await verifier.verify(...)`."
-msgstr "`AsyncVerifier` も同じ API で、`await verifier.verify(...)` のように使います。"
+#, python-brace-format
+msgid ""
+"{meth}`~pyevp.Verifier.verify_submission` takes the nonce the token "
+"presents out of the session, whether or not the token then verifies, so "
+"each nonce is used once. A nonce the session does not hold is "
+"`nonce_mismatch`. Without a token it returns `None` and leaves the "
+"session alone: the browser did not use the nonce, and a form that is not "
+"rendered again, such as one sent with `fetch()`, still has it for its "
+"next submission."
+msgstr ""
+"{meth}`~pyevp.Verifier.verify_submission` は、トークンが提示する nonce "
+"をセッションから取り出します。トークンの検証に成功しても失敗しても取り出すので、どの nonce も 1 回しか使えません。セッションに無い "
+"nonce は `nonce_mismatch` になります。トークンが無ければ `None` を返し、セッションには手を付けません。ブラウザーは"
+" nonce を使っていないので、`fetch()` で送るフォームのように再描画しないフォームでも、次の送信でその nonce を使えます。"
 
-#: ../../quickstart.md:87
+#: ../../quickstart.md:91
+#, python-brace-format
+msgid ""
+"`AsyncVerifier` has the same API: `await "
+"verifier.verify_submission(...)`. To pass the nonce yourself, use "
+"{meth}`~pyevp.Verifier.verify`."
+msgstr ""
+"`AsyncVerifier` も同じ API で、`await verifier.verify_submission(...)` "
+"のように使います。nonce を自分で渡すには {meth}`~pyevp.Verifier.verify` を使います。"
+
+#: ../../quickstart.md:94
 #, python-brace-format
 msgid ""
 "`result.email` is the address the issuer asserted. Under the default "
@@ -169,11 +190,11 @@ msgstr ""
 "でアドレスを比較してください。検証と同じ規則で比較します。ローカル部は大文字と小文字を区別せず、ドメインは DNS "
 "名として比較するので、`faß.example` と `fass.example` は別のものとして扱われます。"
 
-#: ../../quickstart.md:95
+#: ../../quickstart.md:102
 msgid "3. Handle failures"
 msgstr "3\\. 失敗に対処する"
 
-#: ../../quickstart.md:97
+#: ../../quickstart.md:104
 #, python-brace-format
 msgid ""
 "A rejected token raises a subclass of {class}`pyevp.EVPError` whose "
@@ -227,15 +248,15 @@ msgstr "{class}`~pyevp.PolicyError`"
 
 #: ../../quickstart.md
 msgid ""
-"Not acceptable to your profile; checked before the signature, so not a "
+"Not acceptable to your policy; checked before the signature, so not a "
 "sign of authenticity"
-msgstr "プロファイルの条件を満たさない（署名より前に確認するため、本物であることは意味しない）"
+msgstr "ポリシーで受け付けない（署名より前に確認するため、本物であることは意味しない）"
 
 #: ../../quickstart.md
-msgid "`email_mismatch`, `email_not_verified`"
-msgstr "`email_mismatch`, `email_not_verified`"
+msgid "`email_mismatch`, `email_not_verified`, `issuer_not_allowed`"
+msgstr "`email_mismatch`, `email_not_verified`, `issuer_not_allowed`"
 
-#: ../../quickstart.md:106
+#: ../../quickstart.md:113
 msgid ""
 "`issuer_unreachable` may be transient. Everything else means \"do not "
 "trust this token\". Exceptions from your own cache or replay guard are "
@@ -249,7 +270,7 @@ msgstr ""
 "`EVPError` ではなく、そのまま伝わるので、自分の側の障害がトークンの拒否に見えることはありません。EVP "
 "はプログレッシブエンハンスメントなので、トークンがないときや拒否されたときは、既存の検証フローにフォールバックしてください。"
 
-#: ../../quickstart.md:112
+#: ../../quickstart.md:119
 msgid ""
 "Whatever the code, the safe default is the fallback. The codes tell you "
 "whether the user can simply try again and whether something on your side "
@@ -273,8 +294,10 @@ msgid "`nonce_mismatch`"
 msgstr "`nonce_mismatch`"
 
 #: ../../quickstart.md
-msgid "The session expired or the form was submitted twice"
-msgstr "セッションが切れた、またはフォームが二重に送信された"
+msgid ""
+"The session expired, the form was submitted twice, or it is older than "
+"the last five forms"
+msgstr "セッションが切れた、フォームが二重に送信された、または直近 5 つより古いフォームから送信された"
 
 #: ../../quickstart.md
 msgid "Render a fresh form, or fall back"
@@ -381,6 +404,14 @@ msgid "The issuer does not vouch for the address"
 msgstr "発行者がそのアドレスを保証していない"
 
 #: ../../quickstart.md
+msgid "`issuer_not_allowed`"
+msgstr "`issuer_not_allowed`"
+
+#: ../../quickstart.md
+msgid "The email provider is not in your `allowed_issuers`"
+msgstr "メールプロバイダーが `allowed_issuers` に含まれていない"
+
+#: ../../quickstart.md
 msgid "`token_replayed`"
 msgstr "`token_replayed`"
 
@@ -420,20 +451,32 @@ msgstr "トークンが偽造または改ざんされている"
 msgid "Fall back and log; do not trust the address"
 msgstr "フォールバックしてログに記録する。アドレスは信頼しない"
 
-#: ../../quickstart.md:131
+#: ../../quickstart.md:139
 msgid ""
 "Codes may be added in minor releases, so treat unknown codes as \"fall "
 "back\"."
 msgstr "マイナーリリースでコードが追加されることがあるので、未知のコードは「フォールバックする」として扱ってください。"
 
-#: ../../quickstart.md:134
+#: ../../quickstart.md:142
 #, python-brace-format
 msgid ""
 "If the nonce is stored client-side, in a session kept in a signed cookie "
-"such as Starlette's `SessionMiddleware` or in a cookie of its own, "
-"popping it does not make it single-use. Enable {doc}`replay protection "
-"<guides/replay>`."
+"such as Starlette's `SessionMiddleware` or in a cookie of its own, taking"
+" it out does not make it single-use: the old cookie can be sent again. "
+"Enable {doc}`replay protection <guides/replay>`."
 msgstr ""
 "nonce をクライアント側に保存している場合、つまり Starlette の `SessionMiddleware` のような署名付き "
-"Cookie のセッションや、nonce 専用の Cookie に置いている場合は、取り出しても使い捨てにはなりません。{doc}`リプレイ対策 "
-"<guides/replay>` を有効にしてください。"
+"Cookie のセッションや、nonce 専用の Cookie に置いている場合は、取り出しても使い捨てにはなりません。古い Cookie "
+"をもう一度送れるためです。{doc}`リプレイ対策 <guides/replay>` を有効にしてください。"
+
+#~ msgid ""
+#~ "Keeping the nonce when no token "
+#~ "arrived matters when the page is "
+#~ "not rendered again, for example a "
+#~ "form sent with `fetch()`: its next "
+#~ "submission still has a nonce to "
+#~ "check."
+#~ msgstr ""
+#~ "トークンが届かなかったときに nonce を残しておくのは、ページを再描画しない場合のためです。たとえば "
+#~ "`fetch()` で送るフォームでも、次の送信で確認に使う nonce が残ります。"
+

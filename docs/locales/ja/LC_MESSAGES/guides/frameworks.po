@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 11:05+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -130,22 +130,28 @@ msgid "In the view, verify before rendering the form again:"
 msgstr "ビューでは、フォームを再描画する前に検証します。"
 
 #: ../../guides/frameworks.md:75
-msgid "All tags on a page share one nonce, so a page may have several forms."
-msgstr "同じページのタグはすべて 1 つの nonce を共有するので、1 ページに複数のフォームを置けます。"
+msgid ""
+"All tags on a page share one nonce, so a page may have several forms. The"
+" session keeps the nonces of the last few pages, so forms in other tabs "
+"work too."
+msgstr ""
+"同じページのタグはすべて 1 つの nonce を共有するので、1 ページに複数のフォームを置けます。セッションは直近の数ページ分の nonce "
+"を保管するので、ほかのタブのフォームも検証できます。"
 
-#: ../../guides/frameworks.md:76
+#: ../../guides/frameworks.md:77
 #, python-brace-format
 msgid ""
-"`verify_request` returns `None` when the form carried no token, and "
-"leaves the nonce in the session for the next submission. Otherwise it "
-"consumes the nonce and raises {class}`~pyevp.EVPError` like "
-"{meth}`pyevp.Verifier.verify` does."
+"`verify_request` is {meth}`pyevp.Verifier.verify_submission` for the "
+"form's field: it returns `None` when the form carried no token, and "
+"leaves the session alone. Otherwise it uses up the token's nonce and "
+"raises {class}`~pyevp.EVPError` on failure."
 msgstr ""
-"`verify_request` は、フォームにトークンが無ければ `None` を返し、nonce "
-"は次の送信のためにセッションに残します。トークンがあれば nonce を消費し、失敗すると "
-"{meth}`pyevp.Verifier.verify` と同じく {class}`~pyevp.EVPError` を送出します。"
+"`verify_request` は、フォームのフィールドに対する "
+"{meth}`pyevp.Verifier.verify_submission` です。フォームにトークンが無ければ `None` "
+"を返し、セッションには手を付けません。トークンがあれば nonce を消費し、失敗すると {class}`~pyevp.EVPError` "
+"を送出します。"
 
-#: ../../guides/frameworks.md:79
+#: ../../guides/frameworks.md:80
 #, python-brace-format
 msgid ""
 "In async views, call `await aget_nonce(request)` before rendering, "
@@ -158,11 +164,11 @@ msgstr ""
 "averify_request(request, verifier, email=...)` と "
 "{class}`~pyevp.AsyncVerifier` を使います。"
 
-#: ../../guides/frameworks.md:83
+#: ../../guides/frameworks.md:84
 msgid "django-allauth"
 msgstr "django-allauth"
 
-#: ../../guides/frameworks.md:85
+#: ../../guides/frameworks.md:86
 msgid ""
 "Override `DefaultAccountAdapter.is_email_verified`. A valid token makes "
 "the new `EmailAddress` verified, so no confirmation mail is sent; "
@@ -172,7 +178,7 @@ msgstr ""
 "`EmailAddress` が検証済みになり、確認メールは送信されません。それ以外の場合は allauth "
 "の通常のフローにフォールバックします。"
 
-#: ../../guides/frameworks.md:93
+#: ../../guides/frameworks.md:94
 #, python-brace-format, python-format
 msgid ""
 "Add `{% load pyevp %}` and `{% evp_token_input %}` to the signup form "
@@ -185,11 +191,11 @@ msgstr ""
 "を追加し、`ACCOUNT_ADAPTER`、`ACCOUNT_FORMS[\"signup\"]`、`EVP_ORIGIN` "
 "を設定します（`examples/django_allauth/settings.py` を参照してください）。"
 
-#: ../../guides/frameworks.md:97
+#: ../../guides/frameworks.md:98
 msgid "Django building blocks"
 msgstr "Django 向けの部品"
 
-#: ../../guides/frameworks.md:99
+#: ../../guides/frameworks.md:100
 #, python-brace-format
 msgid ""
 "{mod}`pyevp.contrib.django` (`pip install \"pyevp[django]\"`) provides "
@@ -198,7 +204,7 @@ msgstr ""
 "{mod}`pyevp.contrib.django`（`pip install \"pyevp[django]\"`）は、どの Django "
 "統合にも必要な次の部品を提供します。"
 
-#: ../../guides/frameworks.md:102
+#: ../../guides/frameworks.md:103
 #, python-brace-format
 msgid ""
 "{class}`~pyevp.contrib.django.EVPCache` shares issuer metadata and key "
@@ -212,7 +218,7 @@ msgstr ""
 "のエイリアスとキーのプレフィックスを受け取り（`EVPCache(\"evp\", prefix=\"evp:\")`）、長い URL でも "
 "Memcached のキー長の上限に収まるようにキーをハッシュ化します。キャッシュから追い出されたエントリーは、単に取得し直されます。"
 
-#: ../../guides/frameworks.md:106
+#: ../../guides/frameworks.md:107
 #, python-brace-format
 msgid ""
 "{class}`~pyevp.contrib.django.EVPReplayGuard` remembers accepted tokens "
@@ -226,7 +232,7 @@ msgstr ""
 "は、受理したトークンをキャッシュではなくデータベースのテーブルに記録します。キャッシュは満杯になると TTL "
 "より前にエントリーを追い出すため、まだ有効なトークンが再び受理されてしまうおそれがあります。テーブルならトークンの有効期限が切れるまですべての行が残り、重複した挿入はワーカーをまたいでも主キー制約で失敗します。アプリを追加し、テーブルを作成します。"
 
-#: ../../guides/frameworks.md:116
+#: ../../guides/frameworks.md:117
 msgid ""
 "then run `manage.py migrate`. Database errors propagate, so verification "
 "fails closed."
@@ -234,7 +240,7 @@ msgstr ""
 "続けて `manage.py migrate` を実行します。データベースのエラーはそのまま伝播するため、検証は安全側に倒れて失敗します（fail"
 " closed）。"
 
-#: ../../guides/frameworks.md:118
+#: ../../guides/frameworks.md:119
 msgid ""
 "Each record is committed in its own transaction as soon as the token is "
 "accepted, so a rollback of the request cannot undo it. That is impossible"
@@ -250,11 +256,11 @@ msgstr ""
 "`RuntimeError` を送出します。`ATOMIC_REQUESTS` や `AUTOCOMMIT=False` "
 "を使っている場合は、同じデータベースを指す別のエイリアスをガードに渡してください。どちらの設定もエイリアスごとに指定します。"
 
-#: ../../guides/frameworks.md:130
+#: ../../guides/frameworks.md:131
 msgid "Django's `TestCase` transactions are exempt, so tests need no extra setup."
 msgstr "Django の `TestCase` のトランザクションは対象外なので、テストに追加の設定は必要ありません。"
 
-#: ../../guides/frameworks.md:132
+#: ../../guides/frameworks.md:133
 #, python-brace-format
 msgid ""
 "With {class}`~pyevp.AsyncVerifier`, use "
@@ -269,7 +275,7 @@ msgstr ""
 "を使います。これらはデータベースへのアクセスをイベントループの外で行います。イベントループ上でアクセスすると、Django が "
 "`SynchronousOnlyOperation` を送出するためです。"
 
-#: ../../guides/frameworks.md:136
+#: ../../guides/frameworks.md:137
 #, python-brace-format
 msgid ""
 "Combined with the {doc}`standard-library adapters <transport>`, a Django "
@@ -278,20 +284,45 @@ msgstr ""
 "{doc}`標準ライブラリのアダプター <transport>` と組み合わせれば、Django プロジェクトに PyEVP "
 "のコア以外の依存は必要ありません。"
 
-#: ../../guides/frameworks.md:153
+#: ../../guides/frameworks.md:154
 msgid "Other frameworks"
 msgstr "その他のフレームワーク"
 
-#: ../../guides/frameworks.md:155
+#: ../../guides/frameworks.md:156
 #, python-brace-format
 msgid ""
-"Anything else works the same way: keep a nonce in the session (or, "
-"without one, in a cookie: see {doc}`spa`), read the hidden `evt` field, "
-"and call {meth}`pyevp.Verifier.verify`. Use {class}`~pyevp.Verifier` in "
-"synchronous code and {class}`~pyevp.AsyncVerifier` under asyncio."
+"Anything else works the same way: issue a nonce with "
+"{class}`~pyevp.SessionNonces` into any session that has `get` and item "
+"assignment, render it with {func}`~pyevp.token_input`, and pass the "
+"hidden `evt` field to {meth}`pyevp.Verifier.verify_submission` with a "
+"`SessionNonces` for the same session. Create one `SessionNonces` per "
+"request. Without a server session, implement {class}`~pyevp.NonceStore` "
+"over a cookie, as in {doc}`spa`. Use {class}`~pyevp.Verifier` in "
+"synchronous code and {class}`~pyevp.AsyncVerifier` under asyncio, which "
+"also takes an {class}`~pyevp.AsyncNonceStore`."
 msgstr ""
-"ほかのフレームワークでも手順は同じです。nonce をセッション（セッションが無ければ Cookie。{doc}`spa` "
-"を参照）に保存し、hidden フィールド `evt` を読み取って、{meth}`pyevp.Verifier.verify` "
-"を呼び出します。同期コードでは {class}`~pyevp.Verifier` を、asyncio 上では "
+"ほかのフレームワークでも同じ方法で使えます。`get` と要素への代入に対応したセッションに "
+"{class}`~pyevp.SessionNonces` で nonce を発行し、{func}`~pyevp.token_input` "
+"で描画します。送信された hidden の `evt` フィールドは、同じセッションに対する `SessionNonces` と一緒に "
+"{meth}`pyevp.Verifier.verify_submission` に渡します。`SessionNonces` はリクエストごとに "
+"1 つ作成してください。サーバーセッションが無い場合は、{doc}`spa` のように Cookie を使う "
+"{class}`~pyevp.NonceStore` を実装します。同期のコードでは {class}`~pyevp.Verifier` "
+"を、asyncio では {class}`~pyevp.AsyncNonceStore` も受け付ける "
 "{class}`~pyevp.AsyncVerifier` を使います。"
+
+#~ msgid ""
+#~ "Anything else works the same way: "
+#~ "keep a nonce in the session (or,"
+#~ " without one, in a cookie: see "
+#~ "{doc}`spa`), read the hidden `evt` "
+#~ "field, and call {meth}`pyevp.Verifier.verify`. "
+#~ "Use {class}`~pyevp.Verifier` in synchronous "
+#~ "code and {class}`~pyevp.AsyncVerifier` under "
+#~ "asyncio."
+#~ msgstr ""
+#~ "ほかのフレームワークでも手順は同じです。nonce をセッション（セッションが無ければ "
+#~ "Cookie。{doc}`spa` を参照）に保存し、hidden フィールド `evt` "
+#~ "を読み取って、{meth}`pyevp.Verifier.verify` を呼び出します。同期コードでは "
+#~ "{class}`~pyevp.Verifier` を、asyncio 上では "
+#~ "{class}`~pyevp.AsyncVerifier` を使います。"
 

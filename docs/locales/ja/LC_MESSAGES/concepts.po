@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:48+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -77,13 +77,15 @@ msgid ""
 "**Offline checks.** It parses the token, then checks the EVT's header and"
 " claims and its freshness. It verifies the KB-JWT signature against "
 "`cnf.jwk`, and checks `aud`, `nonce`, `iat` and `sd_hash`. It also "
-"compares the submitted email when one is given."
+"compares the submitted email when one is given, and, with "
+"`allowed_issuers`, refuses a token whose `iss` is not listed."
 msgstr ""
 "**オフラインでの確認**。トークンをパースし、EVT のヘッダーとクレーム、鮮度を確認します。KB-JWT の署名を `cnf.jwk` "
 "で検証し、`aud`、`nonce`、`iat`、`sd_hash` "
-"を確認します。送信されたメールアドレスが渡されていれば、それとの一致も確認します。"
+"を確認します。送信されたメールアドレスが渡されていれば、それとの一致も確認します。`allowed_issuers` がある場合は、`iss` "
+"がそこに挙がっていないトークンを拒否します。"
 
-#: ../../concepts.md:23
+#: ../../concepts.md:24
 msgid ""
 "**Discovery.** It looks up the DNS TXT record `_email-"
 "verification.<domain>`, which must hold exactly one `iss=` entry. The "
@@ -92,7 +94,7 @@ msgstr ""
 "**ディスカバリー**。DNS の TXT レコード `_email-verification.<domain>` を引きます。このレコードには "
 "`iss=` のエントリーがちょうど 1 つなければなりません。トークンの `iss` はその発行者と一致する必要があります。"
 
-#: ../../concepts.md:25
+#: ../../concepts.md:26
 msgid ""
 "**Issuer metadata and keys.** It fetches `<issuer>/.well-known/email-"
 "verification` and then the `jwks_uri` it names. These are cached. If no "
@@ -104,25 +106,25 @@ msgstr ""
 "を取得します。これらはキャッシュされます。どの鍵でもトークンを検証できなかった場合は、鍵がローテーションされた可能性を考えて、レート制限をかけたうえで"
 " 1 回だけ鍵を取得し直します。"
 
-#: ../../concepts.md:28
+#: ../../concepts.md:29
 msgid "**EVT signature.**"
 msgstr "**EVT の署名**。"
 
-#: ../../concepts.md:29
+#: ../../concepts.md:30
 msgid "**Replay protection**, if enabled."
 msgstr "**リプレイ対策**（有効な場合）。"
 
-#: ../../concepts.md:31
+#: ../../concepts.md:32
 msgid ""
 "Everything that can be checked without the network is checked first. The "
 "only hosts ever contacted are derived from DNS, never from the token."
 msgstr "ネットワークを使わずに確認できることは、すべて先に確認します。接続するホストは常に DNS から導き出し、トークンの内容から決めることはありません。"
 
-#: ../../concepts.md:34
+#: ../../concepts.md:35
 msgid "Sans-I/O core"
 msgstr "Sans-I/O のコア"
 
-#: ../../concepts.md:36
+#: ../../concepts.md:37
 #, python-brace-format
 msgid ""
 "The verification logic in {mod}`pyevp.core` performs no I/O. It is a "
@@ -137,53 +139,53 @@ msgstr ""
 " *yield* し、その結果を受け取ります。ドライバーである {class}`pyevp.Verifier` と "
 "{class}`pyevp.AsyncVerifier` は、注入された *ポート* を通じてそのリクエストに応えるだけです。"
 
-#: ../../concepts.md:41
+#: ../../concepts.md:42
 #, python-brace-format
 msgid "{class}`~pyevp.TxtResolver`"
 msgstr "{class}`~pyevp.TxtResolver`"
 
-#: ../../concepts.md:42
+#: ../../concepts.md:43
 #, python-brace-format
 msgid "{class}`~pyevp.JsonFetcher`"
 msgstr "{class}`~pyevp.JsonFetcher`"
 
-#: ../../concepts.md:43
+#: ../../concepts.md:44
 #, python-brace-format
 msgid "{class}`~pyevp.ReplayGuard`"
 msgstr "{class}`~pyevp.ReplayGuard`"
 
-#: ../../concepts.md:44
+#: ../../concepts.md:45
 msgid "their async counterparts"
 msgstr "それぞれの非同期版"
 
-#: ../../concepts.md:46
+#: ../../concepts.md:47
 msgid "As a result:"
 msgstr "その結果、次のことができます。"
 
-#: ../../concepts.md:48
+#: ../../concepts.md:49
 msgid ""
 "the same logic serves synchronous Django views and asynchronous FastAPI "
 "endpoints;"
 msgstr "同じロジックで、同期の Django ビューにも非同期の FastAPI エンドポイントにも対応できます。"
 
-#: ../../concepts.md:49
+#: ../../concepts.md:50
 msgid ""
 "DNS, HTTP, caches and replay stores can be swapped without touching "
 "verification;"
 msgstr "検証ロジックに手を入れずに、DNS、HTTP、キャッシュ、リプレイストアを差し替えられます。"
 
-#: ../../concepts.md:50
+#: ../../concepts.md:51
 #, python-brace-format
 msgid ""
 "tests can drive the generator by hand or plug in the fakes from "
 "{mod}`pyevp.testing`."
 msgstr "テストでは、ジェネレーターを手で動かすことも、{mod}`pyevp.testing` のフェイクを差し込むこともできます。"
 
-#: ../../concepts.md:54
+#: ../../concepts.md:55
 msgid "Profiles"
 msgstr "プロファイル"
 
-#: ../../concepts.md:56
+#: ../../concepts.md:57
 #, python-brace-format
 msgid ""
 "The protocol is still moving, and deployed issuers lag behind the drafts."
@@ -219,7 +221,7 @@ msgstr "`draft-hardt-02`"
 msgid "Strict reading of draft-hardt-email-verification -02"
 msgstr "draft-hardt-email-verification -02 を厳密に解釈する"
 
-#: ../../concepts.md:73
+#: ../../concepts.md:74
 msgid ""
 "Following a spec change usually means adding a new preset rather than "
 "changing an existing one, so that you can choose when to switch. Run "
@@ -229,3 +231,4 @@ msgstr ""
 "仕様の変更には、既存のプリセットを変えるのではなく、新しいプリセットを追加して追従するのが基本です。こうすることで、切り替える時期を利用者が選べます。`pyevp"
 " discover <domain> --profile <name>` "
 "を実行すると、あるプロファイルのもとで発行者がどう扱われるかを確認できます。"
+

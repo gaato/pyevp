@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 00:46+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -35,6 +35,17 @@ msgstr ""
 #: ../../guides/testing.md:20
 #, python-brace-format
 msgid ""
+"To exercise {meth}`~pyevp.Verifier.verify_submission` without a web "
+"framework, a plain `dict` stands in for the session: `nonces = "
+"SessionNonces({})`, then `nonce=nonces.issue()`."
+msgstr ""
+"Web フレームワークを使わずに {meth}`~pyevp.Verifier.verify_submission` "
+"を試すときは、セッションの代わりにただの `dict` を使えます。`nonces = SessionNonces({})` "
+"としてから、`nonce=nonces.issue()` を渡します。"
+
+#: ../../guides/testing.md:23
+#, python-brace-format
+msgid ""
 "{class}`~pyevp.testing.FakeIssuer` serves DNS records, metadata and keys "
 "to {func}`~pyevp.testing.make_verifier` / "
 "{func}`~pyevp.testing.make_async_verifier`. You can override claims and "
@@ -49,12 +60,12 @@ msgstr ""
 "が現在ドラフトから外れている点を再現するには、{meth}`FakeIssuer.gmail_like() "
 "<pyevp.testing.FakeIssuer.gmail_like>` を使います。"
 
-#: ../../guides/testing.md:24
+#: ../../guides/testing.md:27
 #, python-brace-format
 msgid "{class}`~pyevp.testing.FixedClock` controls time for freshness tests."
 msgstr "{class}`~pyevp.testing.FixedClock` で、鮮度のテスト用に時刻を制御できます。"
 
-#: ../../guides/testing.md:25
+#: ../../guides/testing.md:28
 msgid ""
 "To test your handlers, inject the verifier through your framework's "
 "dependency mechanism, e.g. `app.dependency_overrides` in FastAPI or "
@@ -64,7 +75,7 @@ msgstr ""
 "`app.dependency_overrides`、Django なら `monkeypatch` "
 "を使います。サンプルのテストに両方の例があります。"
 
-#: ../../guides/testing.md:29
+#: ../../guides/testing.md:32
 msgid ""
 "The verification core can also be driven by hand. That is useful when "
 "writing your own driver:"

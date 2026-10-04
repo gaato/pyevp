@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 11:05+0900\n"
+"POT-Creation-Date: 2026-10-04 17:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -61,11 +61,11 @@ msgid ""
 "uncompressed, compressed ones are refused, and bodies are size-capped."
 msgstr "どちらのライブラリのクライアントも明示的に渡せます。たとえばコネクションプールを共有したり、プロキシを設定したりする場合です（`HttpxFetcher(httpx2.Client(...))`）。クライアントがリダイレクトに従う設定になっていても、リダイレクトには決して従いません。レスポンスは非圧縮で要求し、圧縮されたレスポンスは拒否し、ボディのサイズには上限を設けます。"
 
-#: ../../guides/transport.md:26
+#: ../../guides/transport.md:28
 msgid "Private networks (SSRF)"
 msgstr "プライベートネットワーク（SSRF）"
 
-#: ../../guides/transport.md:28
+#: ../../guides/transport.md:30
 msgid ""
 "The issuer host comes from a DNS record that anyone can publish for their"
 " own domain, and the key set's location from that issuer's metadata. "
@@ -76,7 +76,7 @@ msgstr ""
 "レコードから、鍵セットの場所はその発行者のメタデータから得られます。何も対策しなければ、細工したトークンによって、サーバーが自身のネットワーク内へリクエストを送らされるおそれがあります。PyEVP"
 " は次の 2 か所でこれを防ぎます。"
 
-#: ../../guides/transport.md:32
+#: ../../guides/transport.md:34
 msgid ""
 "Discovery refuses issuer hosts and metadata URLs that are IP literals, "
 "single-label names or special-use names (`localhost`, `.local`, "
@@ -86,7 +86,7 @@ msgstr ""
 "アドレスのリテラル、単一ラベルの名前、特殊用途の名前（`localhost`、`.local`、`.home.arpa`、`.internal`）である発行者のホストやメタデータの"
 " URL を拒否します。"
 
-#: ../../guides/transport.md:34
+#: ../../guides/transport.md:36
 msgid ""
 "The fetchers resolve each host before connecting and refuse it unless "
 "every address is globally routable (no loopback, private, link-local or "
@@ -95,7 +95,7 @@ msgstr ""
 "HTTP "
 "フェッチャーは接続前に各ホストの名前を解決し、すべてのアドレスがグローバルにルーティング可能でなければ拒否します（ループバック、プライベート、リンクローカル、ユニークローカルのアドレスは不可）。"
 
-#: ../../guides/transport.md:37
+#: ../../guides/transport.md:39
 msgid ""
 "The HTTP library resolves the name again when it connects, so a DNS "
 "server that answers differently the second time (DNS rebinding) is not "
@@ -106,13 +106,13 @@ msgstr ""
 "リバインディング）は検出できません。これが問題になる場合は、このポリシーを自ら強制する外向き通信用のプロキシ（egress "
 "proxy）を経由してリクエストを送ってください。"
 
-#: ../../guides/transport.md:41
+#: ../../guides/transport.md:43
 msgid ""
 "Behind such a proxy, or to reach an issuer on a private network during "
 "development, turn the address check off:"
 msgstr "そのようなプロキシの背後で動かす場合や、開発中にプライベートネットワーク上の発行者に接続する場合は、アドレスのチェックを無効にします。"
 
-#: ../../guides/transport.md:49
+#: ../../guides/transport.md:51
 msgid ""
 "`resolve_host=` replaces the resolver used for the check, for example "
 "with one that matches your HTTP stack's."
@@ -120,11 +120,24 @@ msgstr ""
 "`resolve_host=` で、このチェックに使うリゾルバーを差し替えられます。たとえば、利用している HTTP "
 "スタックと同じリゾルバーを使えます。"
 
-#: ../../guides/transport.md:52
+#: ../../guides/transport.md:54
+msgid ""
+"If you only want tokens from issuers you know, such as your company's "
+"identity provider, pass `allowed_issuers=[\"accounts.example.com\", ...]`"
+" to the verifier. A token naming any other issuer is refused with "
+"`issuer_not_allowed` before anything is looked up, so the verifier then "
+"only ever contacts those issuers and the hosts their metadata names."
+msgstr ""
+"自社の ID プロバイダーなど、知っている発行者のトークンだけを受け付けたい場合は、verifier に "
+"`allowed_issuers=[\"accounts.example.com\", ...]` "
+"を渡します。ほかの発行者を名乗るトークンは、何も問い合わせないうちに `issuer_not_allowed` で拒否されるので、verifier"
+" が接続するのはそれらの発行者と、そのメタデータに記されたホストだけになります。"
+
+#: ../../guides/transport.md:59
 msgid "DNS: system resolver"
 msgstr "DNS: システムのリゾルバー"
 
-#: ../../guides/transport.md:54
+#: ../../guides/transport.md:61
 #, python-brace-format
 msgid ""
 "{mod}`pyevp.adapters.dnspython` uses the system resolver configuration. "
@@ -136,11 +149,11 @@ msgstr ""
 "を指定すると、応答に AD フラグが付いている必要があります。このフラグが意味を持つのは、localhost 上で動くものなど、DNSSEC "
 "を検証するリゾルバーを信頼できる場合に限られます。"
 
-#: ../../guides/transport.md:58
+#: ../../guides/transport.md:65
 msgid "DNS over HTTPS"
 msgstr "DNS over HTTPS"
 
-#: ../../guides/transport.md:60
+#: ../../guides/transport.md:67
 #, python-brace-format
 msgid ""
 "Where plain DNS is unavailable or untrusted, as on serverless platforms "
@@ -151,7 +164,7 @@ msgstr ""
 "が使えない、または信頼できない環境では、{mod}`pyevp.adapters.doh` を使います。HTTP クライアントだけで、DoH の "
 "JSON API を通じて TXT レコードを解決します。"
 
-#: ../../guides/transport.md:71
+#: ../../guides/transport.md:78
 msgid ""
 "`require_dnssec=True` trusts the provider's AD flag. Unsigned zones such "
 "as gmail.com never pass it. With `dnspython[doh]` installed, an RFC 8484 "
@@ -161,11 +174,11 @@ msgstr ""
 "のような署名されていないゾーンは、このチェックを決して通りません。`dnspython[doh]` をインストールしていれば、代わりに RFC "
 "8484 のリゾルバーも使えます。"
 
-#: ../../guides/transport.md:80
+#: ../../guides/transport.md:87
 msgid "Standard library only"
 msgstr "標準ライブラリだけで使う"
 
-#: ../../guides/transport.md:82
+#: ../../guides/transport.md:89
 #, python-brace-format
 msgid ""
 "{mod}`pyevp.adapters.urllib` needs nothing beyond PyEVP's core "
@@ -177,7 +190,7 @@ msgstr ""
 "スタックを決めていて、httpx や dnspython を追加したくないアプリケーション向けです。dnspython なしでは標準ライブラリで "
 "TXT レコードを問い合わせる方法がないため、DoH で解決します。"
 
-#: ../../guides/transport.md:94
+#: ../../guides/transport.md:101
 msgid ""
 "They behave like the httpx adapters: no redirects, no compressed "
 "responses, size-capped bodies. The DoH trade-offs above apply: the "
@@ -191,11 +204,11 @@ msgstr ""
 "はそのプロバイダーを信頼することを意味します。どちらのアダプターも同期です。環境変数のプロキシ設定は反映されます。プロキシや TLS "
 "を明示的に設定するには `handlers` を渡します。"
 
-#: ../../guides/transport.md:103
+#: ../../guides/transport.md:110
 msgid "Caching"
 msgstr "キャッシュ"
 
-#: ../../guides/transport.md:105
+#: ../../guides/transport.md:112
 #, python-brace-format
 msgid ""
 "Issuer metadata and key sets are cached for 10 minutes (`cache_ttl`) in a"
