@@ -104,7 +104,7 @@ def test_cache_keys_have_a_fixed_length(clock: FixedClock) -> None:
         warnings.simplefilter("error")
         cache.set(LONG_URL, CacheEntry(1, clock()), timedelta(minutes=10))
         assert cache.get(LONG_URL) == CacheEntry(1, clock())
-    assert len(cache._key(LONG_URL)) == len("evp:") + 64
+    assert len(cache._key(LONG_URL)) == len("evp:1:") + 64
 
 
 def test_cache_alias_and_prefix(clock: FixedClock) -> None:
@@ -114,10 +114,20 @@ def test_cache_alias_and_prefix(clock: FixedClock) -> None:
     assert EVPCache("default", prefix="x:").get("meta") is None
 
 
-def test_cache_ignores_foreign_values() -> None:
+@pytest.mark.parametrize("value", ["not an entry", (1, 2), (1, 2, 3), None])
+def test_cache_ignores_foreign_values(value: object) -> None:
     cache = EVPCache()
-    caches["default"].set(cache._key("meta"), "not an entry")
+    caches["default"].set(cache._key("meta"), value)
     assert cache.get("meta") is None
+
+
+def test_cache_stores_only_built_in_types(clock: FixedClock) -> None:
+    # Pickled PyEVP classes would tie the entries to this version of the library.
+    cache = EVPCache()
+    cache.set("meta", CacheEntry({"keys": []}, clock()), timedelta(minutes=10))
+    stored = caches["default"].get(cache._key("meta"))
+    assert stored == ({"keys": []}, clock())
+    assert type(stored) is tuple
 
 
 def test_cache_passes_ttl(monkeypatch: pytest.MonkeyPatch, clock: FixedClock) -> None:

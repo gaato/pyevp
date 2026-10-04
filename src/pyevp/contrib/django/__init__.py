@@ -167,13 +167,29 @@ def _digest(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
+# Part of every cache key.  Bump it when the stored value changes shape, so that workers
+# running different versions during a deploy ignore each other's entries.
+_CACHE_FORMAT = "1:"
+
+
+def _dump(entry: CacheEntry) -> tuple[object, datetime]:
+    # Built-in types only: a pickled CacheEntry would break if the class ever moved.
+    return (entry.value, entry.stored_at)
+
+
+def _load(stored: object) -> CacheEntry | None:
+    if isinstance(stored, tuple) and len(stored) == 2 and isinstance(stored[1], datetime):
+        return CacheEntry(stored[0], stored[1])
+    return None
+
+
 class _CacheBase:
     def __init__(self, alias: str = "default", *, prefix: str = "evp:") -> None:
         self.alias = alias
         self.prefix = prefix
 
     def _key(self, key: str) -> str:
-        return self.prefix + _digest(key)
+        return self.prefix + _CACHE_FORMAT + _digest(key)
 
 
 class EVPCache(_CacheBase):
@@ -186,11 +202,10 @@ class EVPCache(_CacheBase):
     """
 
     def get(self, key: str) -> CacheEntry | None:
-        entry = caches[self.alias].get(self._key(key))
-        return entry if isinstance(entry, CacheEntry) else None
+        return _load(caches[self.alias].get(self._key(key)))
 
     def set(self, key: str, entry: CacheEntry, ttl: timedelta) -> None:
-        caches[self.alias].set(self._key(key), entry, timeout=ttl.total_seconds())
+        caches[self.alias].set(self._key(key), _dump(entry), timeout=ttl.total_seconds())
 
 
 class AsyncEVPCache(_CacheBase):
@@ -200,11 +215,10 @@ class AsyncEVPCache(_CacheBase):
     """
 
     async def get(self, key: str) -> CacheEntry | None:
-        entry = await caches[self.alias].aget(self._key(key))
-        return entry if isinstance(entry, CacheEntry) else None
+        return _load(await caches[self.alias].aget(self._key(key)))
 
     async def set(self, key: str, entry: CacheEntry, ttl: timedelta) -> None:
-        await caches[self.alias].aset(self._key(key), entry, timeout=ttl.total_seconds())
+        await caches[self.alias].aset(self._key(key), _dump(entry), timeout=ttl.total_seconds())
 
 
 class _GuardBase:
