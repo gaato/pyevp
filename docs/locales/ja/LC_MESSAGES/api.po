@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:48+0900\n"
+"POT-Creation-Date: 2026-10-04 16:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -74,20 +74,22 @@ msgstr ""
 #: pyevp.contrib.django.get_nonce
 #: pyevp.contrib.django.issuer.IssuanceView.as_view
 #: pyevp.contrib.django.issuer.IssuerSite.get_issuer
-#: pyevp.contrib.django.issuer.IssuerSite.owns
 #: pyevp.contrib.django.issuer.IssuerSite.user_emails pyevp.core.precheck_evt
 #: pyevp.core.replay_key pyevp.core.verification_steps pyevp.core.verify_kb
 #: pyevp.diagnostics.adiscover pyevp.diagnostics.discover
 #: pyevp.diagnostics.discovery_steps pyevp.discovery.canonical_issuer
 #: pyevp.discovery.is_public_hostname pyevp.discovery.parse_txt_records
-#: pyevp.discovery.validate_jwks pyevp.issuer.core.Issuer.aparse_request
-#: pyevp.issuer.core.Issuer.dns_txt_records pyevp.issuer.core.Issuer.issue
+#: pyevp.discovery.validate_jwks pyevp.issuer.core.Issuer.accounts_response
+#: pyevp.issuer.core.Issuer.aissuance_response
+#: pyevp.issuer.core.Issuer.dns_txt_records
+#: pyevp.issuer.core.Issuer.issuance_response
 #: pyevp.issuer.core.Issuer.jwks_document
+#: pyevp.issuer.core.Issuer.jwks_response
 #: pyevp.issuer.core.Issuer.metadata_document
-#: pyevp.issuer.core.Issuer.parse_request pyevp.issuer.core.is_valid_email
-#: pyevp.issuer.errors.IssuanceError.authentication_required
-#: pyevp.issuer.fedcm.accounts_document
-#: pyevp.issuer.fedcm.web_identity_document pyevp.issuer.keys.Signer.sign
+#: pyevp.issuer.core.Issuer.metadata_response pyevp.issuer.core.is_valid_email
+#: pyevp.issuer.fedcm.login_status_headers
+#: pyevp.issuer.fedcm.web_identity_document
+#: pyevp.issuer.fedcm.web_identity_response pyevp.issuer.keys.Signer.sign
 #: pyevp.issuer.keys.SigningKey.from_jwk pyevp.issuer.keys.SigningKey.from_pem
 #: pyevp.issuer.keys.SigningKey.private_jwk pyevp.issuer.keys.public_jwk
 #: pyevp.issuer.profile.IssuanceProfile.chrome_153
@@ -1122,13 +1124,15 @@ msgstr "発行者の ``issuance_endpoint`` です。アドレスを管理して�
 
 #: of pyevp.contrib.django.issuer.IssuanceView:3
 msgid ""
-"Exempt from CSRF protection and from ``ATOMIC_REQUESTS``; use a "
-"synchronous replay guard such as "
-":class:`~pyevp.contrib.django.EVPReplayGuard`. Put per-IP rate limiting "
+"Every method is answered by :meth:`Issuer.issuance_response "
+"<pyevp.issuer.Issuer.issuance_response>`.  Exempt from CSRF protection "
+"and from ``ATOMIC_REQUESTS``; use a synchronous replay guard such as "
+":class:`~pyevp.contrib.django.EVPReplayGuard`.  Put per-IP rate limiting "
 "in front of it."
 msgstr ""
-"CSRF 保護と ``ATOMIC_REQUESTS`` "
-"の対象外です。{class}`~pyevp.contrib.django.EVPReplayGuard` "
+"すべてのメソッドに {meth}`Issuer.issuance_response "
+"<pyevp.issuer.Issuer.issuance_response>` が応答します。CSRF 保護と "
+"``ATOMIC_REQUESTS`` の対象外です。{class}`~pyevp.contrib.django.EVPReplayGuard` "
 "などの同期のリプレイガードを使ってください。前段に IP アドレスごとのレート制限を置いてください。"
 
 #: of pyevp.contrib.django.issuer.IssuanceView.as_view:1
@@ -1185,20 +1189,14 @@ msgstr ""
 "に伝えるので、ユーザーが実際にメールを受け取れるアドレスだけを返します。たとえば django-allauth "
 "の検証済みアドレスや、メールサーバーがユーザーのメールボックスに配送するアドレスです。ユーザーモデルのメールアドレス欄は、サインアップ時に検証していない限りこれに当たりません。そのため既定の実装はありません。"
 
-#: of pyevp.contrib.django.issuer.IssuerSite.owns:1
+#: of pyevp.contrib.django.issuer.IssuerSite.user_emails:9
 msgid ""
-"Whether the signed-in user controls ``email``, compared case-"
-"insensitively."
-msgstr "サインイン中のユーザーが ``email`` を管理しているかどうかを返します。大文字と小文字は区別せずに比較します。"
-
-#: of pyevp.contrib.django.issuer.IssuerSite.owns:3
-msgid ""
-"Addresses EVP cannot carry are ignored: lowercasing a non-ASCII one can "
-"turn it into someone else's (``\\u212aate@`` with a KELVIN SIGN becomes "
-"``kate@``)."
+"Return addresses with ASCII domains (A-labels); the issuer compares them "
+"with the requested address case-insensitively and ignores any it could "
+"not issue for."
 msgstr ""
-"EVP で扱えないアドレスは無視します。非 ASCII のアドレスを小文字にすると、別人のアドレスになることがあるためです（KELVIN SIGN"
-" を使った `\\u212aate@` は `kate@` になります）。"
+"ドメインが ASCII（A "
+"ラベル）のアドレスを返してください。発行者はそれらを要求されたアドレスと大文字と小文字を区別せずに比較し、発行できないアドレスは無視します。"
 
 #: of pyevp.contrib.django.issuer.JWKSView:1
 msgid "The issuer's ``jwks_uri``."
@@ -1238,43 +1236,33 @@ msgstr "Email Verification Protocol の発行者側。"
 
 #: of pyevp.issuer:3
 msgid ""
-"Framework-neutral building blocks for running an issuer for your own "
-"email domains: validate the browser's signed issuance request, mint EVTs,"
-" and produce the metadata, JWKS and DNS records to publish.  See "
-":class:`Issuer`."
+"Run an issuer for your own email domains: :class:`Issuer` answers the "
+"browser's issuance and FedCM accounts requests and serves the metadata "
+"and JWKS, as framework-neutral :class:`IssuerResponse` objects, and lists"
+" the DNS records to publish."
 msgstr ""
-"自分のメールドメインの発行者を運用するための、フレームワークに依存しない部品です。ブラウザーが署名した発行リクエストを検証し、EVT "
-"を発行し、公開するメタデータ、JWKS、DNS レコードを生成します。{class}`Issuer` を参照してください。"
+"自分のメールドメインの発行者を運用します。{class}`Issuer` は、ブラウザーからの発行リクエストと FedCM の accounts "
+"リクエストに応答し、メタデータと JWKS を配信します。いずれもフレームワークに依存しない {class}`IssuerResponse` "
+"オブジェクトとして返します。公開する DNS レコードも列挙します。"
 
-#: of pyevp.issuer.errors.IssuanceError:1
-msgid "A request the issuer must refuse.  Render it with :meth:`to_response`."
-msgstr "発行者が拒否しなければならないリクエストです。{meth}`to_response` でレスポンスにします。"
-
-#: of pyevp.issuer.errors.IssuanceError:3
-msgid ""
-"``message`` is for logs; the response body only ever carries the fixed "
-"description of ``code``."
-msgstr "``message`` はログ用です。レスポンスのボディには、常に ``code`` の固定の説明だけが入ります。"
-
-#: of pyevp.issuer.IssuanceError.signature_error:1
-msgid "``Signature-Error`` code, for ``invalid_signature``."
-msgstr "``invalid_signature`` の場合の ``Signature-Error`` コードです。"
-
-#: of pyevp.issuer.errors.IssuanceError.authentication_required:1
-msgid ""
-"The one error for \"no session\", \"unknown address\" and \"not this "
-"user's address\"."
-msgstr "「セッションがない」「未知のアドレス」「このユーザーのアドレスではない」に共通の、ただ 1 つのエラーです。"
-
-#: of pyevp.issuer.errors.IssuanceError.authentication_required:3
-msgid ""
-"Raise it for every such case so that responses cannot be used to probe "
-"accounts."
-msgstr "レスポンスからアカウントを探られないよう、こうした場合にはすべてこのエラーを送出してください。"
+#: of pyevp.issuer.core.IssuanceEvent:1
+msgid "What became of one issuance request."
+msgstr "1 つの発行リクエストがどうなったかを表します。"
 
 #: of pyevp.issuer.IssuanceEvent.stage:1
-msgid "``\"request\"`` (validation) or ``\"issue\"`` (an EVT was signed)."
-msgstr "``\"request\"``（検証）または ``\"issue\"``（EVT に署名した）です。"
+msgid ""
+"The stage the request ended at, ``\"request\"`` (refused by validation), "
+"``\"ownership\"`` (the signed-in user does not control the address) or "
+"``\"issue\"`` (an EVT was signed)."
+msgstr ""
+"リクエストが終わった段階です。``\"request\"``（検証で拒否された）、``\"ownership\"``（サインイン中のユーザーがそのアドレスを管理していない）、``\"issue\"``（EVT"
+" に署名した）のいずれかです。"
+
+#: of pyevp.issuer.IssuanceEvent.detail:1
+msgid ""
+"Why a request was refused, for logs.  It does not repeat the requested "
+"address."
+msgstr "リクエストが拒否された理由です。ログ用で、リクエストされたアドレスは含みません。"
 
 #: of pyevp.issuer.IssuanceProfile.request_algorithms:1
 msgid ""
@@ -1320,30 +1308,6 @@ msgstr ""
 #: of pyevp.issuer.profile.IssuanceProfile.draft_hardt_02:1
 msgid "Strict reading of draft-hardt-email-verification-02 and signature-key-09."
 msgstr "draft-hardt-email-verification-02 と signature-key-09 を厳密に解釈したものです。"
-
-#: of pyevp.issuer.core.IssuanceRequest:1
-msgid "A request whose signature, freshness and body have been validated."
-msgstr "署名、鮮度、ボディを検証済みのリクエストです。"
-
-#: of pyevp.issuer.core.IssuanceRequest:3
-msgid "The user has *not* been authenticated yet."
-msgstr "ユーザーは*まだ*認証されていません。"
-
-#: of pyevp.issuer.IssuanceRequest.email:1
-msgid "Exactly as the browser sent it; also what the EVT will assert."
-msgstr "ブラウザーが送ったとおりの値です。EVT が表明するのもこの値です。"
-
-#: of pyevp.issuer.IssuanceRequest.holder_jwk:1
-msgid "The browser's public key, bound into the EVT as ``cnf.jwk``."
-msgstr "ブラウザーの公開鍵です。``cnf.jwk`` として EVT に結び付けます。"
-
-#: of pyevp.issuer.IssuanceRequest.signature_base:1
-msgid "What ``signature`` covers; it identifies the request for the replay guard."
-msgstr "``signature`` の署名対象です。リプレイガードはこれでリクエストを識別します。"
-
-#: of pyevp.issuer.errors.IssuanceResponse:1
-msgid "A framework-neutral HTTP response."
-msgstr "フレームワークに依存しない HTTP レスポンスです。"
 
 #: of pyevp.issuer.core.Issuer:1
 msgid "Issues EVTs for the email domains this issuer is authoritative for."
@@ -1403,21 +1367,71 @@ msgstr "``{issuer}/.well-known/email-verification`` で配信します。"
 msgid "Serve at ``jwks_uri``."
 msgstr "``jwks_uri`` で配信します。"
 
+#: of pyevp.issuer.core.Issuer.metadata_response:1
+msgid ":meth:`metadata_document` as a response, cacheable for five minutes."
+msgstr "{meth}`metadata_document` をレスポンスにしたものです。5 分間キャッシュできます。"
+
+#: of pyevp.issuer.core.Issuer.jwks_response:1
+msgid ":meth:`jwks_document` as a response, cacheable for five minutes."
+msgstr "{meth}`jwks_document` をレスポンスにしたものです。5 分間キャッシュできます。"
+
+#: of pyevp.issuer.core.Issuer.jwks_response:3
+msgid ""
+"Publish a new key at least that long, plus how long relying parties cache"
+" keys, before signing with it."
+msgstr "新しい鍵は、少なくともその時間に RP が鍵をキャッシュする時間を足した分だけ公開してから、署名に使ってください。"
+
 #: of pyevp.issuer.core.Issuer.dns_txt_records:1
 msgid "The TXT record to publish for each email domain."
 msgstr "メールドメインごとに公開する TXT レコードです。"
 
-#: of pyevp.issuer.core.Issuer.parse_request:1
-msgid "Validate a request with a synchronous (or no) replay guard."
-msgstr "同期のリプレイガードを使って（またはリプレイガードなしで）リクエストを検証します。"
+#: of pyevp.issuer.core.Issuer.accounts_response:1
+msgid "Answer Chrome's FedCM accounts request (see :mod:`pyevp.issuer.fedcm`)."
+msgstr "Chrome の FedCM の accounts リクエストに応答します（{mod}`pyevp.issuer.fedcm` を参照）。"
 
-#: of pyevp.issuer.core.Issuer.aparse_request:1
-msgid "Validate a request with a synchronous or asynchronous replay guard."
-msgstr "同期または非同期のリプレイガードを使ってリクエストを検証します。"
+#: of pyevp.issuer.core.Issuer.accounts_response:3
+msgid ""
+"``user_emails`` are as for :meth:`issuance_response`.  Only addresses "
+"this issuer would issue for are listed."
+msgstr ""
+"``user_emails`` は {meth}`issuance_response` "
+"と同じです。この発行者が発行対象とするアドレスだけを列挙します。"
 
-#: of pyevp.issuer.core.Issuer.issue:1
-msgid "Sign an EVT for ``request``.  Call only after authenticating the user."
-msgstr "``request`` に対する EVT に署名します。ユーザーを認証したあとでのみ呼んでください。"
+#: of pyevp.issuer.core.Issuer.issuance_response:1
+msgid "Answer a request to the issuance endpoint."
+msgstr "発行エンドポイントへのリクエストに応答します。"
+
+#: of pyevp.issuer.core.Issuer.issuance_response:3
+msgid ""
+"Route every method here, with the raw body and the request's header "
+"lines. ``user_emails`` are the addresses of the user signed in to this "
+"issuer; pass an empty collection when nobody is.  An EVT is issued only "
+"for one of them."
+msgstr ""
+"メソッドを問わずすべてのリクエストを、生のボディとヘッダー行とともにここに渡してください。``user_emails`` "
+"は、この発行者にサインインしているユーザーのアドレスです。誰もサインインしていなければ空のコレクションを渡します。EVT "
+"は、そのいずれかに対してだけ発行します。"
+
+#: of pyevp.issuer.core.Issuer.aissuance_response:1
+msgid ""
+":meth:`issuance_response` for asynchronous replay guards and "
+"``user_emails``."
+msgstr "非同期のリプレイガードと ``user_emails`` に対応した {meth}`issuance_response` です。"
+
+#: of pyevp.issuer.response.IssuerResponse:1
+msgid ""
+"An HTTP response for the framework to send as is: status, headers and "
+"body."
+msgstr "フレームワークがそのまま送る HTTP レスポンスです。ステータス、ヘッダー、ボディからなります。"
+
+#: of pyevp.issuer.response.IssuerResponse:3
+msgid ""
+"JSON responses are ``Cache-Control: no-store`` unless they are public "
+"documents. Use :func:`dataclasses.replace` to change anything before "
+"sending it."
+msgstr ""
+"JSON のレスポンスは、公開の文書でない限り ``Cache-Control: no-store`` です。送る前に何かを変えるには "
+"{func}`dataclasses.replace` を使います。"
 
 #: of pyevp.issuer.Signer.alg:1
 msgid ""
@@ -1453,21 +1467,15 @@ msgstr "Ed25519 または P-256 の秘密鍵を PEM から読み込みます。�
 msgid "The private key as a JWK, for writing to a secret store."
 msgstr "シークレットストアに書き込むための、JWK 形式の秘密鍵です。"
 
-#: of pyevp.issuer.fedcm.accounts_document:1
-msgid "The accounts endpoint's response for a signed-in user's addresses."
-msgstr "サインイン中のユーザーのアドレスに対する、アカウントエンドポイントのレスポンスです。"
-
-#: of pyevp.issuer.fedcm.accounts_document:3
-msgid ""
-"Pass every address the session's user may get EVTs for.  Return this only"
-" for requests with the session cookie; without a session, answer 401."
-msgstr ""
-"セッションのユーザーが EVT を受け取れるアドレスをすべて渡してください。これを返すのはセッション Cookie "
-"の付いたリクエストに対してだけです。セッションがなければ 401 を返します。"
-
 #: of pyevp.issuer.core.is_valid_email:1
 msgid "Whether ``value`` is a WHATWG HTML valid email address (ASCII only)."
 msgstr "``value`` が WHATWG の HTML 仕様でいう有効なメールアドレスかどうかを返します（ASCII のみ）。"
+
+#: of pyevp.issuer.fedcm.login_status_headers:1
+msgid ""
+"The FedCM Login Status header to add to a page response after login or "
+"logout."
+msgstr "ログイン後またはログアウト後のページのレスポンスに付ける、FedCM の Login Status ヘッダーです。"
 
 #: of pyevp.issuer.keys.public_jwk:1
 msgid ""
@@ -1478,6 +1486,10 @@ msgstr "公開用に公開鍵を正規化します。秘密のメンバーを除
 #: of pyevp.issuer.fedcm.web_identity_document:1
 msgid "Serve at ``https://<registrable domain>/.well-known/web-identity``."
 msgstr "``https://<registrable domain>/.well-known/web-identity`` で配信します。"
+
+#: of pyevp.issuer.fedcm.web_identity_response:1
+msgid ":func:`web_identity_document` as a response, cacheable for five minutes."
+msgstr "{func}`web_identity_document` をレスポンスにしたものです。5 分間キャッシュできます。"
 
 #: ../../api.md:76
 msgid "Testing"
@@ -1499,11 +1511,14 @@ msgstr "鍵バインディング用の鍵を保持し、提示用のトークン
 
 #: of pyevp.testing.FakeBrowser.issuance_request:1
 msgid ""
-"A signed issuance request, as keyword arguments for "
-"``Issuer.parse_request``."
-msgstr "署名済みの発行リクエストを、``Issuer.parse_request`` のキーワード引数の形で返します。"
+"A signed issuance request: ``method``, ``headers`` and ``body`` for "
+":meth:`Issuer.issuance_response <pyevp.issuer.Issuer.issuance_response>`."
+msgstr ""
+"署名済みの発行リクエストです。{meth}`Issuer.issuance_response "
+"<pyevp.issuer.Issuer.issuance_response>` に渡す "
+"``method``、``headers``、``body`` を返します。"
 
-#: of pyevp.testing.FakeBrowser.issuance_request:3
+#: of pyevp.testing.FakeBrowser.issuance_request:4
 msgid ""
 "Like Chrome 153, the ``hwk`` key omits ``alg`` unless ``include_alg`` is "
 "set. ``extra`` adds members to the JSON body."
@@ -1553,3 +1568,108 @@ msgstr "URL ごとにドキュメントを返します。値が呼び出し可�
 #: of pyevp.testing.make_verifier:1
 msgid "A :class:`Verifier` wired to in-memory DNS/HTTP serving ``issuers``."
 msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につないだ {class}`Verifier` を返します。"
+
+#~ msgid ""
+#~ "Whether the signed-in user controls "
+#~ "``email``, compared case-insensitively."
+#~ msgstr "サインイン中のユーザーが ``email`` を管理しているかどうかを返します。大文字と小文字は区別せずに比較します。"
+
+#~ msgid ""
+#~ "Addresses EVP cannot carry are ignored:"
+#~ " lowercasing a non-ASCII one can "
+#~ "turn it into someone else's "
+#~ "(``\\u212aate@`` with a KELVIN SIGN "
+#~ "becomes ``kate@``)."
+#~ msgstr ""
+#~ "EVP で扱えないアドレスは無視します。非 ASCII "
+#~ "のアドレスを小文字にすると、別人のアドレスになることがあるためです（KELVIN SIGN を使った "
+#~ "`\\u212aate@` は `kate@` になります）。"
+
+#~ msgid ""
+#~ "Framework-neutral building blocks for "
+#~ "running an issuer for your own "
+#~ "email domains: validate the browser's "
+#~ "signed issuance request, mint EVTs, and"
+#~ " produce the metadata, JWKS and DNS"
+#~ " records to publish.  See :class:`Issuer`."
+#~ msgstr ""
+#~ "自分のメールドメインの発行者を運用するための、フレームワークに依存しない部品です。ブラウザーが署名した発行リクエストを検証し、EVT "
+#~ "を発行し、公開するメタデータ、JWKS、DNS レコードを生成します。{class}`Issuer` "
+#~ "を参照してください。"
+
+#~ msgid "A request the issuer must refuse.  Render it with :meth:`to_response`."
+#~ msgstr "発行者が拒否しなければならないリクエストです。{meth}`to_response` でレスポンスにします。"
+
+#~ msgid ""
+#~ "``message`` is for logs; the response"
+#~ " body only ever carries the fixed "
+#~ "description of ``code``."
+#~ msgstr "``message`` はログ用です。レスポンスのボディには、常に ``code`` の固定の説明だけが入ります。"
+
+#~ msgid "``Signature-Error`` code, for ``invalid_signature``."
+#~ msgstr "``invalid_signature`` の場合の ``Signature-Error`` コードです。"
+
+#~ msgid ""
+#~ "The one error for \"no session\", "
+#~ "\"unknown address\" and \"not this "
+#~ "user's address\"."
+#~ msgstr "「セッションがない」「未知のアドレス」「このユーザーのアドレスではない」に共通の、ただ 1 つのエラーです。"
+
+#~ msgid ""
+#~ "Raise it for every such case so"
+#~ " that responses cannot be used to "
+#~ "probe accounts."
+#~ msgstr "レスポンスからアカウントを探られないよう、こうした場合にはすべてこのエラーを送出してください。"
+
+#~ msgid "A request whose signature, freshness and body have been validated."
+#~ msgstr "署名、鮮度、ボディを検証済みのリクエストです。"
+
+#~ msgid "The user has *not* been authenticated yet."
+#~ msgstr "ユーザーは*まだ*認証されていません。"
+
+#~ msgid "Exactly as the browser sent it; also what the EVT will assert."
+#~ msgstr "ブラウザーが送ったとおりの値です。EVT が表明するのもこの値です。"
+
+#~ msgid "The browser's public key, bound into the EVT as ``cnf.jwk``."
+#~ msgstr "ブラウザーの公開鍵です。``cnf.jwk`` として EVT に結び付けます。"
+
+#~ msgid ""
+#~ "What ``signature`` covers; it identifies "
+#~ "the request for the replay guard."
+#~ msgstr "``signature`` の署名対象です。リプレイガードはこれでリクエストを識別します。"
+
+#~ msgid "A framework-neutral HTTP response."
+#~ msgstr "フレームワークに依存しない HTTP レスポンスです。"
+
+#~ msgid "Validate a request with a synchronous (or no) replay guard."
+#~ msgstr "同期のリプレイガードを使って（またはリプレイガードなしで）リクエストを検証します。"
+
+#~ msgid "Validate a request with a synchronous or asynchronous replay guard."
+#~ msgstr "同期または非同期のリプレイガードを使ってリクエストを検証します。"
+
+#~ msgid "Sign an EVT for ``request``.  Call only after authenticating the user."
+#~ msgstr "``request`` に対する EVT に署名します。ユーザーを認証したあとでのみ呼んでください。"
+
+#~ msgid "The accounts endpoint's response for a signed-in user's addresses."
+#~ msgstr "サインイン中のユーザーのアドレスに対する、アカウントエンドポイントのレスポンスです。"
+
+#~ msgid ""
+#~ "Pass every address the session's user"
+#~ " may get EVTs for.  Return this "
+#~ "only for requests with the session "
+#~ "cookie; without a session, answer 401."
+#~ msgstr ""
+#~ "セッションのユーザーが EVT を受け取れるアドレスをすべて渡してください。これを返すのはセッション "
+#~ "Cookie の付いたリクエストに対してだけです。セッションがなければ 401 を返します。"
+
+#~ msgid ""
+#~ "A signed issuance request, as keyword"
+#~ " arguments for ``Issuer.parse_request``."
+#~ msgstr "署名済みの発行リクエストを、``Issuer.parse_request`` のキーワード引数の形で返します。"
+
+#~ msgid "type"
+#~ msgstr "型"
+
+#~ msgid "Where the request ended"
+#~ msgstr "Where the request ended"
+
