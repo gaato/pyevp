@@ -577,8 +577,9 @@ def rp_client(
     dns = AsyncInMemoryDns(rp_issuer.dns_records() | stranger.dns_records())
     verifier = AsyncVerifier(
         audience=SITE,
-        resolver=site.AllowedIssuers(RecordingResolver(dns), [rp_issuer.issuer]),
+        resolver=RecordingResolver(dns),
         fetcher=RecordingFetcher(rp_http),
+        allowed_issuers=[rp_issuer.issuer],
         cache=TrackingCache(InMemoryCache(clock=rp_issuer.clock)),
         clock=RecordingClock(rp_issuer.clock),
         replay_guard=InMemoryReplayGuard(clock=rp_issuer.clock),
@@ -646,8 +647,10 @@ def test_unlisted_issuer_is_never_fetched(
     evt = _present(stranger, "mallory@evil.example", _nonce(rp_client))
     response = rp_client.post("/verify", data={"email": "mallory@evil.example", "evt": evt})
     assert response.status_code == 400
-    assert "issuer_discovery_failed" in response.text
+    assert "issuer_not_allowed" in response.text
+    # Refused before any lookup: not even DNS for the attacker's domain.
     assert not any("evil.example" in url for url in rp_http.requests)
+    assert "_email-verification.evil.example" not in response.text
 
 
 def test_output_is_escaped(rp_client: TestClient) -> None:
@@ -753,12 +756,11 @@ def test_default_allowlist(
             assert "token_replayed" in replay.text
         else:
             assert response.status_code == 400
-            assert "issuer_discovery_failed" in response.text
-            assert (
-                list(_statuses(response.text).values())
-                == ["passed", "passed", "failed"] + ["not run"] * 3
+            assert "issuer_not_allowed" in response.text
+            assert list(_statuses(response.text).values()) == (
+                ["passed", "passed"] + ["not run"] * 3 + ["failed"]
             )
-            assert "_email-verification.pyevp.dev" in response.text
+            assert "_email-verification.pyevp.dev" not in response.text
             assert not http.requests
             assert "EVP verification failed" in caplog.text
         assert EMAIL not in caplog.text
@@ -804,9 +806,21 @@ def test_environment_allowlist_override(
             assert "Verified" in response.text
         else:
             assert response.status_code == 400
-            assert "issuer_discovery_failed" in response.text
+            assert "issuer_not_allowed" in response.text
             assert not http.requests
         assert f"Accepted issuers: {allowed}." in response.text
+
+
+def test_environment_allowlist_must_name_issuers(
+    stylesheet: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("EVP_DEV", "1")
+    monkeypatch.delenv("EVP_SIGNING_JWK", raising=False)
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    monkeypatch.setenv("EVP_ALLOWED_ISSUERS", "https://custom.example/")
+    monkeypatch.setattr(site, "STYLESHEET", stylesheet)
+    with pytest.raises(ValueError, match=r"custom\.example"), TestClient(site._from_environment()):
+        pass
 
 
 @pytest.mark.parametrize(

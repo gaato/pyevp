@@ -2,8 +2,8 @@
 
 The issuer allowlist matters for a public deployment: discovery fetches HTTPS URLs
 chosen by whoever controls the email domain in the token, before any issuer
-signature is checked. Rejecting unknown issuers at the DNS step means the demo
-only ever contacts issuers listed here.
+signature is checked. The verifier's ``allowed_issuers`` refuses other issuers
+before any lookup, so the demo only ever contacts issuers listed here.
 """
 
 from __future__ import annotations
@@ -50,11 +50,8 @@ from verification_trace import (
 )
 
 from pyevp import (
-    AsyncTxtResolver,
     AsyncVerifier,
     Clock,
-    DiscoveryError,
-    ErrorCode,
     EVPError,
     InMemoryReplayGuard,
     LoggingObserver,
@@ -63,7 +60,6 @@ from pyevp import (
 from pyevp.adapters import httpx as httpx_adapter
 from pyevp.adapters.dnspython import AsyncDnsPythonResolver
 from pyevp.cache import InMemoryCache
-from pyevp.discovery import canonical_issuer
 from pyevp.issuer import (
     MAX_REQUEST_BODY,
     Issuer,
@@ -73,7 +69,6 @@ from pyevp.issuer import (
     web_identity_response,
 )
 from pyevp.ports import system_clock
-from pyevp.profile import IssuerFormat
 from pyevp.token import parse_token
 
 ISSUANCE_PATH = "/email-verification/issuance"
@@ -98,27 +93,6 @@ class TraceDisplay(TypedDict):
     trace_steps: list[dict[str, object]]
     decoded: dict[str, str] | None
     elapsed_ms: float
-
-
-class AllowedIssuers:
-    """Resolver wrapper that refuses ``iss=`` records naming an issuer not in ``allowed``."""
-
-    def __init__(self, inner: AsyncTxtResolver, allowed: Iterable[str]) -> None:
-        self._inner = inner
-        self._allowed = frozenset(allowed)
-
-    async def resolve_txt(self, name: str) -> list[str]:
-        records = await self._inner.resolve_txt(name)
-        for record in records:
-            if not record.startswith("iss="):
-                continue
-            issuer = canonical_issuer(record.removeprefix("iss=").strip(), IssuerFormat.ANY)
-            if issuer not in self._allowed:
-                raise DiscoveryError(
-                    ErrorCode.ISSUER_DISCOVERY_FAILED,
-                    f"this demo only accepts tokens from {', '.join(sorted(self._allowed))}",
-                )
-        return records
 
 
 def get_verifier(request: Request) -> AsyncVerifier:
@@ -507,8 +481,10 @@ def create_app(
     )
     email = f"demo@{email_domain}"
     pages: dict[str, str] = {}
-    allowed = frozenset(
-        allowed_issuers if allowed_issuers is not None else ("https://accounts.google.com", base)
+    allowed = (
+        tuple(allowed_issuers)
+        if allowed_issuers is not None
+        else ("https://accounts.google.com", base)
     )
     site = _site_app(
         issuer,
@@ -520,32 +496,33 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:
         logging.basicConfig(level=logging.INFO)
-        template, context, mail_pages = _render_pages(
-            examples_dir=examples_dir,
-            stylesheet_path=stylesheet_path,
-            dev=dev,
-            mail_host=mail_host,
-            allowed_issuers=allowed,
-            site_host=site_host,
-            email=email,
-        )
-        site.state.demo_template = template
-        site.state.page_context = context
-        site.state.landing_page = mail_pages.pop("landing")
-        site.state.clock = clock
-        pages.update(mail_pages)
         # The verifier closes only what it creates; this fetcher is ours to close.
         async with httpx_adapter.AsyncHttpxFetcher() as fetcher:
             # One process only: the replay guard lives in memory.
-            site.state.verifier = AsyncVerifier.default(
+            verifier = site.state.verifier = AsyncVerifier.default(
                 audience=f"https://{site_host}",
-                resolver=AllowedIssuers(RecordingResolver(AsyncDnsPythonResolver()), allowed),
+                resolver=RecordingResolver(AsyncDnsPythonResolver()),
                 fetcher=RecordingFetcher(fetcher),
+                allowed_issuers=allowed,
                 cache=TrackingCache(InMemoryCache(clock=clock)),
                 replay_guard=InMemoryReplayGuard(clock=clock),
                 observer=LoggingObserver(),
                 clock=RecordingClock(clock),
             )
+            template, context, mail_pages = _render_pages(
+                examples_dir=examples_dir,
+                stylesheet_path=stylesheet_path,
+                dev=dev,
+                mail_host=mail_host,
+                allowed_issuers=verifier.allowed_issuers or (),
+                site_host=site_host,
+                email=email,
+            )
+            site.state.demo_template = template
+            site.state.page_context = context
+            site.state.landing_page = mail_pages.pop("landing")
+            site.state.clock = clock
+            pages.update(mail_pages)
             yield
 
     async def noindex_mail_host(request: Request, call_next: RequestResponseEndpoint) -> Response:

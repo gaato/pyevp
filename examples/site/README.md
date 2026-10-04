@@ -95,8 +95,9 @@ has a site cookie.
 The verifier's audience is `https://<site host>`.
 
 Discovery can otherwise fetch HTTPS URLs chosen by whoever controls the email domain in
-the token, before checking the issuer signature. `AllowedIssuers` rejects unlisted issuers
-at the DNS step, before any HTTP fetch. The verifier also uses `InMemoryReplayGuard` and
+the token, before checking the issuer signature. The verifier's `allowed_issuers` rejects
+unlisted issuers with `issuer_not_allowed` before any DNS lookup or HTTP fetch, and an
+invalid `EVP_ALLOWED_ISSUERS` entry stops the app at startup. The verifier also uses `InMemoryReplayGuard` and
 `LoggingObserver`. Run one process only: replay protection is in memory. The app sets
 security headers but deliberately omits header-delivered CSP, which hides HTML nonce
 attributes that EVP needs to read.
@@ -136,7 +137,7 @@ Token verification results include elapsed milliseconds, six trace rows with `pa
 3. DNS `_email-verification.<domain>`.
 4. Issuer metadata.
 5. JWKS.
-6. Issuer signature and claims, including the email match and replay protection.
+6. Issuer signature and claims, including the email match, allowed issuers and replay protection.
 
 These are grouped display rows. The library actually checks preliminary EVT claims before
 key binding, and the email match before DNS; the holder signature also precedes the other
@@ -145,9 +146,7 @@ rows not run; key binding is passed only if it ran. All rows pass only after ful
 Public offline checks disambiguate shared error codes after a failure; recorded port/cache
 activity identifies DNS, metadata, and JWKS failures without parsing exception messages.
 
-DNS and HTTP recording wrappers use the public async ports. The resolver recorder sits
-inside `AllowedIssuers`, so a completed DNS lookup may be recorded as passed while issuer
-policy fails the DNS row. Lookup outcomes describe I/O, not document validation. Each
+DNS and HTTP recording wrappers use the public async ports. Lookup outcomes describe I/O, not document validation. Each
 lookup includes its name/URL, outcome, and elapsed milliseconds. A request-local contextvar
 isolates records. One long-lived verifier preserves its caches, refresh throttling, replay
 guard, and logging observer. A public cache wrapper tracks stages even for cached documents;
