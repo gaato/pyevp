@@ -27,6 +27,7 @@ to the issuer are cross-site; a system check warns otherwise.  Add
 
 from __future__ import annotations
 
+import inspect
 import weakref
 from collections.abc import Callable, Sequence
 from typing import Any, ClassVar
@@ -35,21 +36,17 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.core import checks
 from django.core.exceptions import ImproperlyConfigured
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import resolve_url
 from django.urls import URLPattern, get_resolver, path
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from pyevp.issuer import (
-    FEDCM_FETCH_DEST,
     MAX_REQUEST_BODY,
-    IssuanceError,
-    IssuanceErrorCode,
     Issuer,
     IssuerResponse,
-    accounts_document,
-    is_valid_email,
+    login_status_headers,
     web_identity_response,
 )
 
@@ -96,6 +93,12 @@ class IssuerSite:
             ):
                 if urlsplit(url).path != "/" + route:
                     raise ImproperlyConfigured(f"{url} is not served at /{route}")
+            guard = issuer.replay_guard
+            if guard is not None and inspect.iscoroutinefunction(guard.mark_used):
+                raise ImproperlyConfigured(
+                    "IssuerSite's views are synchronous; use a synchronous replay guard "
+                    "such as pyevp.contrib.django.EVPReplayGuard"
+                )
         self.issuer = issuer
         self.login_url = login_url
         if not _overrides(type(self), "user_emails"):
@@ -121,16 +124,11 @@ class IssuerSite:
         verified addresses of django-allauth, or what your mail server delivers to the
         user's mailbox.  A user model's email field is not that unless your sign-up flow
         verified it, which is why there is no default.
+
+        Return addresses with ASCII domains (A-labels); the issuer compares them with the
+        requested address case-insensitively and ignores any it could not issue for.
         """
         raise NotImplementedError
-
-    def owns(self, request: HttpRequest, email: str) -> bool:
-        """Whether the signed-in user controls ``email``, compared case-insensitively.
-
-        Addresses EVP cannot carry are ignored: lowercasing a non-ASCII one can turn it into
-        someone else's (``\\u212aate@`` with a KELVIN SIGN becomes ``kate@``).
-        """
-        return email.lower() in {e.lower() for e in self.user_emails(request) if is_valid_email(e)}
 
     def get_login_url(self, request: HttpRequest) -> str:
         url = resolve_url(self.login_url or settings.LOGIN_URL)
@@ -175,12 +173,11 @@ class JWKSView(_IssuerView):
 class IssuanceView(_IssuerView):
     """The issuer's ``issuance_endpoint``: an EVT for a user who controls the address.
 
-    Exempt from CSRF protection and from ``ATOMIC_REQUESTS``; use a synchronous
-    replay guard such as :class:`~pyevp.contrib.django.EVPReplayGuard`.
-    Put per-IP rate limiting in front of it.
+    Every method is answered by :meth:`Issuer.issuance_response
+    <pyevp.issuer.Issuer.issuance_response>`.  Exempt from CSRF protection and from
+    ``ATOMIC_REQUESTS``; use a synchronous replay guard such as
+    :class:`~pyevp.contrib.django.EVPReplayGuard`.  Put per-IP rate limiting in front of it.
     """
-
-    http_method_names = ["post"]  # noqa: RUF012
 
     @classmethod
     def as_view(cls, **initkwargs: Any) -> Callable[..., HttpResponse]:
@@ -192,37 +189,28 @@ class IssuanceView(_IssuerView):
         view._non_atomic_requests = set(settings.DATABASES)
         return view
 
-    def post(self, request: HttpRequest) -> HttpResponse:
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         site = self._site()
-        issuer = site.get_issuer(request)
-        try:
-            body = _read_body(request)
-            parsed = issuer.parse_request(
-                method=request.method or "", headers=request.headers.items(), body=body
-            )
-            # One answer for every way this can fail, so responses do not reveal accounts.
-            if not site.owns(request, parsed.email):
-                raise IssuanceError.authentication_required()
-            result = issuer.success_response(issuer.issue(parsed))
-        except IssuanceError as exc:
-            result = exc.to_response()
-        return _to_http(result)
-
-    def http_method_not_allowed(self, request: HttpRequest, *args: Any, **kwargs: Any) -> Any:
-        error = IssuanceError(IssuanceErrorCode.INVALID_REQUEST, f"method {request.method}")
-        return _to_http(error.to_response())
+        response = site.get_issuer(request).issuance_response(
+            method=request.method or "",
+            # Django has joined repeated header lines with commas, which the issuer accepts.
+            headers=request.headers.items(),
+            # Only a POST can succeed; do not wait for the body of anything else.
+            body=_read_body(request) if request.method == "POST" else b"",
+            user_emails=lambda: site.user_emails(request),
+        )
+        return _to_http(response)
 
 
 class AccountsView(_IssuerView):
     """The FedCM accounts endpoint Chrome checks before asking for a token."""
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        if request.headers.get("Sec-Fetch-Dest") != FEDCM_FETCH_DEST:
-            return JsonResponse({"error": "not a FedCM request"}, status=400)
-        emails = [e for e in self._site().user_emails(request) if is_valid_email(e)]
-        if not emails:
-            return JsonResponse({"accounts": []}, status=401)
-        return JsonResponse(accounts_document(emails))
+        site = self._site()
+        response = site.get_issuer(request).accounts_response(
+            headers=request.headers.items(), user_emails=lambda: site.user_emails(request)
+        )
+        return _to_http(response)
 
 
 class WebIdentityView(_IssuerView):
@@ -256,7 +244,8 @@ class LoginStatusMiddleware:
             and request.headers.get("Sec-Fetch-Dest") == "document"
             and "Set-Login" not in response
         ):
-            response["Set-Login"] = "logged-in" if user.is_authenticated else "logged-out"
+            for name, value in login_status_headers(signed_in=user.is_authenticated).items():
+                response[name] = value
         return response
 
 
@@ -279,10 +268,12 @@ _PER_RESPONSE = (
 
 
 def check_session_cookie(**kwargs: Any) -> list[checks.CheckMessage]:
-    """Warn when Chrome's cross-site requests to an :class:`IssuerSite` would lack the session.
+    """Warn when settings would break an :class:`IssuerSite`.
 
-    Registered as a deployment check (``manage.py check --deploy``).  It reads the
-    settings, so it cannot see attributes a middleware sets per response.
+    Chrome's cross-site requests would lack the session (``pyevp.W001``, ``pyevp.W002``), or
+    Django would refuse issuance requests the issuer accepts (``pyevp.W003``).  Registered as
+    a deployment check (``manage.py check --deploy``).  It reads the settings, so it cannot
+    see attributes a middleware sets per response.
     """
     if getattr(settings, "ROOT_URLCONF", None):
         get_resolver().url_patterns  # noqa: B018  (importing the URLconf creates the sites)
@@ -305,6 +296,16 @@ def check_session_cookie(**kwargs: Any) -> list[checks.CheckMessage]:
                 "SESSION_COOKIE_SECURE is off.",
                 hint="Browsers drop SameSite=None cookies that are not Secure." + _PER_RESPONSE,
                 id="pyevp.W002",
+            )
+        )
+    limit = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
+    if limit is not None and limit < MAX_REQUEST_BODY:
+        warnings.append(
+            checks.Warning(
+                f"DATA_UPLOAD_MAX_MEMORY_SIZE is below {MAX_REQUEST_BODY} bytes.",
+                hint="Django refuses issuance requests the issuer accepts, with its own error "
+                "response instead of the issuer's.",
+                id="pyevp.W003",
             )
         )
     return warnings

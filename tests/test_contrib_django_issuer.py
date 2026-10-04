@@ -119,6 +119,8 @@ def test_documents(client: Client, issuer: Issuer) -> None:
         "accounts_endpoint": ORIGIN + "/fedcm/accounts",
         "login_url": ORIGIN + "/accounts/login/",
     }
+    for url in ("/.well-known/email-verification", "/email-verification/jwks"):
+        assert client.get(url)["Cache-Control"] == "public, max-age=300"
 
 
 @pytest.mark.usefixtures("site")
@@ -184,9 +186,11 @@ def test_invalid_requests(client: Client) -> None:
     assert unsigned.json()["error"] == "invalid_signature"
     assert unsigned["Signature-Error"] == "error=invalid_signature"
 
-    get = client.get("/email-verification/issuance")
-    assert get.status_code == 400
-    assert get.json()["error"] == "invalid_request"
+    for method in (client.get, client.put, client.delete):
+        response = method("/email-verification/issuance")
+        assert response.status_code == 400
+        assert response.json()["error"] == "invalid_request"
+        assert response["Cache-Control"] == "no-store"
 
     large = client.post(
         "/email-verification/issuance", b"x" * (16 * 1024 + 1), content_type="application/json"
@@ -225,9 +229,9 @@ def test_accounts_endpoint(client: Client) -> None:
     assert client.get("/fedcm/accounts", headers=fedcm).status_code == 401
     _login(client)
     assert client.get("/fedcm/accounts").status_code == 400
-    assert client.get("/fedcm/accounts", headers=fedcm).json() == {
-        "accounts": [{"id": EMAIL, "email": EMAIL, "name": EMAIL}]
-    }
+    response = client.get("/fedcm/accounts", headers=fedcm)
+    assert response.json() == {"accounts": [{"id": EMAIL, "email": EMAIL, "name": EMAIL}]}
+    assert response["Cache-Control"] == "no-store"
 
 
 def test_hooks_choose_issuer_and_addresses(client: Client, clock: FixedClock) -> None:
@@ -290,6 +294,15 @@ def test_paths_must_match_the_issuer(clock: FixedClock) -> None:
     assert Site(issuer).issuer is issuer
 
 
+def test_async_replay_guard_is_refused(clock: FixedClock) -> None:
+    class AsyncGuard:
+        async def mark_used(self, key: str, expires_at: object) -> bool:
+            return True
+
+    with pytest.raises(ImproperlyConfigured, match="synchronous replay guard"):
+        EmailSite(_make_issuer(clock, replay_guard=AsyncGuard()))
+
+
 def test_user_emails_must_be_overridden(issuer: Issuer) -> None:
     with pytest.raises(ImproperlyConfigured, match="user_emails"):
         IssuerSite(issuer)
@@ -320,6 +333,10 @@ def test_session_cookie_checks(issuer: Issuer) -> None:
         deploy = checks.run_checks(tags=security, include_deployment_checks=True)
         assert {m.id for m in deploy} >= set(ids)
         assert not {m.id for m in checks.run_checks(tags=security)} & set(ids)
+    with override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=1024):
+        assert [m.id for m in check_session_cookie()] == ["pyevp.W003"]
+    with override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=None):
+        assert check_session_cookie() == []
     del site
 
 
@@ -328,4 +345,4 @@ def test_issuance_response_is_json(client: Client, clock: FixedClock, site: Issu
     response = _issue(client, FakeBrowser(clock=clock))
     assert response["Content-Type"] == "application/json"
     assert set(json.loads(response.content)) == {"issuance_token"}
-    assert site.owns(response.wsgi_request, EMAIL)
+    assert site.user_emails(response.wsgi_request) == [EMAIL]
