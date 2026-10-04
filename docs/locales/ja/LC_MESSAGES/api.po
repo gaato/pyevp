@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 17:33+0900\n"
+"POT-Creation-Date: 2026-10-04 19:05+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -82,8 +82,9 @@ msgstr ""
 #: pyevp.core.replay_key pyevp.core.verification_steps pyevp.core.verify_kb
 #: pyevp.diagnostics.adiscover pyevp.diagnostics.discover
 #: pyevp.diagnostics.discovery_steps pyevp.discovery.canonical_issuer
-#: pyevp.discovery.is_public_hostname pyevp.discovery.parse_txt_records
-#: pyevp.discovery.validate_jwks pyevp.issuer.core.Issuer.accounts_response
+#: pyevp.discovery.is_public_hostname pyevp.discovery.metadata_url
+#: pyevp.discovery.parse_txt_records pyevp.discovery.validate_jwks
+#: pyevp.issuer.core.Issuer.accounts_response
 #: pyevp.issuer.core.Issuer.aissuance_response
 #: pyevp.issuer.core.Issuer.dns_txt_records
 #: pyevp.issuer.core.Issuer.issuance_response
@@ -615,15 +616,8 @@ msgstr "トークンを受け入れたことを記録します。それまでに
 #: of pyevp.core.MarkUsed:3
 msgid ""
 "``key`` only needs remembering until ``expires_at``: from that instant "
-"on, the token fails the freshness checks anyway.  Freshness is judged "
-"once, before any I/O, so a driver must reject the token "
-"(``TOKEN_EXPIRED``) if its clock has reached ``expires_at`` after "
-"marking: the record may already be gone, and a replay would not find it."
-msgstr ""
-"``key`` を記憶しておく必要があるのは ``expires_at`` "
-"までです。その時点以降、トークンはどのみち鮮度のチェックで失敗します。鮮度の判定は I/O の前に 1 "
-"回だけ行うので、記録したあとでドライバーの時計が ``expires_at`` "
-"に達していたら、ドライバーはトークンを拒否（``TOKEN_EXPIRED``）しなければなりません。記録がすでに消えていて、リプレイを検出できない可能性があるためです。"
+"on, the token fails the freshness checks anyway."
+msgstr "``key`` は ``expires_at`` まで覚えておけば足ります。その時点からは、トークンはいずれにせよ鮮度の確認で拒否されます。"
 
 #: of pyevp.core.ResolveTxt:1
 msgid ""
@@ -740,6 +734,10 @@ msgstr "``claims`` に署名して compact JWS にします。``private_key`` �
 msgid "Issuer discovery: pure functions, no I/O."
 msgstr "発行者のディスカバリー。I/O を行わない純粋関数です。"
 
+#: of pyevp.discovery.METADATA_PATH:1
+msgid "The path of an issuer's metadata, relative to its identifier."
+msgstr "発行者のメタデータのパスです。発行者の識別子からの相対パスです。"
+
 #: of pyevp.discovery.canonical_issuer:1
 msgid "Turn an issuer identifier into its ``https://host`` form."
 msgstr "発行者の識別子を ``https://host`` の形に変換します。"
@@ -782,6 +780,10 @@ msgstr ""
 "IP アドレスのリテラル、単一ラベルの名前、``localhost`` などの特殊用途の名前を拒否します。攻撃者が用意した DNS "
 "レコードやメタデータのドキュメントで、verifier を RP "
 "自身のネットワークに向けさせないためです。公開された名前が解決されるアドレスは、HTTP のアダプターが接続前に確認します。"
+
+#: of pyevp.discovery.metadata_url:1
+msgid "Where ``issuer`` serves its metadata."
+msgstr "``issuer`` がメタデータを配信する場所です。"
 
 #: of pyevp.discovery.parse_txt_records:1
 msgid "Extract the canonical issuer from the TXT records of the discovery name."
@@ -1284,12 +1286,30 @@ msgstr ""
 
 #: of pyevp.contrib.django.issuer.IssuerSite:8
 msgid ""
-":attr:`urls` must be included at the root of the issuer's origin, and the"
-" paths below must match the issuer's ``issuance_endpoint`` and "
-"``jwks_uri``."
+":attr:`urls` must be included at the root of the issuer's origin.  The "
+"issuance and JWKS endpoints are served where the issuer's "
+"``issuance_endpoint`` and ``jwks_uri`` say. Without an issuer, "
+":attr:`issuance_path` and :attr:`jwks_path` must say where, for every "
+"issuer :meth:`get_issuer` returns."
 msgstr ""
-"{attr}`urls` は発行者のオリジンのルートに include しなければなりません。また、その下のパスは発行者の "
-"``issuance_endpoint`` と ``jwks_uri`` に一致している必要があります。"
+"{attr}`urls` は発行者のオリジンのルートに include してください。発行エンドポイントと JWKS は、発行者の "
+"``issuance_endpoint`` と ``jwks_uri`` "
+"が示す場所で配信します。発行者を渡さない場合は、{meth}`get_issuer` "
+"が返すすべての発行者について、{attr}`issuance_path` と {attr}`jwks_path` で場所を指定する必要があります。"
+
+#: of pyevp.contrib.django.issuer.IssuerSite.issuance_path:1
+msgid ""
+"Where issuance requests are routed, without the leading ``/``; the "
+"issuer's by default."
+msgstr "発行リクエストをルーティングする場所です。先頭の ``/`` は付けません。既定では発行者の設定に従います。"
+
+#: of pyevp.contrib.django.issuer.IssuerSite.jwks_path:1
+msgid "Where the JWKS is served, as for :attr:`issuance_path`."
+msgstr "JWKS を配信する場所です。{attr}`issuance_path` と同様です。"
+
+#: of pyevp.contrib.django.issuer.IssuerSite.accounts_path:1
+msgid "Where the FedCM accounts endpoint is served."
+msgstr "FedCM のアカウントエンドポイントを配信する場所です。"
 
 #: of pyevp.contrib.django.issuer.IssuerSite.get_issuer:1
 msgid "The issuer answering ``request``."
@@ -1490,6 +1510,22 @@ msgstr "``{issuer}/.well-known/email-verification`` で配信します。"
 msgid "Serve at ``jwks_uri``."
 msgstr "``jwks_uri`` で配信します。"
 
+#: of pyevp.issuer.Issuer.issuance_path:1
+msgid "The path of :attr:`issuance_endpoint`, to route issuance requests to."
+msgstr "{attr}`issuance_endpoint` のパスです。発行リクエストのルーティングに使います。"
+
+#: of pyevp.issuer.Issuer.issuance_path:3
+msgid ""
+"Decoded, as frameworks match it.  It is the public URL's path: behind a "
+"proxy that strips a prefix, the application sees another one."
+msgstr ""
+"フレームワークが照合するのと同じく、デコードしたパスです。公開 URL "
+"のパスなので、接頭辞を取り除くプロキシの後ろでは、アプリケーションには別のパスが届きます。"
+
+#: of pyevp.issuer.Issuer.jwks_path:1
+msgid "The path of :attr:`jwks_uri`, as for :attr:`issuance_path`."
+msgstr "{attr}`jwks_uri` のパスです。{attr}`issuance_path` と同様です。"
+
 #: of pyevp.issuer.core.Issuer.metadata_response:1
 msgid ":meth:`metadata_document` as a response, cacheable for five minutes."
 msgstr "{meth}`metadata_document` をレスポンスにしたものです。5 分間キャッシュできます。"
@@ -1526,20 +1562,21 @@ msgstr "発行エンドポイントへのリクエストに応答します。"
 
 #: of pyevp.issuer.core.Issuer.issuance_response:3
 msgid ""
-"Route every method here, with the raw body and the request's header "
-"lines. ``user_emails`` are the addresses of the user signed in to this "
-"issuer; pass an empty collection when nobody is.  An EVT is issued only "
-"for one of them."
+"Route every method here, with the request's header lines and its body "
+"(see :data:`RequestBody`).  ``user_emails`` are the addresses of the user"
+" signed in to this issuer; pass an empty collection when nobody is.  An "
+"EVT is issued only for one of them."
 msgstr ""
-"メソッドを問わずすべてのリクエストを、生のボディとヘッダー行とともにここに渡してください。``user_emails`` "
+"メソッドを問わずすべてのリクエストを、ヘッダー行とボディ（{data}`RequestBody` "
+"を参照）とともにここに渡してください。``user_emails`` "
 "は、この発行者にサインインしているユーザーのアドレスです。誰もサインインしていなければ空のコレクションを渡します。EVT "
 "は、そのいずれかに対してだけ発行します。"
 
 #: of pyevp.issuer.core.Issuer.aissuance_response:1
 msgid ""
-":meth:`issuance_response` for asynchronous replay guards and "
+":meth:`issuance_response` for asynchronous replay guards, bodies and "
 "``user_emails``."
-msgstr "非同期のリプレイガードと ``user_emails`` に対応した {meth}`issuance_response` です。"
+msgstr "非同期のリプレイガード、ボディ、``user_emails`` に対応した {meth}`issuance_response` です。"
 
 #: of pyevp.issuer.response.IssuerResponse:1
 msgid ""
@@ -1832,4 +1869,31 @@ msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につない�
 #~ "でトークンを確認します。失敗すると {class}`~pyevp.EVPError` "
 #~ "を送出します。セッション切れなどでセッションに nonce が無ければ "
 #~ "``nonce_mismatch`` になります。"
+
+#~ msgid ""
+#~ "``key`` only needs remembering until "
+#~ "``expires_at``: from that instant on, "
+#~ "the token fails the freshness checks "
+#~ "anyway.  Freshness is judged once, "
+#~ "before any I/O, so a driver must"
+#~ " reject the token (``TOKEN_EXPIRED``) if"
+#~ " its clock has reached ``expires_at`` "
+#~ "after marking: the record may already"
+#~ " be gone, and a replay would "
+#~ "not find it."
+#~ msgstr ""
+#~ "``key`` を記憶しておく必要があるのは ``expires_at`` "
+#~ "までです。その時点以降、トークンはどのみち鮮度のチェックで失敗します。鮮度の判定は I/O の前に 1"
+#~ " 回だけ行うので、記録したあとでドライバーの時計が ``expires_at`` "
+#~ "に達していたら、ドライバーはトークンを拒否（``TOKEN_EXPIRED``）しなければなりません。記録がすでに消えていて、リプレイを検出できない可能性があるためです。"
+
+#~ msgid ""
+#~ ":attr:`urls` must be included at the "
+#~ "root of the issuer's origin, and "
+#~ "the paths below must match the "
+#~ "issuer's ``issuance_endpoint`` and ``jwks_uri``."
+#~ msgstr ""
+#~ "{attr}`urls` は発行者のオリジンのルートに include "
+#~ "しなければなりません。また、その下のパスは発行者の ``issuance_endpoint`` と "
+#~ "``jwks_uri`` に一致している必要があります。"
 

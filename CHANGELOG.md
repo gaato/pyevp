@@ -8,6 +8,14 @@ see the [compatibility policy].
 
 ### Relying party
 
+- A synchronous `Verifier` given an asynchronous replay guard accepted every replay: the guard's
+  unawaited answer counted as "not seen before". This was so in 0.1.0. Synchronous calls now
+  refuse asynchronous ports with `TypeError`, up front where it can be told and otherwise when
+  the port answers; the same holds for nonce stores, caches and `discover`.
+- `verification_steps` takes a `clock` instead of `now`, and itself refuses a token that expired
+  while it was being marked used, which drivers had to do before.
+- `Profile.metadata_path` is gone, since the path is fixed: it is `discovery.METADATA_PATH`, and
+  `discovery.metadata_url` takes only the issuer.
 - `Verifier.verify_submission` (and the async one) verifies the token a form submitted, taking
   its nonce from a `NonceStore`. Without a token it returns `None` and leaves the store alone.
   Otherwise the nonce the token presents is used up, whether or not the token verifies, and a
@@ -48,6 +56,15 @@ see the [compatibility policy].
 - The Django `IssuanceView` answers every method through the issuer, `AccountsView` lists only
   addresses the issuer would issue for, and `IssuerSite` refuses an asynchronous replay guard
   at startup.
+- The issuer reads the body itself, only once the request is worth reading and no further than
+  it accepts: pass a function that reads it, such as Django's `request.read`, or to
+  `aissuance_response` an asynchronous iterable such as Starlette's `request.stream()`. Bytes
+  work too. A guard whose `mark_used` returned an awaitable to `issuance_response` let replays
+  through; that is now a `TypeError`.
+- `IssuerSite` routes issuance and the JWKS where the issuer's URLs say. Its `issuance_path`
+  and `jwks_path` only need setting without an `Issuer`, and `metadata_path` and
+  `web_identity_path` are gone, being fixed. So that every framework routes them as written,
+  `Issuer` refuses endpoint URLs whose path encodes `/` or contains `<`, `>`, `{` or `}`.
 
 #### Added
 
@@ -56,6 +73,8 @@ see the [compatibility policy].
 - `Issuer.metadata_response`, `Issuer.jwks_response` and `web_identity_response` serve the
   documents with `Cache-Control: public, max-age=300`.
 - `login_status_headers` gives the FedCM `Set-Login` header.
+- `Issuer.issuance_path` and `jwks_path`, and the constants `METADATA_PATH` and
+  `WEB_IDENTITY_PATH`, for routing.
 
 #### Removed
 
