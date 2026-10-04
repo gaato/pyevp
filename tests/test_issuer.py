@@ -531,7 +531,18 @@ def test_domains_compare_case_insensitively(clock: FixedClock) -> None:
     assert issuer.parse_request(**Browser(clock).request("a@EXAMPLE.com")).email == "a@EXAMPLE.com"
 
 
-_INVALID_DOMAINS = ["bad domain.example", "broken..example", "-dash.example", "a@b.example", ""]
+_INVALID_DOMAINS = [
+    "bad domain.example",
+    "broken..example",
+    "example.com..",
+    "-dash.example",
+    "a@b.example",
+    "xn--a.example",
+    ("a" * 63 + ".") * 4 + "example",
+    "",
+    None,
+    3,
+]
 
 
 @pytest.mark.parametrize("name", ["ü..example", *_INVALID_DOMAINS])
@@ -548,7 +559,7 @@ def test_domains_are_stored_as_a_labels(clock: FixedClock) -> None:
 def test_domains_from_a_callable_follow_changes(
     clock: FixedClock, caplog: pytest.LogCaptureFixture
 ) -> None:
-    domains: list[str] = []
+    domains: list[Any] = []  # data from a database is not always a str
     issuer = make_issuer(clock, email_domains=lambda: domains)
     assert issuer.dns_txt_records() == {}
     assert error(issuer, Browser(clock).request()).code is IssuanceErrorCode.AUTHENTICATION_REQUIRED

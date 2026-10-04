@@ -25,6 +25,8 @@ from datetime import datetime, timedelta
 from typing import Any, TypeAlias, cast
 from urllib.parse import urlsplit
 
+import idna
+
 from pyevp import _httpsig, _jose, discovery
 from pyevp._httpsig import Headers
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode, IssuanceResponse
@@ -57,9 +59,16 @@ def is_valid_email(value: str) -> bool:
     return value.isascii() and _VALID_EMAIL.fullmatch(value) is not None
 
 
-def _email_domain(name: str) -> str:
+def _email_domain(name: object) -> str:
     """``name`` as a lowercase A-label; ``ValueError`` unless it can be an email domain."""
-    domain = "" if "@" in name else discovery.email_domain(f"x@{name}")
+    if not isinstance(name, str) or "@" in name or name.endswith(".."):
+        raise ValueError(f"not a valid email domain: {name!r}")
+    domain = discovery.email_domain(f"x@{name}")
+    try:
+        # Rejects malformed A-labels (xn--…) and names over DNS's length limits.
+        idna.encode(domain)
+    except idna.IDNAError as exc:
+        raise ValueError(f"not a valid email domain: {name!r}") from exc
     if not is_valid_email(f"x@{domain}"):
         raise ValueError(f"not a valid email domain: {name!r}")
     return domain
