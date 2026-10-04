@@ -6,6 +6,7 @@ the metadata, JWKS and DNS records to publish.  See :class:`Issuer`.
 """
 
 from pyevp.issuer.core import (
+    MAX_REQUEST_BODY,
     IssuanceEvent,
     IssuanceObserver,
     IssuanceRequest,
@@ -27,6 +28,7 @@ __all__ = [
     "DEFAULT_ISSUANCE_PROFILE",
     "FEDCM_FETCH_DEST",
     "ISSUANCE_PROFILES",
+    "MAX_REQUEST_BODY",
     "SIGNING_ALGORITHMS",
     "IssuanceError",
     "IssuanceErrorCode",

@@ -38,6 +38,7 @@ from pyevp.profile import IssuerFormat
 from pyevp.replay import AsyncReplayGuard, ReplayGuard
 
 __all__ = [
+    "MAX_REQUEST_BODY",
     "IssuanceEvent",
     "IssuanceObserver",
     "IssuanceRequest",
@@ -52,7 +53,14 @@ _VALID_EMAIL = re.compile(
     r"[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
     r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*"
 )
-_MAX_BODY = 16 * 1024
+_DIGITS = re.compile(r"[0-9]+")
+
+MAX_REQUEST_BODY = 16 * 1024
+"""The largest issuance request body accepted, in bytes.
+
+Larger requests are refused before their signature is checked.  Frameworks need not read
+more than one byte beyond this, and nothing at all when ``Content-Length`` exceeds it.
+"""
 
 
 def is_valid_email(value: str) -> bool:
@@ -132,9 +140,23 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _check_size(lines: Mapping[str, list[str]], body: bytes) -> None:
+    length = lines.get("content-length")
+    if length is not None and (
+        len(length) != 1
+        or not _DIGITS.fullmatch(length[0])
+        # int() refuses very long digit strings, and anything this long is too large anyway.
+        or len(length[0]) > 9
+        or int(length[0]) > MAX_REQUEST_BODY
+    ):
+        raise IssuanceError(
+            IssuanceErrorCode.INVALID_REQUEST, "body too large or malformed Content-Length"
+        )
+    if len(body) > MAX_REQUEST_BODY:
+        raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
+
+
 def _parse_body(body: bytes) -> dict[str, Any]:
-    if len(body) > _MAX_BODY:
-        raise ValueError("body too large")
     try:
         value = json.loads(body.decode("utf-8"), object_pairs_hook=_unique_object)
         # Lone surrogates from JSON escapes, which nothing downstream expects.
@@ -350,6 +372,9 @@ class Issuer:
         # Read once: an iterator would be empty when verify_request parses it again.
         headers = _httpsig.header_pairs(headers)
         lines = _httpsig._field_lines(headers)
+        # Before anything else is worth doing, and before Content-Type so that an oversized
+        # body is refused the same way whatever it claims to be.
+        _check_size(lines, body)
         if _media_type(lines.get("content-type", ())) != "application/json":
             raise IssuanceError(
                 IssuanceErrorCode.UNSUPPORTED_MEDIA_TYPE, "Content-Type is not application/json"

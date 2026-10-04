@@ -21,6 +21,7 @@ from pyevp import EVPError, InMemoryReplayGuard, Profile, Verifier, _httpsig, _j
 from pyevp._jose import decode_json_segment
 from pyevp.diagnostics import discover
 from pyevp.issuer import (
+    MAX_REQUEST_BODY,
     IssuanceError,
     IssuanceErrorCode,
     IssuanceEvent,
@@ -366,6 +367,48 @@ def test_wrong_method(clock: FixedClock) -> None:
     assert error(make_issuer(clock), {**request, "method": "GET"}).code == "invalid_request"
 
 
+def signed(clock: FixedClock, raw: bytes, **kw: Any) -> dict[str, Any]:
+    """A signed request carrying ``raw`` exactly."""
+    browser = Browser(clock)
+    headers = _httpsig.sign_request(
+        method="POST",
+        endpoint=ENDPOINT,
+        body=raw,
+        private_key=browser.key,
+        public_jwk=browser.key.as_dict(private=False),
+        alg="Ed25519",
+        created=clock(),
+        **kw,
+    )
+    return {"method": "POST", "headers": headers, "body": raw}
+
+
+@pytest.mark.parametrize("length", ["16385", "1" * 5000, "-1", "16 384", "١٢", "0x10"])
+def test_bad_content_length_is_refused_before_the_signature(clock: FixedClock, length: str) -> None:
+    # No signature at all: the size check comes first, so this is not invalid_signature.
+    request = {"method": "POST", "headers": {"Content-Length": length}, "body": b""}
+    assert error(make_issuer(clock), request).code == "invalid_request"
+
+
+def test_repeated_content_length_is_refused(clock: FixedClock) -> None:
+    request = Browser(clock).request()
+    headers = [*request["headers"].items(), ("Content-Length", "26"), ("Content-Length", "26")]
+    assert error(make_issuer(clock), {**request, "headers": headers}).code == "invalid_request"
+
+
+def test_oversized_body_is_refused_before_content_type(clock: FixedClock) -> None:
+    request = {"method": "POST", "headers": {}, "body": b"x" * (MAX_REQUEST_BODY + 1)}
+    assert error(make_issuer(clock), request).code == "invalid_request"
+
+
+def test_body_of_the_maximum_size_is_accepted(clock: FixedClock) -> None:
+    raw = b'{"email": "alice@example.com"}'
+    raw = raw[:-1] + b" " * (MAX_REQUEST_BODY - len(raw)) + b"}"
+    request = signed(clock, raw)
+    request["headers"]["Content-Length"] = str(len(raw))
+    assert make_issuer(clock).parse_request(**request).email == "alice@example.com"
+
+
 @pytest.mark.parametrize(
     "content_type", [None, "application/x-www-form-urlencoded", "text/plain", "application/jsonx"]
 )
@@ -496,23 +539,11 @@ def test_invalid_body(clock: FixedClock, body: Any) -> None:
         b'{"email": "alice@example.com", "email": "bob@example.com"}',
         b'{"email": "\\ud800@example.com"}',
         b"\xff",
-        b"[" * 100_000,
-        b'{"email": "alice@example.com"' + b" " * 20_000 + b"}",
+        b"[" * 10_000,
     ],
 )
 def test_malformed_json(clock: FixedClock, raw: bytes) -> None:
-    browser = Browser(clock)
-    headers = _httpsig.sign_request(
-        method="POST",
-        endpoint=ENDPOINT,
-        body=raw,
-        private_key=browser.key,
-        public_jwk=browser.key.as_dict(private=False),
-        alg="Ed25519",
-        created=clock(),
-    )
-    exc = error(make_issuer(clock), {"method": "POST", "headers": headers, "body": raw})
-    assert exc.code == "invalid_request"
+    assert error(make_issuer(clock), signed(clock, raw)).code == "invalid_request"
 
 
 @pytest.mark.parametrize(

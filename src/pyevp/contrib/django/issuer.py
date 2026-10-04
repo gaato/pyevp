@@ -34,7 +34,7 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core import checks
-from django.core.exceptions import ImproperlyConfigured, RequestDataTooBig
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import resolve_url
 from django.urls import URLPattern, get_resolver, path
@@ -43,6 +43,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from pyevp.issuer import (
     FEDCM_FETCH_DEST,
+    MAX_REQUEST_BODY,
     IssuanceError,
     IssuanceErrorCode,
     Issuer,
@@ -62,7 +63,6 @@ __all__ = [
     "WebIdentityView",
 ]
 
-_MAX_BODY = 16 * 1024
 _sites: weakref.WeakSet[IssuerSite] = weakref.WeakSet()
 
 
@@ -261,15 +261,11 @@ class LoginStatusMiddleware:
 
 
 def _read_body(request: HttpRequest) -> bytes:
-    # Refuse large bodies before reading them, whatever DATA_UPLOAD_MAX_MEMORY_SIZE says.
-    try:
-        too_large = int(request.META.get("CONTENT_LENGTH") or 0) > _MAX_BODY
-        body = b"" if too_large else request.body
-    except (ValueError, RequestDataTooBig):
-        too_large = True
-    if too_large or len(body) > _MAX_BODY:
-        raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
-    return body
+    # Do not read a body the issuer will refuse anyway; it refuses it from Content-Length.
+    length = request.META.get("CONTENT_LENGTH") or "0"
+    if not length.isascii() or not length.isdigit() or len(length) > 9:
+        return b""
+    return b"" if int(length) > MAX_REQUEST_BODY else request.body
 
 
 def _to_http(result: IssuerResponse) -> HttpResponse:
