@@ -56,6 +56,8 @@ def _login(
 def test_documents(client: TestClient, issuer: Issuer) -> None:
     assert client.get("/.well-known/email-verification").json() == issuer.metadata_document()
     assert client.get(JWKS_PATH).json() == issuer.jwks_document()
+    for url in ("/.well-known/email-verification", JWKS_PATH, "/.well-known/web-identity"):
+        assert client.get(url).headers["cache-control"] == "public, max-age=300"
 
 
 def test_logged_in_user_gets_a_verifiable_token(
@@ -110,11 +112,13 @@ def test_fedcm_documents(client: TestClient) -> None:
     assert client.get("/fedcm/accounts", headers=fedcm).status_code == 401
     _login(client)
     assert client.get("/fedcm/accounts").status_code == 400
-    assert client.get("/fedcm/accounts", headers=fedcm).json() == {
+    response = client.get("/fedcm/accounts", headers=fedcm)
+    assert response.json() == {
         "accounts": [
             {"id": "alice@example.com", "email": "alice@example.com", "name": "alice@example.com"}
         ]
     }
+    assert response.headers["cache-control"] == "no-store"
 
 
 def _signed_in_as(client: TestClient) -> str | None:
@@ -165,3 +169,27 @@ def test_unsigned_request(client: TestClient) -> None:
     assert response.status_code == 400
     assert response.json()["error"] == "invalid_signature"
     assert response.headers["signature-error"] == "error=invalid_signature"
+
+
+def test_addresses_compare_case_insensitively(client: TestClient, clock: FixedClock) -> None:
+    _login(client)
+    response = _issue(client, FakeBrowser(clock=clock), "Alice@Example.com")
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.parametrize("method", ["GET", "PUT", "DELETE"])
+def test_other_methods_get_an_evp_error(client: TestClient, method: str) -> None:
+    response = client.request(method, ISSUANCE_PATH)
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_request"
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_oversized_requests(client: TestClient) -> None:
+    def chunks() -> Iterator[bytes]:
+        yield from [b"x" * 1024] * 64
+
+    for content in (b"x" * (64 * 1024), chunks()):
+        response = client.post(ISSUANCE_PATH, content=content)
+        assert response.status_code == 400
+        assert response.json()["error"] == "invalid_request"

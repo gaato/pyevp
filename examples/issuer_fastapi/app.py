@@ -18,7 +18,7 @@ Chrome also needs a FedCM well-known on the issuer's registrable domain (for
 ``issuer.example`` that is ``https://issuer.example/.well-known/web-identity``;
 for ``accounts.example.com`` it is ``https://example.com/...``).  This app serves
 it when the issuer's host is its own registrable domain; otherwise serve
-``web_identity_document(...)`` there yourself.  See ``pyevp.issuer.fedcm``.
+``web_identity_response(...)`` there yourself.  See ``pyevp.issuer.fedcm``.
 """
 
 from __future__ import annotations
@@ -31,26 +31,25 @@ from typing import Annotated
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from starlette.middleware.sessions import SessionMiddleware
 
 from pyevp.issuer import (
-    FEDCM_FETCH_DEST,
-    IssuanceError,
-    IssuanceErrorCode,
+    MAX_REQUEST_BODY,
     Issuer,
     IssuerResponse,
     SigningKey,
-    accounts_document,
-    web_identity_document,
+    login_status_headers,
+    web_identity_response,
 )
 
 ISSUANCE_PATH = "/email-verification/issuance"
 JWKS_PATH = "/email-verification/jwks"
 ACCOUNTS_PATH = "/fedcm/accounts"
 LOGIN_PATH = "/login"
-MAX_BODY = 16 * 1024
 SESSION_USER = "user"
+# The issuer answers every method itself; HEAD and OPTIONS are left to the framework.
+ISSUANCE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
 def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) -> FastAPI:
@@ -66,49 +65,47 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
         SessionMiddleware, secret_key=session_secret, same_site="none", https_only=True
     )
 
+    def user_emails(request: Request) -> list[str]:
+        """The addresses of the user signed in to this issuer, if any."""
+        user = request.session.get(SESSION_USER)
+        return [user] if user else []
+
     @app.get("/.well-known/email-verification")
-    async def metadata() -> JSONResponse:
-        return JSONResponse(issuer.metadata_document())
+    async def metadata() -> Response:
+        return _response(issuer.metadata_response())
 
     @app.get(JWKS_PATH)
-    async def jwks() -> JSONResponse:
-        return JSONResponse(issuer.jwks_document())
+    async def jwks() -> Response:
+        return _response(issuer.jwks_response())
 
     @app.get("/.well-known/web-identity")
-    async def web_identity() -> JSONResponse:
+    async def web_identity() -> Response:
         base = issuer.issuer
-        return JSONResponse(
-            web_identity_document(
+        return _response(
+            web_identity_response(
                 accounts_endpoint=base + ACCOUNTS_PATH, login_url=base + LOGIN_PATH
             )
         )
 
     @app.get(ACCOUNTS_PATH)
-    async def accounts(request: Request) -> JSONResponse:
+    async def accounts(request: Request) -> Response:
         # Chrome checks that the user is signed in with the typed address before issuing.
-        if request.headers.get("sec-fetch-dest") != FEDCM_FETCH_DEST:
-            return JSONResponse({"error": "not a FedCM request"}, status_code=400)
-        user = request.session.get(SESSION_USER)
-        if user is None:
-            return JSONResponse({"accounts": []}, status_code=401)
-        return JSONResponse(accounts_document([user]))
+        result = issuer.accounts_response(
+            headers=request.headers.items(), user_emails=user_emails(request)
+        )
+        return _response(result)
 
-    @app.post(ISSUANCE_PATH)
+    @app.api_route(ISSUANCE_PATH, methods=ISSUANCE_METHODS)
     async def issuance(request: Request) -> Response:
         # Put per-IP rate limiting in front of this endpoint (proxy or middleware).
-        body = await request.body()
-        # Raw pairs keep repeated header lines apart.
-        headers = [(k.decode("latin-1"), v.decode("latin-1")) for k, v in request.headers.raw]
-        try:
-            if len(body) > MAX_BODY:
-                raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
-            parsed = await issuer.aparse_request(method=request.method, headers=headers, body=body)
-            # One check for every way this can fail, so responses do not reveal accounts.
-            if request.session.get(SESSION_USER) != parsed.email:
-                raise IssuanceError.authentication_required()
-            result = issuer.success_response(issuer.issue(parsed))
-        except IssuanceError as exc:
-            result = exc.to_response()
+        result = await issuer.aissuance_response(
+            method=request.method,
+            # Starlette keeps repeated header lines apart, as the issuer expects.
+            headers=request.headers.items(),
+            # Only a POST can succeed; do not wait for the body of anything else.
+            body=await _read_body(request) if request.method == "POST" else b"",
+            user_emails=user_emails(request),
+        )
         return _response(result)
 
     @app.get(LOGIN_PATH, response_class=HTMLResponse)
@@ -134,7 +131,8 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
         # header is sent on a page response; whether Chrome honours it on a redirect was
         # not confirmed in testing.
         return HTMLResponse(
-            f"<p>Logged in as {html.escape(email)}</p>", headers={"Set-Login": "logged-in"}
+            f"<p>Logged in as {html.escape(email)}</p>",
+            headers=login_status_headers(signed_in=True),
         )
 
     @app.post("/logout")
@@ -142,7 +140,7 @@ def create_app(issuer: Issuer, users: dict[str, str], *, session_secret: str) ->
         if not _same_origin(request, origin):
             return HTMLResponse("<p>Cross-site request refused</p>", status_code=403)
         request.session.clear()
-        return HTMLResponse("<p>Logged out</p>", headers={"Set-Login": "logged-out"})
+        return HTMLResponse("<p>Logged out</p>", headers=login_status_headers(signed_in=False))
 
     return app
 
@@ -158,6 +156,25 @@ def _same_origin(request: Request, origin: str) -> bool:
     if site is not None:
         return site == "same-origin"
     return request.headers.get("origin") == origin
+
+
+async def _read_body(request: Request) -> bytes:
+    """The body, but no more of it than the issuer accepts.
+
+    The issuer refuses larger requests, from ``Content-Length`` when there is one, so
+    there is no point reading more.
+    """
+    length = request.headers.get("content-length", "")
+    if len(length) > 9 or (
+        length.isascii() and length.isdigit() and int(length) > MAX_REQUEST_BODY
+    ):
+        return b""
+    body = b""
+    async for chunk in request.stream():
+        body += chunk[: MAX_REQUEST_BODY + 1 - len(body)]
+        if len(body) > MAX_REQUEST_BODY:
+            break
+    return body
 
 
 def _response(result: IssuerResponse) -> Response:
