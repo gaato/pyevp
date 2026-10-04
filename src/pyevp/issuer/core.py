@@ -57,6 +57,14 @@ def is_valid_email(value: str) -> bool:
     return value.isascii() and _VALID_EMAIL.fullmatch(value) is not None
 
 
+def _email_domain(name: str) -> str:
+    """``name`` as a lowercase A-label; ``ValueError`` unless it can be an email domain."""
+    domain = "" if "@" in name else discovery.email_domain(f"x@{name}")
+    if not is_valid_email(f"x@{domain}"):
+        raise ValueError(f"not a valid email domain: {name!r}")
+    return domain
+
+
 @dataclass(frozen=True, slots=True)
 class IssuanceRequest:
     """A request whose signature, freshness and body have been validated.
@@ -138,11 +146,12 @@ class Issuer:
     :param signer: the active signing key.
     :param published_keys: further public JWKs to publish: the next key before a rotation,
         and retired keys until every EVT they signed has expired at relying parties.
-    :param email_domains: domains EVTs may be issued for.  Requests for any other domain
-        are refused with ``authentication_required``.  Pass a callable returning the current
-        domains when they change at runtime, for example when they live in a database.  It is
-        called whenever the domains are needed, may return none, and names that are not
-        valid domains are skipped with a warning.
+    :param email_domains: domains EVTs may be issued for, as U-labels or A-labels.  Requests
+        for any other domain are refused with ``authentication_required``.  Pass a callable
+        returning the current domains when they change at runtime, for example when they live
+        in a database.  It is called whenever the domains are needed, may return none, and
+        names that are not valid domains are skipped with a warning; in a collection they
+        raise ``ValueError``.
     """
 
     def __init__(
@@ -178,7 +187,7 @@ class Issuer:
         if callable(email_domains):
             self._domain_source = cast("Callable[[], Iterable[str]]", email_domains)
         else:
-            self._domains = frozenset(discovery.email_domain(f"x@{d}") for d in email_domains)
+            self._domains = frozenset(_email_domain(d) for d in email_domains)
             if not self._domains:
                 raise ValueError("email_domains must not be empty")
         self.profile = profile
@@ -207,7 +216,7 @@ class Issuer:
         domains = set()
         for name in self._domain_source():
             try:
-                domains.add(discovery.email_domain(f"x@{name}"))
+                domains.add(_email_domain(name))
             except ValueError:
                 _logger.warning("EVP issuer: skipping invalid email domain %r", name)
         return frozenset(domains)

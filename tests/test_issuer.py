@@ -531,6 +531,20 @@ def test_domains_compare_case_insensitively(clock: FixedClock) -> None:
     assert issuer.parse_request(**Browser(clock).request("a@EXAMPLE.com")).email == "a@EXAMPLE.com"
 
 
+_INVALID_DOMAINS = ["bad domain.example", "broken..example", "-dash.example", "a@b.example", ""]
+
+
+@pytest.mark.parametrize("name", ["ü..example", *_INVALID_DOMAINS])
+def test_invalid_domains_are_refused(clock: FixedClock, name: str) -> None:
+    with pytest.raises(ValueError):  # noqa: PT011
+        make_issuer(clock, email_domains=["example.com", name])
+
+
+def test_domains_are_stored_as_a_labels(clock: FixedClock) -> None:
+    issuer = make_issuer(clock, email_domains=["Bücher.example.", "xn--bcher-kva.example"])
+    assert issuer.email_domains == {"xn--bcher-kva.example"}
+
+
 def test_domains_from_a_callable_follow_changes(
     clock: FixedClock, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -539,9 +553,10 @@ def test_domains_from_a_callable_follow_changes(
     assert issuer.dns_txt_records() == {}
     assert error(issuer, Browser(clock).request()).code is IssuanceErrorCode.AUTHENTICATION_REQUIRED
 
-    domains[:] = ["Example.COM", "bücher.example", "ü..example"]
+    domains[:] = ["Example.COM", "bücher.example", "ü..example", *_INVALID_DOMAINS]
     assert issuer.email_domains == {"example.com", "xn--bcher-kva.example"}
-    assert "ü..example" in caplog.text
+    for name in ["ü..example", *_INVALID_DOMAINS]:
+        assert repr(name) in caplog.text
     assert issuer.parse_request(**Browser(clock).request()).email == "alice@example.com"
     assert set(issuer.dns_txt_records()) == {
         "_email-verification.example.com",

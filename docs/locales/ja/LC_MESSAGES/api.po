@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:33+0900\n"
+"POT-Creation-Date: 2026-10-04 14:34+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -1391,15 +1391,18 @@ msgstr "追加で公開する公開鍵の JWK。ローテーション前の次�
 
 #: of pyevp.issuer.core.Issuer:10
 msgid ""
-"domains EVTs may be issued for.  Requests for any other domain are "
-"refused with ``authentication_required``.  Pass a callable returning the "
-"current domains when they change at runtime, for example when they live "
-"in a database.  It is called whenever the domains are needed, may return "
-"none, and names that are not valid domains are skipped with a warning."
+"domains EVTs may be issued for, as U-labels or A-labels.  Requests for "
+"any other domain are refused with ``authentication_required``.  Pass a "
+"callable returning the current domains when they change at runtime, for "
+"example when they live in a database.  It is called whenever the domains "
+"are needed, may return none, and names that are not valid domains are "
+"skipped with a warning; in a collection they raise ``ValueError``."
 msgstr ""
-"EVT を発行してよいドメインです。それ以外のドメインへの要求は `authentication_required` "
+"EVT を発行してよいドメインです。U ラベルでも A ラベルでも指定できます。それ以外のドメインへの要求は "
+"`authentication_required` "
 "で拒否します。データベースで管理しているなど、ドメインが実行中に変わる場合は、現在のドメインを返す callable "
-"を渡します。ドメインが必要になるたびに呼び出され、空を返してもかまいません。ドメインとして正しくない名前は警告を出して読み飛ばします。"
+"を渡します。ドメインが必要になるたびに呼び出され、空を返してもかまいません。ドメインとして正しくない名前は、callable "
+"が返した場合は警告を出して読み飛ばし、コレクションに含まれる場合は `ValueError` を送出します。"
 
 #: of pyevp.issuer.Issuer.email_domains:1
 msgid "The domains EVTs may be issued for now, as lowercase A-labels."
@@ -1564,3 +1567,4 @@ msgstr "URL ごとにドキュメントを返します。値が呼び出し可�
 #: of pyevp.testing.make_verifier:1
 msgid "A :class:`Verifier` wired to in-memory DNS/HTTP serving ``issuers``."
 msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につないだ {class}`Verifier` を返します。"
+
