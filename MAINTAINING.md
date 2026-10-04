@@ -9,10 +9,12 @@ Record changes under `## [Unreleased]` in `CHANGELOG.md` as they land. To releas
 
 1. Rename that section to `## [X.Y.Z] - YYYY-MM-DD`, point its link at the tag, and start a new
    empty `## [Unreleased]` section.
-2. Bump `version` in `pyproject.toml`.
-3. Push a `vX.Y.Z` tag. `.github/workflows/release.yml` checks that the tag matches the version
-   and publishes to PyPI through trusted publishing. The `pypi` environment only accepts `v*`
-   tags and waits for a maintainer to approve the deployment.
+2. Run `uv version X.Y.Z`, which updates both `pyproject.toml` and `uv.lock` (CI installs from
+   the lock with `--locked`, so a stale lock fails it). Push these changes to `main`.
+3. Tag the pushed commit `vX.Y.Z` and push the tag. `.github/workflows/release.yml` runs CI on
+   it, checks that the tag matches the version and publishes to PyPI through trusted
+   publishing. The `pypi` environment only accepts `v*` tags and waits for a maintainer to
+   approve the deployment.
 
 ## Japanese docs on Read the Docs
 
