@@ -622,14 +622,12 @@ class _AwaitableGuard:
         return coroutine
 
 
-@pytest.mark.xfail(strict=True, reason="the synchronous Verifier takes an async guard")
 def test_sync_verifier_refuses_an_async_replay_guard(issuer: FakeIssuer) -> None:
     guard: Any = _AsyncGuard()
     with pytest.raises(TypeError, match="AsyncVerifier"):
         make_verifier(issuer, audience=AUDIENCE, replay_guard=guard)
 
 
-@pytest.mark.xfail(strict=True, reason="an awaitable from the guard counts as fresh")
 def test_sync_verifier_refuses_an_awaitable_from_the_guard(
     issuer: FakeIssuer, token: str, nonce: str, leash: list[Any]
 ) -> None:
@@ -637,3 +635,38 @@ def test_sync_verifier_refuses_an_awaitable_from_the_guard(
     verifier = make_verifier(issuer, audience=AUDIENCE, replay_guard=guard)
     with pytest.raises(TypeError, match="AsyncVerifier"):
         verifier.verify(token, nonce=nonce, email=EMAIL)
+
+
+def test_sync_verifier_refuses_an_async_cache(issuer: FakeIssuer) -> None:
+    class AsyncCacheStub:
+        async def get(self, key: str) -> None:
+            return None
+
+        async def set(self, key: str, entry: object, ttl: object) -> None:
+            return None
+
+    cache: Any = AsyncCacheStub()
+    with pytest.raises(TypeError, match="the cache is asynchronous"):
+        make_verifier(issuer, audience=AUDIENCE, cache=cache)
+
+
+@pytest.mark.anyio
+async def test_a_cancelled_verification_is_still_reported(
+    issuer: FakeIssuer, token: str, nonce: str
+) -> None:
+    class StuckResolver:
+        async def resolve_txt(self, name: str) -> list[str]:
+            await anyio.sleep_forever()
+            raise AssertionError
+
+    events: list[VerificationEvent] = []
+    verifier = AsyncVerifier(
+        audience=AUDIENCE,
+        resolver=StuckResolver(),
+        fetcher=AsyncInMemoryHttp({}),
+        clock=issuer.clock,
+        observer=events.append,
+    )
+    with anyio.move_on_after(0.01):
+        await verifier.verify(token, nonce=nonce, email=EMAIL)
+    assert [(e.ok, e.code) for e in events] == [(False, None)]

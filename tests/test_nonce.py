@@ -280,7 +280,6 @@ def test_async_submission_with_sync_and_async_stores(
     anyio.run(main)
 
 
-@pytest.mark.xfail(strict=True, reason="an awaitable from the store counts as a taken nonce")
 def test_sync_submission_refuses_an_async_store(
     verifier: Verifier, issuer: FakeIssuer, browser: FakeBrowser, leash: list[Any]
 ) -> None:
@@ -298,3 +297,17 @@ def test_sync_submission_refuses_an_async_store(
     token = _token(issuer, browser, "n")
     with pytest.raises(TypeError, match="AsyncVerifier"):
         verifier.verify_submission(token, nonces=AwaitableStore(), email=EMAIL)
+
+
+def test_sync_submission_refuses_an_async_store_up_front(verifier: Verifier) -> None:
+    class AsyncStore:
+        async def issue(self) -> str:
+            return "n"
+
+        async def take(self, nonce: str) -> bool:
+            return True
+
+    store: Any = AsyncStore()
+    # Even without a token, so that the mistake shows before EVP is in use.
+    with pytest.raises(TypeError, match="AsyncVerifier"):
+        verifier.verify_submission("", nonces=store, email=EMAIL)

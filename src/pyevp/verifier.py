@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 import threading
 import time
-from collections.abc import Collection, Iterator
+from collections.abc import Callable, Collection, Generator, Iterator
 from contextlib import AsyncExitStack, ExitStack, contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import TracebackType
-from typing import Self
+from typing import Any, Self, TypeAlias
 from urllib.parse import urlsplit
 
-from pyevp._drive import unreachable
+from pyevp._drive import adrive, drive, is_async, lookup, unreachable
 from pyevp.cache import AsyncCache, Cache, CacheEntry, InMemoryCache
-from pyevp.core import Effect, FetchJson, MarkUsed, ResolveTxt, Steps, verification_steps
+from pyevp.core import Effect, FetchJson, MarkUsed, Steps, verification_steps
 from pyevp.discovery import canonical_issuer
 from pyevp.errors import ErrorCode, EVPError, TokenError
 from pyevp.nonce import AsyncNonceStore, NonceStore, generate_nonce
@@ -81,7 +81,40 @@ def _presented_nonce(token: str) -> str:
     return nonce if isinstance(nonce, str) else ""
 
 
+@dataclass(frozen=True, slots=True)
+class _TakeNonce:
+    """Take ``nonce`` from the submission's nonce store.  Reply whether it was there."""
+
+    nonce: str
+
+
+@dataclass(frozen=True, slots=True)
+class _CacheGet:
+    """Look ``url`` up in the cache.  Reply with its :class:`CacheEntry` or ``None``."""
+
+    url: str
+
+
+@dataclass(frozen=True, slots=True)
+class _CacheSet:
+    """Store ``entry`` for ``url`` in the cache."""
+
+    url: str
+    entry: CacheEntry
+
+
+# TODO(py3.12): back to ``type`` statements once 3.11 support is dropped.
+_Effect: TypeAlias = Effect | _TakeNonce | _CacheGet | _CacheSet
+_Steps: TypeAlias = Generator[_Effect, Any, VerifiedEmail]
+_SYNC = "use AsyncVerifier"
+
+
 class _Base:
+    _resolver: TxtResolver | AsyncTxtResolver
+    _fetcher: JsonFetcher | AsyncJsonFetcher
+    _cache: Cache | AsyncCache
+    _replay_guard: ReplayGuard | AsyncReplayGuard | None
+
     def __init__(
         self,
         *,
@@ -108,32 +141,93 @@ class _Base:
         # Ports created by default(); ports passed in belong to the caller.
         self._owned: tuple[object, ...] = ()
 
-    def _steps(self, token: str, nonce: str, email: str | None, audience: str | None) -> Steps:
-        return verification_steps(
-            token,
-            audience=_validate_origin(audience) if audience is not None else self.audience,
-            nonce=nonce,
-            clock=self._clock,
-            profile=self.profile,
-            email=email,
-            replay_protection=self._replay_protection,
-            allowed_issuers=self.allowed_issuers,
+    def _steps(self, token: str, nonce: str, email: str | None, audience: str | None) -> _Steps:
+        return self._cached(
+            verification_steps(
+                token,
+                audience=_validate_origin(audience) if audience is not None else self.audience,
+                nonce=nonce,
+                clock=self._clock,
+                profile=self.profile,
+                email=email,
+                replay_protection=self._replay_protection,
+                allowed_issuers=self.allowed_issuers,
+            )
         )
 
-    def _store_failed(self, token: str, error: Exception, started: float) -> None:
-        # Reported like a cache or replay guard failure inside verify().
-        self._notify(token, None, error, started)
-
-    def _unknown_nonce(self, token: str, started: float) -> TokenError:
+    def _submission_steps(self, token: str, email: str | None, audience: str | None) -> _Steps:
+        try:
+            presented = _presented_nonce(token)
+        except _Unreadable:
+            # Fails verification as malformed, with a nonce that matches nothing.
+            return (yield from self._steps(token, generate_nonce(), email, audience))
         # Refused before the token is checked, so that this is the one error reported.
-        error = TokenError(
-            ErrorCode.NONCE_MISMATCH, "KB-JWT nonce was not issued to this user or was used"
-        )
-        self._notify(token, None, error, started)
-        return error
+        if not presented or not (yield _TakeNonce(presented)):
+            raise TokenError(
+                ErrorCode.NONCE_MISMATCH, "KB-JWT nonce was not issued to this user or was used"
+            )
+        return (yield from self._steps(token, presented, email, audience))
+
+    def _cached(self, steps: Steps) -> _Steps:
+        """``steps``, with issuer documents answered from the cache where it can."""
+        try:
+            effect = next(steps)
+            while True:
+                if isinstance(effect, FetchJson):
+                    entry = self._reuse(effect, (yield _CacheGet(effect.url)))
+                    if entry is None:
+                        entry = CacheEntry((yield effect), self._clock())
+                        yield _CacheSet(effect.url, entry)
+                    reply: object = entry.value
+                else:
+                    reply = yield effect
+                effect = steps.send(reply)
+        except StopIteration as stop:
+            return stop.value
+        finally:
+            steps.close()
+
+    def _performer(self, nonces: NonceStore | AsyncNonceStore | None = None) -> Callable[..., Any]:
+        """Answers the effects, as values or, from asynchronous ports, awaitables.
+
+        Failures of the application's own nonce store, replay guard and cache propagate
+        unchanged; only failed lookups become ``ISSUER_UNREACHABLE``.
+        """
+
+        def perform(effect: _Effect) -> object:
+            match effect:
+                case _TakeNonce(nonce=nonce):
+                    assert nonces is not None
+                    return nonces.take(nonce)
+                case MarkUsed():
+                    assert self._replay_guard is not None
+                    return self._replay_guard.mark_used(effect.key, effect.expires_at)
+                case _CacheGet(url=url):
+                    return self._cache.get(url)
+                case _CacheSet(url=url, entry=entry):
+                    return self._cache.set(url, entry, self._cache_ttl)
+                case _:
+                    return lookup(effect, resolver=self._resolver, fetcher=self._fetcher)
+
+        return perform
+
+    @contextmanager
+    def _observed(self, token: str) -> Iterator[Callable[[VerifiedEmail], VerifiedEmail]]:
+        """Tell the observer how verifying ``token`` ended, once."""
+        started = time.perf_counter()
+
+        def ok(result: VerifiedEmail) -> VerifiedEmail:
+            self._notify(token, result, None, started)
+            return result
+
+        try:
+            yield ok
+        except BaseException as exc:  # a cancelled verification ends too
+            self._notify(token, None, exc, started)
+            raise
 
     def _notify(
-        self, token: str, result: VerifiedEmail | None, error: Exception | None, started: float
+        self, token: str, result: VerifiedEmail | None, error: BaseException | None, started: float
     ) -> None:
         if self._observer is None:
             return
@@ -171,22 +265,6 @@ class _Base:
             self._refresh_attempts[effect.url] = now
         return None
 
-    def _entry(self, value: object) -> CacheEntry:
-        return CacheEntry(value, self._clock())
-
-
-@contextmanager
-def _issuer_io(effect: ResolveTxt | FetchJson) -> Iterator[None]:
-    """Report a failed DNS or HTTP request to the issuer as ``ISSUER_UNREACHABLE``."""
-    try:
-        yield
-    except EVPError:
-        raise
-    except Exception as exc:
-        mapped = unreachable(effect, exc)
-        assert mapped is not None
-        raise mapped from exc
-
 
 def _missing_extras(cls: type, what: str) -> ImportError:
     return ImportError(
@@ -205,6 +283,11 @@ class Verifier(_Base):
     ``https://`` + host or as a host; any other is ``issuer_not_allowed``, refused before
     anything is looked up.  An empty collection accepts no token.
     """
+
+    _resolver: TxtResolver
+    _fetcher: JsonFetcher
+    _cache: Cache
+    _replay_guard: ReplayGuard | None
 
     def __init__(
         self,
@@ -235,6 +318,15 @@ class Verifier(_Base):
         self._fetcher = fetcher
         self._replay_guard = replay_guard
         self._cache = cache if cache is not None else InMemoryCache(clock=clock)
+        for what, method in (
+            ("the resolver", resolver.resolve_txt),
+            ("the fetcher", fetcher.fetch_json),
+            ("the cache", self._cache.get),
+            ("the cache", self._cache.set),
+            ("the replay guard", getattr(replay_guard, "mark_used", None)),
+        ):
+            if is_async(method):
+                raise TypeError(f"{what} is asynchronous; {_SYNC}")
 
     @classmethod
     def default(
@@ -332,15 +424,15 @@ class Verifier(_Base):
 
         Any :class:`~pyevp.EVPError` means "do not trust this token".
         """
-        started, result, error = time.perf_counter(), None, None
-        try:
-            result = self._run(self._steps(token, nonce, email, audience))
-            return result
-        except Exception as exc:
-            error = exc
-            raise
-        finally:
-            self._notify(token, result, error, started)
+        with self._observed(token) as ok:
+            return ok(
+                drive(
+                    self._steps(token, nonce, email, audience),
+                    self._performer(),
+                    hint=_SYNC,
+                    translate=unreachable,
+                )
+            )
 
     def verify_submission(
         self,
@@ -364,49 +456,19 @@ class Verifier(_Base):
         :param email: as for :meth:`verify`.
         :raises pyevp.EVPError: as :meth:`verify` does.
         """
+        if is_async(nonces.take):
+            raise TypeError(f"the nonce store is asynchronous; {_SYNC}")
         if not token:
             return None
-        try:
-            presented = _presented_nonce(token)
-        except _Unreadable:
-            # Fails verification as malformed, with a nonce that matches nothing.
-            return self.verify(token, nonce=generate_nonce(), email=email, audience=audience)
-        started = time.perf_counter()
-        try:
-            taken = bool(presented) and nonces.take(presented)
-        except Exception as exc:
-            self._store_failed(token, exc, started)
-            raise
-        if not taken:
-            raise self._unknown_nonce(token, started)
-        return self.verify(token, nonce=presented, email=email, audience=audience)
-
-    def _run(self, steps: Steps) -> VerifiedEmail:
-        try:
-            effect = next(steps)
-            while True:
-                effect = steps.send(self._perform(effect))
-        except StopIteration as stop:
-            return stop.value
-        finally:
-            steps.close()
-
-    def _perform(self, effect: Effect) -> object:
-        # Failures of the application's own replay store and cache propagate unchanged.
-        match effect:
-            case MarkUsed():
-                assert self._replay_guard is not None
-                return self._replay_guard.mark_used(effect.key, effect.expires_at)
-            case ResolveTxt(name=name):
-                with _issuer_io(effect):
-                    return self._resolver.resolve_txt(name)
-            case FetchJson(url=url):
-                if (entry := self._reuse(effect, self._cache.get(url))) is not None:
-                    return entry.value
-                with _issuer_io(effect):
-                    value = self._fetcher.fetch_json(url)
-                self._cache.set(url, self._entry(value), self._cache_ttl)
-                return value
+        with self._observed(token) as ok:
+            return ok(
+                drive(
+                    self._submission_steps(token, email, audience),
+                    self._performer(nonces),
+                    hint=_SYNC,
+                    translate=unreachable,
+                )
+            )
 
 
 class AsyncVerifier(_Base):
@@ -414,6 +476,9 @@ class AsyncVerifier(_Base):
 
     An async context manager: leaving it calls :meth:`aclose`.
     """
+
+    _resolver: AsyncTxtResolver
+    _fetcher: AsyncJsonFetcher
 
     def __init__(
         self,
@@ -525,15 +590,9 @@ class AsyncVerifier(_Base):
         self, token: str, *, nonce: str, email: str | None, audience: str | None = None
     ) -> VerifiedEmail:
         """Async counterpart of :meth:`Verifier.verify`."""
-        started, result, error = time.perf_counter(), None, None
-        try:
-            result = await self._run(self._steps(token, nonce, email, audience))
-            return result
-        except Exception as exc:
-            error = exc
-            raise
-        finally:
-            self._notify(token, result, error, started)
+        with self._observed(token) as ok:
+            steps = self._steps(token, nonce, email, audience)
+            return ok(await adrive(steps, self._performer(), translate=unreachable))
 
     async def verify_submission(
         self,
@@ -549,50 +608,6 @@ class AsyncVerifier(_Base):
         """
         if not token:
             return None
-        try:
-            presented = _presented_nonce(token)
-        except _Unreadable:
-            return await self.verify(token, nonce=generate_nonce(), email=email, audience=audience)
-        started = time.perf_counter()
-        try:
-            taken = presented and nonces.take(presented)
-            taken = bool(await taken if inspect.isawaitable(taken) else taken)
-        except Exception as exc:
-            self._store_failed(token, exc, started)
-            raise
-        if not taken:
-            raise self._unknown_nonce(token, started)
-        return await self.verify(token, nonce=presented, email=email, audience=audience)
-
-    async def _run(self, steps: Steps) -> VerifiedEmail:
-        try:
-            effect = next(steps)
-            while True:
-                effect = steps.send(await self._perform(effect))
-        except StopIteration as stop:
-            return stop.value
-        finally:
-            steps.close()
-
-    async def _perform(self, effect: Effect) -> object:
-        # Failures of the application's own replay store and cache propagate unchanged.
-        match effect:
-            case MarkUsed():
-                assert self._replay_guard is not None
-                marked = self._replay_guard.mark_used(effect.key, effect.expires_at)
-                return await marked if inspect.isawaitable(marked) else marked
-            case ResolveTxt(name=name):
-                with _issuer_io(effect):
-                    return await self._resolver.resolve_txt(name)
-            case FetchJson(url=url):
-                cached = self._cache.get(url)
-                if inspect.isawaitable(cached):
-                    cached = await cached
-                if (entry := self._reuse(effect, cached)) is not None:
-                    return entry.value
-                with _issuer_io(effect):
-                    value = await self._fetcher.fetch_json(url)
-                stored = self._cache.set(url, self._entry(value), self._cache_ttl)
-                if inspect.isawaitable(stored):
-                    await stored
-                return value
+        with self._observed(token) as ok:
+            steps = self._submission_steps(token, email, audience)
+            return ok(await adrive(steps, self._performer(nonces), translate=unreachable))
