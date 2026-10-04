@@ -53,7 +53,8 @@ def test_signup_with_token(client: TestClient, issuer: FakeIssuer) -> None:
     }
     # The nonce is single-use.
     response = client.post("/signup", data={"email": "alice@example.com", "evt": evt})
-    assert response.json()["verified"] is False
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "nonce_mismatch"
 
 
 def test_signup_with_bad_token(client: TestClient, issuer: FakeIssuer) -> None:
@@ -67,10 +68,27 @@ def test_signup_with_bad_token(client: TestClient, issuer: FakeIssuer) -> None:
     assert response.json()["detail"]["code"] == "nonce_mismatch"
 
 
-def test_signup_without_token(client: TestClient) -> None:
-    _nonce(client)
+def test_signup_without_token_keeps_the_nonce(client: TestClient, issuer: FakeIssuer) -> None:
+    nonce = _nonce(client)
     response = client.post("/signup", data={"email": "alice@example.com"})
     assert response.json() == {"email": "alice@example.com", "verified": False}
+    browser = FakeBrowser(clock=issuer.clock)
+    evt = browser.present(
+        issuer.issue("alice@example.com", browser.public_jwk), audience=ORIGIN, nonce=nonce
+    )
+    response = client.post("/signup", data={"email": "alice@example.com", "evt": evt})
+    assert response.json()["verified"] is True
+
+
+def test_forms_in_two_tabs(client: TestClient, issuer: FakeIssuer) -> None:
+    browser = FakeBrowser(clock=issuer.clock)
+    nonces = [_nonce(client), _nonce(client)]
+    for nonce in reversed(nonces):
+        evt = browser.present(
+            issuer.issue("alice@example.com", browser.public_jwk), audience=ORIGIN, nonce=nonce
+        )
+        response = client.post("/signup", data={"email": "alice@example.com", "evt": evt})
+        assert response.json()["verified"] is True
 
 
 def test_replay_with_old_session_cookie(client: TestClient, issuer: FakeIssuer) -> None:

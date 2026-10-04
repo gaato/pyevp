@@ -11,7 +11,6 @@ Run from this directory::
 
 from __future__ import annotations
 
-import html
 import os
 import secrets
 from collections.abc import AsyncIterator
@@ -24,12 +23,11 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, generate_nonce
+from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, SessionNonces, token_input
 
 ORIGIN = os.environ.get("EVP_ORIGIN", "http://localhost:8000")
 # A random development secret: sessions and logins do not survive restarts.
 SECRET = os.environ.get("SECRET") or secrets.token_urlsafe(32)
-SESSION_KEY = "evp_nonce"
 
 auth = AuthX(
     config=AuthXConfig(
@@ -60,13 +58,11 @@ def get_verifier(request: Request) -> AsyncVerifier:
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request) -> str:
-    nonce = generate_nonce()
-    request.session[SESSION_KEY] = nonce
+    nonce = SessionNonces(request.session).issue()
     return f"""<!doctype html>
 <form method="post" action="/login">
   <input type="email" name="email" autocomplete="email" required>
-  <input type="hidden" name="evt" autocomplete="email-verification-token"
-         nonce="{html.escape(nonce)}">
+  {token_input(nonce)}
   <button>Sign in</button>
 </form>"""
 
@@ -78,14 +74,15 @@ async def login(
     email: Annotated[str, Form()],
     evt: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    nonce = request.session.pop(SESSION_KEY, None)
-    if not evt or nonce is None:
-        # A real app would offer another sign-in method here (magic link, passkey, ...).
-        raise HTTPException(400, {"code": "evp_unavailable"})
     try:
-        result = await verifier.verify(evt, nonce=nonce, email=email)
+        result = await verifier.verify_submission(
+            evt, nonces=SessionNonces(request.session), email=email
+        )
     except EVPError as exc:
         raise HTTPException(400, {"code": exc.code}) from exc
+    if result is None:
+        # A real app would offer another sign-in method here (magic link, passkey, ...).
+        raise HTTPException(400, {"code": "evp_unavailable"})
 
     response = RedirectResponse("/me", status_code=303)
     auth.set_access_cookies(auth.create_access_token(uid=result.email), response)

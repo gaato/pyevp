@@ -79,6 +79,20 @@ def test_no_token_registers_unverified_user(client: TestClient, issuer: FakeIssu
     assert _register(client, issuer, email, "none")["is_verified"] is False
 
 
+def test_without_a_token_the_nonce_stays(client: TestClient, issuer: FakeIssuer) -> None:
+    match = re.search(r'nonce="([^"]+)"', client.get("/register").text)
+    assert match
+    first, second = _email(), _email()
+    data = {"email": first, "password": PASSWORD, "evt": ""}
+    assert client.post("/register", data=data).json()["is_verified"] is False
+    browser = FakeBrowser(clock=issuer.clock)
+    evt = browser.present(
+        issuer.issue(second, browser.public_jwk), audience=ORIGIN, nonce=match.group(1)
+    )
+    data = {"email": second, "password": PASSWORD, "evt": evt}
+    assert client.post("/register", data=data).json()["is_verified"] is True
+
+
 def test_invalid_email_is_rejected(client: TestClient) -> None:
     response = client.post("/register", data={"email": "not-an-email", "password": PASSWORD})
     assert response.status_code == 422

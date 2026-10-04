@@ -10,7 +10,6 @@ Run from this directory::
 
 from __future__ import annotations
 
-import html
 import logging
 import os
 import secrets
@@ -29,13 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 from starlette.middleware.sessions import SessionMiddleware
 
-from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, generate_nonce
+from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, SessionNonces, token_input
 
 ORIGIN = os.environ.get("EVP_ORIGIN", "http://localhost:8000")
 # A random development secret: sessions and logins do not survive restarts.
 SECRET = os.environ.get("SECRET") or secrets.token_urlsafe(32)
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./fastapi_users.db")
-SESSION_KEY = "evp_nonce"
 
 logger = logging.getLogger(__name__)
 
@@ -125,14 +123,12 @@ def get_verifier(request: Request) -> AsyncVerifier:
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_form(request: Request) -> str:
-    nonce = generate_nonce()
-    request.session[SESSION_KEY] = nonce
+    nonce = SessionNonces(request.session).issue()
     return f"""<!doctype html>
 <form method="post" action="/register">
   <input type="email" name="email" autocomplete="email" required>
   <input type="password" name="password" autocomplete="new-password" required>
-  <input type="hidden" name="evt" autocomplete="email-verification-token"
-         nonce="{html.escape(nonce)}">
+  {token_input(nonce)}
   <button>Register</button>
 </form>"""
 
@@ -147,14 +143,14 @@ async def register(
     password: Annotated[str, Form()],
     evt: Annotated[str, Form()] = "",
 ) -> User:
-    nonce = request.session.pop(SESSION_KEY, None)
     verified = False
-    if evt and nonce is not None:
-        try:
-            await verifier.verify(evt, nonce=nonce, email=email)
-            verified = True
-        except EVPError as exc:
-            logger.info("EVP token rejected: %s", exc.code)
+    try:
+        result = await verifier.verify_submission(
+            evt, nonces=SessionNonces(request.session), email=email
+        )
+        verified = result is not None  # None: no token, so is_verified stays false
+    except EVPError as exc:
+        logger.info("EVP token rejected: %s", exc.code)
 
     # Built server-side: safe=False keeps is_verified, and nothing else privileged is set.
     user_create = UserCreate(email=email, password=password, is_verified=verified)

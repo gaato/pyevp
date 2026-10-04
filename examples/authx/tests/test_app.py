@@ -52,6 +52,14 @@ def test_not_logged_in(client: TestClient) -> None:
     assert client.get("/me").status_code == 401
 
 
+def test_without_a_token_the_nonce_stays(client: TestClient, issuer: FakeIssuer) -> None:
+    evt = _token(client, issuer)
+    response = client.post("/login", data={"email": EMAIL})
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "evp_unavailable"
+    assert client.post("/login", data={"email": EMAIL, "evt": evt}).status_code == 200
+
+
 def test_bad_token(client: TestClient, issuer: FakeIssuer) -> None:
     evt = _token(client, issuer, nonce="nonce-of-another-session")
     response = client.post("/login", data={"email": EMAIL, "evt": evt})
