@@ -96,7 +96,9 @@ def issuer(application: Starlette) -> Issuer:
 
 @pytest.fixture
 def client(application: Starlette) -> Iterator[TestClient]:
-    with TestClient(application, base_url=MAIL) as client:
+    # Browsers send Sec-Fetch-Site with every form post; login and logout require it.
+    headers = {"Sec-Fetch-Site": "same-origin"}
+    with TestClient(application, base_url=MAIL, headers=headers) as client:
         yield client
 
 
@@ -244,6 +246,13 @@ def test_csrf_rejected(client: TestClient, path: str, fetch_site: str) -> None:
     assert response.json() == {"error": "forbidden"}
     assert "set-login" not in response.headers
     assert client.get("/me").json() == before
+
+
+def test_login_needs_fetch_metadata_or_a_matching_origin(client: TestClient) -> None:
+    del client.headers["Sec-Fetch-Site"]
+    assert client.post("/login").status_code == 403
+    assert client.post("/login", headers={"Origin": "https://evil.example"}).status_code == 403
+    assert client.post("/login", headers={"Origin": MAIL}).status_code == 200
 
 
 def test_csrf_cannot_create_a_session(client: TestClient) -> None:
@@ -419,7 +428,11 @@ def test_environment_settings(monkeypatch: pytest.MonkeyPatch, stylesheet: Path)
         example.write_text("# landing:start\n# selected EVP_EXAMPLES_DIR\n# landing:end\n")
     monkeypatch.setenv("EVP_EXAMPLES_DIR", str(custom_examples))
     monkeypatch.setattr(site, "STYLESHEET", stylesheet)
-    with TestClient(site._from_environment(), base_url="https://mail.example") as client:
+    with TestClient(
+        site._from_environment(),
+        base_url="https://mail.example",
+        headers={"Sec-Fetch-Site": "same-origin"},
+    ) as client:
         assert client.post("/login").headers["set-login"] == "logged-in"
         assert client.get("/me").json() == {
             "email": "demo@email.example",

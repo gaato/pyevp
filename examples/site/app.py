@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from time import perf_counter
 from typing import Annotated, TypedDict
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Form, Request
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
@@ -337,6 +338,18 @@ def _user_emails(request: Request) -> list[str]:
     return [email] if email else []
 
 
+def _same_origin(request: Request, origin: str) -> bool:
+    """Whether a browser sent ``request`` from the mail host's own pages.
+
+    Otherwise another site could sign visitors in (login CSRF).  Browsers send
+    ``Sec-Fetch-Site``; older ones only ``Origin``.  A request with neither is refused.
+    """
+    site = request.headers.get("sec-fetch-site")
+    if site is not None:
+        return site == "same-origin"
+    return request.headers.get("origin") == origin
+
+
 def _response(result: IssuerResponse) -> Response:
     return Response(result.body, status_code=result.status, headers=result.headers)
 
@@ -377,9 +390,12 @@ def _mail_app(
         name = "signed-in" if request.session.get(SESSION_USER) else "signed-out"
         return HTMLResponse(pages[name], headers=NO_STORE)
 
+    endpoint = urlsplit(issuer.issuance_endpoint)
+    origin = f"{endpoint.scheme}://{endpoint.netloc}"
+
     @mail.post(LOGIN_PATH)
     async def login(request: Request) -> Response:
-        if request.headers.get("sec-fetch-site", "same-origin") != "same-origin":
+        if not _same_origin(request, origin):
             return JSONResponse({"error": "forbidden"}, status_code=403, headers=NO_STORE)
         request.session.clear()
         request.session.update({SESSION_USER: email, "issued": 0})
@@ -388,7 +404,7 @@ def _mail_app(
 
     @mail.post("/logout")
     async def logout(request: Request) -> Response:
-        if request.headers.get("sec-fetch-site", "same-origin") != "same-origin":
+        if not _same_origin(request, origin):
             return JSONResponse({"error": "forbidden"}, status_code=403, headers=NO_STORE)
         request.session.clear()
         headers = {**NO_STORE, **login_status_headers(signed_in=False)}
