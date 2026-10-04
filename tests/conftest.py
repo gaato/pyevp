@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+from collections.abc import Coroutine, Iterator
+from typing import Any
 
 import pytest
 
@@ -61,3 +63,12 @@ def verifier(issuer: FakeIssuer) -> Verifier:
 @pytest.fixture
 def token(issuer: FakeIssuer, browser: FakeBrowser, nonce: str) -> str:
     return browser.present(issuer.issue(EMAIL, browser.public_jwk), audience=AUDIENCE, nonce=nonce)
+
+
+@pytest.fixture
+def leash() -> Iterator[list[Coroutine[Any, Any, Any]]]:
+    """Coroutines a test hands to synchronous code; closed afterwards if nobody awaited them."""
+    made: list[Coroutine[Any, Any, Any]] = []
+    yield made
+    for coroutine in made:
+        coroutine.close()

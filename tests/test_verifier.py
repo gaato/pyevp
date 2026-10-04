@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from datetime import timedelta
-from typing import cast
+from typing import Any, cast
 
 import anyio
 import pytest
@@ -598,3 +598,42 @@ def test_default_takes_allowed_issuers(issuer: FakeIssuer) -> None:
         allowed_issuers=["issuer.example"],
     )
     assert averifier.allowed_issuers == frozenset({"https://issuer.example"})
+
+
+# --- asynchronous ports given to the synchronous verifier ---
+
+
+class _AsyncGuard:
+    async def mark_used(self, key: str, expires_at: object) -> bool:
+        return True
+
+
+class _AwaitableGuard:
+    """A guard whose plain ``mark_used`` returns an awaitable, which no check can see coming."""
+
+    def __init__(self, leash: list[Any]) -> None:
+        self.leash = leash
+
+    async def _mark(self) -> bool:
+        return True
+
+    def mark_used(self, key: str, expires_at: object) -> Any:
+        self.leash.append(coroutine := self._mark())
+        return coroutine
+
+
+@pytest.mark.xfail(strict=True, reason="the synchronous Verifier takes an async guard")
+def test_sync_verifier_refuses_an_async_replay_guard(issuer: FakeIssuer) -> None:
+    guard: Any = _AsyncGuard()
+    with pytest.raises(TypeError, match="AsyncVerifier"):
+        make_verifier(issuer, audience=AUDIENCE, replay_guard=guard)
+
+
+@pytest.mark.xfail(strict=True, reason="an awaitable from the guard counts as fresh")
+def test_sync_verifier_refuses_an_awaitable_from_the_guard(
+    issuer: FakeIssuer, token: str, nonce: str, leash: list[Any]
+) -> None:
+    guard: Any = _AwaitableGuard(leash)
+    verifier = make_verifier(issuer, audience=AUDIENCE, replay_guard=guard)
+    with pytest.raises(TypeError, match="AsyncVerifier"):
+        verifier.verify(token, nonce=nonce, email=EMAIL)

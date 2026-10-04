@@ -1135,3 +1135,20 @@ def test_accounts_response_type_errors(clock: FixedClock) -> None:
 def test_login_status_headers() -> None:
     assert login_status_headers(signed_in=True) == {"Set-Login": "logged-in"}
     assert login_status_headers(signed_in=False) == {"Set-Login": "logged-out"}
+
+
+@pytest.mark.xfail(strict=True, reason="an awaitable from the guard counts as fresh")
+def test_sync_issuance_refuses_an_awaitable_from_the_guard(
+    clock: FixedClock, leash: list[Any]
+) -> None:
+    class AwaitableGuard:
+        async def _mark(self) -> bool:
+            return False  # already used: the request must not be issued for
+
+        def mark_used(self, key: str, expires_at: Any) -> Any:
+            leash.append(coroutine := self._mark())
+            return coroutine
+
+    issuer = make_issuer(clock, replay_guard=AwaitableGuard())
+    with pytest.raises(TypeError, match="aissuance_response"):
+        respond(issuer, Browser(clock).request())

@@ -278,3 +278,23 @@ def test_async_submission_with_sync_and_async_stores(
         assert info.value.code == ErrorCode.NONCE_MISMATCH
 
     anyio.run(main)
+
+
+@pytest.mark.xfail(strict=True, reason="an awaitable from the store counts as a taken nonce")
+def test_sync_submission_refuses_an_async_store(
+    verifier: Verifier, issuer: FakeIssuer, browser: FakeBrowser, leash: list[Any]
+) -> None:
+    class AwaitableStore:
+        async def _take(self) -> bool:
+            return False
+
+        def issue(self) -> str:
+            return "n"
+
+        def take(self, nonce: str) -> Any:
+            leash.append(coroutine := self._take())
+            return coroutine
+
+    token = _token(issuer, browser, "n")
+    with pytest.raises(TypeError, match="AsyncVerifier"):
+        verifier.verify_submission(token, nonces=AwaitableStore(), email=EMAIL)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from pyevp import DiscoveryError, ErrorCode, EVPError, Profile, Verifier
@@ -150,3 +152,18 @@ def test_algorithm_list_matches_the_verifier(advertised: list[str], ok: bool) ->
     else:
         with pytest.raises(EVPError):
             verifier.verify(token, nonce="n", email=None)
+
+
+@pytest.mark.xfail(strict=True, reason="discover does not refuse asynchronous ports")
+def test_discover_refuses_asynchronous_ports(issuer: FakeIssuer, leash: list[Any]) -> None:
+    class Resolver:
+        def __init__(self) -> None:
+            self.inner = AsyncInMemoryDns(issuer.dns_records())
+
+        def resolve_txt(self, name: str) -> Any:
+            leash.append(coroutine := self.inner.resolve_txt(name))
+            return coroutine
+
+    resolver: Any = Resolver()
+    with pytest.raises(TypeError, match="adiscover"):
+        discover("example.com", resolver=resolver, fetcher=InMemoryHttp({}))
