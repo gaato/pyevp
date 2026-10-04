@@ -32,7 +32,7 @@ back from the cookie and verify the token as you would with a session nonce:
 
 ## In the browser
 
-A sketch with React and TanStack Query. It follows code that worked in a dogfooding project, but
+A sketch with React and TanStack Query. It follows code that worked in a real application, but
 this sketch itself is not tested:
 
 ```tsx
@@ -69,7 +69,7 @@ return (
 )
 ```
 
-What the dogfooding project established, with React 19 and Chrome 154 on a page without a
+What worked in that application, with React 19 and Chrome 154 on a page without a
 Content-Security-Policy header:
 
 - React renders the `nonce` prop as a content attribute, and Chrome picked it up.
