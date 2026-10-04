@@ -24,7 +24,6 @@ from pyevp.adapters._doh import (
     GOOGLE,
     DnssecError,
     DohError,
-    parse_txt_data,
 )
 from pyevp.adapters._doh import HEADERS as _HEADERS
 from pyevp.adapters._doh import params as _params
@@ -41,7 +40,6 @@ __all__ = [
     "DnssecError",
     "DohError",
     "DohResolver",
-    "parse_txt_data",
 ]
 
 

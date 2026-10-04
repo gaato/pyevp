@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from pyevp.adapters import _http
+from pyevp.adapters._doh import parse_txt_data
 from pyevp.adapters.doh import (
     CLOUDFLARE,
     GOOGLE,
@@ -12,7 +13,6 @@ from pyevp.adapters.doh import (
     DnssecError,
     DohError,
     DohResolver,
-    parse_txt_data,
 )
 
 http = _http.http

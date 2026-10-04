@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-04 14:36+0900\n"
+"POT-Creation-Date: 2026-10-04 14:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -70,8 +70,8 @@ msgstr ""
 "で閉じます。ほかの引数はコンストラクターと同じです。"
 
 #: ../../api.md of pyevp._email.email_domain pyevp._email.emails_match
-#: pyevp.adapters._doh.parse_txt_data pyevp.contrib.django.aget_nonce
-#: pyevp.contrib.django.averify_request pyevp.contrib.django.get_nonce
+#: pyevp.contrib.django.aget_nonce pyevp.contrib.django.averify_request
+#: pyevp.contrib.django.get_nonce
 #: pyevp.contrib.django.issuer.IssuanceView.as_view
 #: pyevp.contrib.django.issuer.IssuerSite.get_issuer
 #: pyevp.contrib.django.issuer.IssuerSite.owns
@@ -821,20 +821,6 @@ msgstr "同期の DoH TXT リゾルバーです（既定は Google。ほかを�
 msgid "Close the client this resolver created; a client passed in stays open."
 msgstr "このリゾルバーが作ったクライアントを閉じます。渡されたクライアントは開いたままです。"
 
-#: of pyevp.adapters._doh.parse_txt_data:1
-msgid "Decode a JSON-API TXT ``data`` value into one string."
-msgstr "JSON API の TXT の ``data`` の値を 1 つの文字列にデコードします。"
-
-#: of pyevp.adapters._doh.parse_txt_data:3
-msgid ""
-"Cloudflare returns presentation format: each character-string quoted, "
-"with ``\\\"``, ``\\\\`` and ``\\DDD`` escapes, separated by spaces.  "
-"Google returns the strings already joined and unquoted."
-msgstr ""
-"Cloudflare はプレゼンテーション形式で返します。各 character-string "
-"は引用符で囲まれ、``\\\"``、``\\\\``、``\\DDD`` のエスケープを含み、スペースで区切られています。Google "
-"は、引用符を外して連結済みの文字列を返します。"
-
 #: of pyevp.adapters.urllib:1
 msgid "A JSON fetcher and a DoH TXT resolver using only the standard library."
 msgstr "標準ライブラリーだけを使う JSON フェッチャーと DoH TXT リゾルバー。"
@@ -1574,4 +1560,18 @@ msgstr "URL ごとにドキュメントを返します。値が呼び出し可�
 #: of pyevp.testing.make_verifier:1
 msgid "A :class:`Verifier` wired to in-memory DNS/HTTP serving ``issuers``."
 msgstr "``issuers`` を配信するメモリー上の DNS と HTTP につないだ {class}`Verifier` を返します。"
+
+#~ msgid "Decode a JSON-API TXT ``data`` value into one string."
+#~ msgstr "JSON API の TXT の ``data`` の値を 1 つの文字列にデコードします。"
+
+#~ msgid ""
+#~ "Cloudflare returns presentation format: each"
+#~ " character-string quoted, with ``\\\"``,"
+#~ " ``\\\\`` and ``\\DDD`` escapes, separated"
+#~ " by spaces.  Google returns the "
+#~ "strings already joined and unquoted."
+#~ msgstr ""
+#~ "Cloudflare はプレゼンテーション形式で返します。各 character-string "
+#~ "は引用符で囲まれ、``\\\"``、``\\\\``、``\\DDD`` "
+#~ "のエスケープを含み、スペースで区切られています。Google は、引用符を外して連結済みの文字列を返します。"
 
