@@ -29,6 +29,7 @@ from pyevp import (
     ReplayGuard,
     TokenError,
     Verifier,
+    token_input,
 )
 from pyevp.contrib.django import (
     AsyncEVPCache,
@@ -346,6 +347,11 @@ def _session(request: HttpRequest) -> SessionBase:
     return request.session  # ty: ignore[unresolved-attribute]
 
 
+def _stored(request: HttpRequest) -> list[str]:
+    """The nonces the request's session holds, oldest first."""
+    return [nonce for nonce, _ in _session(request).get("evp_nonce", [])]
+
+
 def _page() -> tuple[HttpRequest, str]:
     """Render a page with a token input and return its request and nonce."""
     page = _with_session(RequestFactory().get("/"))
@@ -366,9 +372,8 @@ def test_tag_renders_the_token_input() -> None:
     html = _render(page, '{% evp_token_input %}{% evp_token_input field="token" %}')
     first, second = _nonces(html)
     # One nonce per page: forms rendered in the same request share it.
-    assert first == second == _session(page)["evp_nonce"]
-    assert 'name="evt" autocomplete="email-verification-token"' in html
-    assert 'name="token"' in html
+    assert [first] == [second] == _stored(page)
+    assert html == token_input(first) + token_input(first, field="token")
 
 
 def test_tag_needs_the_request() -> None:
@@ -380,7 +385,8 @@ def test_each_request_gets_a_new_nonce() -> None:
     page, nonce = _page()
     again = _with_session(RequestFactory().get("/"), _session(page))
     assert get_nonce(again) != nonce
-    assert _session(page)["evp_nonce"] == get_nonce(again)
+    # The first page's nonce stays usable, for a form left open in another tab.
+    assert _stored(page) == [nonce, get_nonce(again)]
 
 
 def test_verify_request(issuer: FakeIssuer, browser: FakeBrowser) -> None:
@@ -391,9 +397,10 @@ def test_verify_request(issuer: FakeIssuer, browser: FakeBrowser) -> None:
     result = verify_request(request, verifier, email=EMAIL)
     assert result is not None
     assert result.email == EMAIL
-    assert "evp_nonce" not in _session(request)
+    assert _stored(request) == []
     # A form rendered after verification gets a nonce that the session knows.
-    assert get_nonce(request) == _session(request)["evp_nonce"]
+    renewed = get_nonce(request)
+    assert _stored(request) == [renewed]
 
     with pytest.raises(TokenError) as exc:
         verify_request(_submit(page, evt=token), verifier, email=EMAIL)
@@ -404,7 +411,16 @@ def test_verify_request_keeps_the_nonce_without_a_token(verifier: Verifier) -> N
     page, nonce = _page()
     assert verify_request(_submit(page, email=EMAIL), verifier, email=EMAIL) is None
     assert verify_request(_submit(page, evt=""), verifier, email=EMAIL) is None
-    assert _session(page)["evp_nonce"] == nonce
+    assert _stored(page) == [nonce]
+
+
+def test_verify_request_from_two_tabs(issuer: FakeIssuer, browser: FakeBrowser) -> None:
+    verifier = make_verifier(issuer, audience=AUDIENCE)
+    page, first = _page()
+    second = get_nonce(_with_session(RequestFactory().get("/"), _session(page)))
+    for nonce in (second, first):
+        token = _present(issuer, browser, nonce)
+        assert verify_request(_submit(page, evt=token), verifier, email=EMAIL) is not None
 
 
 def test_verify_request_without_a_session_nonce(issuer: FakeIssuer, browser: FakeBrowser) -> None:

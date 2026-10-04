@@ -43,7 +43,7 @@ from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 
 from pyevp.cache import CacheEntry
-from pyevp.nonce import generate_nonce
+from pyevp.nonce import SessionNonces
 from pyevp.ports import Clock, system_clock
 from pyevp.types import VerifiedEmail
 from pyevp.verifier import AsyncVerifier, Verifier
@@ -62,31 +62,42 @@ __all__ = [
     "verify_request",
 ]
 
-_SESSION_KEY = "evp_nonce"
-# The nonce handed out during the current request, so that every form on a page gets it.
-_REQUEST_KEY = "_pyevp_nonce"
+# The request's nonce store, so that every form on a page gets the same nonce.
+_REQUEST_KEY = "_pyevp_nonces"
+
+
+def _nonces(request: HttpRequest) -> SessionNonces:
+    store = request.__dict__.get(_REQUEST_KEY)
+    if store is None:
+        store = request.__dict__[_REQUEST_KEY] = SessionNonces(_session(request))
+    return store
+
+
+class _AsyncNonces:
+    """A request's :class:`SessionNonces` for async code, which Django keeps off sessions."""
+
+    def __init__(self, store: SessionNonces) -> None:
+        self._store = store
+
+    async def issue(self) -> str:
+        return await sync_to_async(self._store.issue, thread_sensitive=True)()
+
+    async def take(self, nonce: str) -> bool:
+        return await sync_to_async(self._store.take, thread_sensitive=True)(nonce)
 
 
 def get_nonce(request: HttpRequest) -> str:
     """Return the nonce for the forms on this page, keeping it in the session.
 
-    The session holds one nonce, so all forms rendered in a request share it: the
-    first call creates it and later calls return the same value.  Opening the
-    page in another tab replaces it, and the older tab's forms then fall back to
-    your usual flow.  ``{% evp_token_input %}`` calls this for you.
+    All forms rendered in a request share one nonce: the first call creates it and later
+    calls return the same value.  The session keeps the nonces of the last few pages a
+    user opened (see :class:`~pyevp.SessionNonces`), so a form in any of their tabs can
+    be verified.  ``{% evp_token_input %}`` calls this for you.
 
-    It replaces the nonce in the session, so in a view that handles a submission,
-    call :func:`verify_request` before rendering a form again.
-
-    Every call writes the session, so render the token input only on pages that
-    have a form: anywhere else it gives each visitor a session for nothing.
+    The first call in a request writes the session, so render the token input only on
+    pages that have a form: anywhere else it gives each visitor a session for nothing.
     """
-    nonce = request.__dict__.get(_REQUEST_KEY)
-    if nonce is None:
-        nonce = generate_nonce()
-        _session(request)[_SESSION_KEY] = nonce
-        request.__dict__[_REQUEST_KEY] = nonce
-    return nonce
+    return _nonces(request).issue()
 
 
 async def aget_nonce(request: HttpRequest) -> str:
@@ -96,7 +107,7 @@ async def aget_nonce(request: HttpRequest) -> str:
     tag.  Call this before rendering; ``{% evp_token_input %}`` then reuses the
     nonce without touching the session.
     """
-    return await sync_to_async(get_nonce, thread_sensitive=True)(request)
+    return await _AsyncNonces(_nonces(request)).issue()
 
 
 def verify_request(
@@ -109,24 +120,19 @@ def verify_request(
 ) -> VerifiedEmail | None:
     """Verify the token that a form submitted, if it carried one.
 
-    Returns ``None`` when the ``field`` is empty: the browser does not support
-    EVP, or the email provider does not issue tokens.  The nonce then stays in
-    the session, so a form that is not rendered again (one sent with ``fetch()``)
-    can still be verified on the next submission.
-
-    Otherwise the nonce is consumed and the token checked with
-    :meth:`pyevp.Verifier.verify`, which raises :class:`~pyevp.EVPError` on
-    failure.  If the session has no nonce, for example because it expired, that
-    is ``nonce_mismatch``.
+    :meth:`pyevp.Verifier.verify_submission` for the ``field`` of a form whose nonce came
+    from :func:`get_nonce` or ``{% evp_token_input %}``.  Returns ``None`` when the field
+    is empty: the browser does not support EVP, or the email provider does not issue
+    tokens.  Otherwise the token's nonce is used up, and :class:`~pyevp.EVPError` is
+    raised on failure; a nonce the session does not hold, for example because it
+    expired, is ``nonce_mismatch``.
 
     :param email: the address the user submitted, as for :meth:`~pyevp.Verifier.verify`.
     :param field: the name of the hidden input (``{% evp_token_input field=... %}``).
     """
-    taken = _take_nonce(request, field)
-    if taken is None:
-        return None
-    token, nonce = taken
-    return verifier.verify(token, nonce=nonce, email=email, audience=audience)
+    return verifier.verify_submission(
+        request.POST.get(field), nonces=_nonces(request), email=email, audience=audience
+    )
 
 
 async def averify_request(
@@ -138,23 +144,10 @@ async def averify_request(
     audience: str | None = None,
 ) -> VerifiedEmail | None:
     """:func:`verify_request` for async views and :class:`~pyevp.AsyncVerifier`."""
-    taken = await sync_to_async(_take_nonce, thread_sensitive=True)(request, field)
-    if taken is None:
-        return None
-    token, nonce = taken
-    return await verifier.verify(token, nonce=nonce, email=email, audience=audience)
-
-
-def _take_nonce(request: HttpRequest, field: str) -> tuple[str, str] | None:
-    token = request.POST.get(field, "")
-    if not token:
-        return None
-    # The nonce is consumed: a form rendered later in this request needs a new one.
-    request.__dict__.pop(_REQUEST_KEY, None)
-    # Without a nonce in the session, a throwaway one makes the verifier fail with
-    # nonce_mismatch, so observers see it like any other rejection.
-    nonce = _session(request).pop(_SESSION_KEY, None) or generate_nonce()
-    return token, nonce
+    token = await sync_to_async(request.POST.get, thread_sensitive=True)(field)
+    return await verifier.verify_submission(
+        token, nonces=_AsyncNonces(_nonces(request)), email=email, audience=audience
+    )
 
 
 def _session(request: HttpRequest) -> SessionBase:
