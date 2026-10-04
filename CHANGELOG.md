@@ -6,6 +6,8 @@ see the [compatibility policy].
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-04
+
 The first release.
 
 ### Relying party
@@ -46,6 +48,7 @@ The first release.
   decodes a token offline and `verify` verifies one. `pyevp issuer keygen` and
   `pyevp issuer documents` help set up an issuer.
 
-[Unreleased]: https://github.com/gaato/pyevp/commits/main
+[Unreleased]: https://github.com/gaato/pyevp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/gaato/pyevp/releases/tag/v0.1.0
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [compatibility policy]: https://docs.pyevp.dev/en/latest/compatibility.html
