@@ -9,6 +9,7 @@
 - `ErrorCode` values are stable. New codes may be added in minor releases, so handle unknown
   codes.
 - Supported Pythons: 3.11 and newer. A version is dropped only after its upstream end of life.
+- Every release lists its changes, breaking ones included, in the [changelog].
 
 ## Depending on PyEVP from a library
 
@@ -21,3 +22,4 @@ pyevp = ["pyevp>=1,<2; python_version >= '3.11'"]
 ```
 
 [Semantic Versioning]: https://semver.org/
+[changelog]: https://github.com/gaato/pyevp/blob/main/CHANGELOG.md

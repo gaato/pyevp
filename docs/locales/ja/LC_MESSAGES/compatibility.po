@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 11:05+0900\n"
+"POT-Creation-Date: 2026-10-04 14:22+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -55,11 +55,19 @@ msgid ""
 "upstream end of life."
 msgstr "対応する Python は 3.11 以降です。サポートを打ち切るのは、そのバージョンが上流でサポート終了（EOL）を迎えた後に限ります。"
 
-#: ../../compatibility.md:13
+#: ../../compatibility.md:12
+msgid ""
+"Every release lists its changes, breaking ones included, in the "
+"[changelog]."
+msgstr ""
+"リリースごとの変更点は、破壊的変更も含めて [変更履歴](https://github.com/gaato/pyevp/blob/main/CHANGELOG.md) "
+"に記載します。"
+
+#: ../../compatibility.md:14
 msgid "Depending on PyEVP from a library"
 msgstr "ライブラリから PyEVP に依存する"
 
-#: ../../compatibility.md:15
+#: ../../compatibility.md:16
 msgid ""
 "Libraries that still support Python 3.10 can offer EVP as an optional "
 "extra by gating it with an environment marker:"

@@ -57,6 +57,7 @@ pyevp = "pyevp.__main__:main"
 [project.urls]
 Documentation = "https://docs.pyevp.dev/"
 Repository = "https://github.com/gaato/pyevp"
+Changelog = "https://github.com/gaato/pyevp/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]

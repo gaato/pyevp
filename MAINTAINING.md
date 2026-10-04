@@ -5,11 +5,14 @@ Tasks that need maintainer access. For working on the code and docs, see
 
 ## Releases
 
-Bump `version` in `pyproject.toml` and push a `vX.Y.Z` tag. `.github/workflows/release.yml`
-checks that the tag matches the version and publishes to PyPI through trusted publishing.
+Record changes under `## [Unreleased]` in `CHANGELOG.md` as they land. To release:
 
-There is no changelog before the first release. Start `CHANGELOG.md` with it (and link it from
-`pyproject.toml`, the docs and the compatibility policy), then record changes from there on.
+1. Rename that section to `## [X.Y.Z] - YYYY-MM-DD`, point its link at the tag, and start a new
+   empty `## [Unreleased]` section.
+2. Bump `version` in `pyproject.toml`.
+3. Push a `vX.Y.Z` tag. `.github/workflows/release.yml` checks that the tag matches the version
+   and publishes to PyPI through trusted publishing. The `pypi` environment only accepts `v*`
+   tags and waits for a maintainer to approve the deployment.
 
 ## Japanese docs on Read the Docs
 

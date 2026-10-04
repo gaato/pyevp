@@ -51,6 +51,7 @@ guides/issuer-operations
 
 api
 compatibility
+Changelog <https://github.com/gaato/pyevp/blob/main/CHANGELOG.md>
 ```
 
 [draft-hardt-email-verification]: https://github.com/dickhardt/email-verification

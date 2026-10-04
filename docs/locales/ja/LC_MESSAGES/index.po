@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: pyevp 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 11:08+0900\n"
+"POT-Creation-Date: 2026-10-04 14:22+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ja\n"
@@ -28,6 +28,10 @@ msgid "Guides"
 msgstr "ガイド"
 
 #: ../../index.md:48
+msgid "Changelog"
+msgstr "変更履歴"
+
+#: ../../index.md:48
 msgid "Reference"
 msgstr "リファレンス"
 
@@ -40,8 +44,8 @@ msgid ""
 "Python library for the **Email Verification Protocol** (EVP): verify "
 "tokens as a relying party, or issue them for your own email domains."
 msgstr ""
-"**Email Verification Protocol**（EVP）の Python ライブラリです。リライングパーティー（RP）としてトークンを検証することも、"
-"自分のメールドメイン向けにトークンを発行することもできます。"
+"**Email Verification Protocol**（EVP）の Python "
+"ライブラリです。リライングパーティー（RP）としてトークンを検証することも、自分のメールドメイン向けにトークンを発行することもできます。"
 
 #: ../../index.md:6
 msgid ""
