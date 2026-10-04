@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-from collections.abc import Mapping
-from dataclasses import dataclass, field
 from enum import StrEnum
 
-__all__ = ["IssuanceError", "IssuanceErrorCode", "IssuanceResponse"]
+from pyevp.issuer.response import IssuerResponse
+
+__all__ = ["IssuanceError", "IssuanceErrorCode"]
 
 
 class IssuanceErrorCode(StrEnum):
@@ -42,24 +41,6 @@ _DESCRIPTIONS = {
     IssuanceErrorCode.SERVER_ERROR: "Temporary server error, please try again later",
 }
 
-_JSON_HEADERS = {"Content-Type": "application/json", "Cache-Control": "no-store"}
-
-
-@dataclass(frozen=True, slots=True)
-class IssuanceResponse:
-    """A framework-neutral HTTP response."""
-
-    status: int
-    headers: dict[str, str] = field(default_factory=dict)
-    body: bytes = b""
-
-    @classmethod
-    def json(
-        cls, status: int, document: object, headers: Mapping[str, str] | None = None
-    ) -> IssuanceResponse:
-        body = json.dumps(document, separators=(",", ":")).encode()
-        return cls(status, {**_JSON_HEADERS, **(headers or {})}, body)
-
 
 class IssuanceError(Exception):
     """A request the issuer must refuse.  Render it with :meth:`to_response`.
@@ -91,9 +72,9 @@ class IssuanceError(Exception):
         """
         return cls(IssuanceErrorCode.AUTHENTICATION_REQUIRED, message)
 
-    def to_response(self) -> IssuanceResponse:
+    def to_response(self) -> IssuerResponse:
         headers = {}
         if self.signature_error is not None:
             headers["Signature-Error"] = f"error={self.signature_error}"
         document = {"error": str(self.code), "error_description": _DESCRIPTIONS[self.code]}
-        return IssuanceResponse.json(self.status, document, headers)
+        return IssuerResponse.json(self.status, document, headers)

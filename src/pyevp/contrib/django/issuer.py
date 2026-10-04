@@ -45,11 +45,11 @@ from pyevp.issuer import (
     FEDCM_FETCH_DEST,
     IssuanceError,
     IssuanceErrorCode,
-    IssuanceResponse,
     Issuer,
+    IssuerResponse,
     accounts_document,
     is_valid_email,
-    web_identity_document,
+    web_identity_response,
 )
 
 __all__ = [
@@ -162,14 +162,14 @@ class MetadataView(_IssuerView):
     """``/.well-known/email-verification``."""
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        return JsonResponse(self._site().get_issuer(request).metadata_document())
+        return _to_http(self._site().get_issuer(request).metadata_response())
 
 
 class JWKSView(_IssuerView):
     """The issuer's ``jwks_uri``."""
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        return JsonResponse(self._site().get_issuer(request).jwks_document())
+        return _to_http(self._site().get_issuer(request).jwks_response())
 
 
 class IssuanceView(_IssuerView):
@@ -230,11 +230,11 @@ class WebIdentityView(_IssuerView):
 
     def get(self, request: HttpRequest) -> HttpResponse:
         site = self._site()
-        document = web_identity_document(
+        response = web_identity_response(
             accounts_endpoint=f"{site.get_issuer(request).issuer}/{site.accounts_path}",
             login_url=site.get_login_url(request),
         )
-        return JsonResponse(document)
+        return _to_http(response)
 
 
 class LoginStatusMiddleware:
@@ -272,7 +272,7 @@ def _read_body(request: HttpRequest) -> bytes:
     return body
 
 
-def _to_http(result: IssuanceResponse) -> HttpResponse:
+def _to_http(result: IssuerResponse) -> HttpResponse:
     return HttpResponse(result.body, status=result.status, headers=result.headers)
 
 

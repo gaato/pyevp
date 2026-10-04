@@ -38,8 +38,8 @@ from pyevp.issuer import (
     FEDCM_FETCH_DEST,
     IssuanceError,
     IssuanceErrorCode,
-    IssuanceResponse,
     Issuer,
+    IssuerResponse,
     SigningKey,
     accounts_document,
     web_identity_document,
@@ -160,7 +160,7 @@ def _same_origin(request: Request, origin: str) -> bool:
     return request.headers.get("origin") == origin
 
 
-def _response(result: IssuanceResponse) -> Response:
+def _response(result: IssuerResponse) -> Response:
     return Response(result.body, status_code=result.status, headers=result.headers)
 
 

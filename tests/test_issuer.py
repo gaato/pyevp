@@ -32,6 +32,7 @@ from pyevp.issuer import (
     is_valid_email,
     public_jwk,
     web_identity_document,
+    web_identity_response,
 )
 from pyevp.testing import FakeBrowser, FixedClock, InMemoryDns, InMemoryHttp
 
@@ -216,6 +217,20 @@ def test_documents_pass_discovery_and_diagnostics(clock: FixedClock) -> None:
         profile=Profile.draft_hardt_02(),
     )
     assert report.ok, report
+
+
+def test_document_responses_are_publicly_cacheable(clock: FixedClock) -> None:
+    issuer = make_issuer(clock)
+    for response, document in (
+        (issuer.metadata_response(), issuer.metadata_document()),
+        (issuer.jwks_response(), issuer.jwks_document()),
+    ):
+        assert response.status == 200
+        assert response.headers == {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=300",
+        }
+        assert json.loads(response.body) == document
 
 
 def test_rotation_old_tokens_still_verify(clock: FixedClock) -> None:
@@ -810,3 +825,9 @@ def test_fedcm_documents() -> None:
     assert accounts_document(["a@example.com"]) == {
         "accounts": [{"id": "a@example.com", "email": "a@example.com", "name": "a@example.com"}]
     }
+    response = web_identity_response(
+        accounts_endpoint="https://issuer.example/fedcm/accounts",
+        login_url="https://issuer.example/login",
+    )
+    assert response.headers["Cache-Control"] == "public, max-age=300"
+    assert json.loads(response.body)["login_url"] == "https://issuer.example/login"

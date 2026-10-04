@@ -24,7 +24,14 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-__all__ = ["FEDCM_FETCH_DEST", "accounts_document", "web_identity_document"]
+from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
+
+__all__ = [
+    "FEDCM_FETCH_DEST",
+    "accounts_document",
+    "web_identity_document",
+    "web_identity_response",
+]
 
 FEDCM_FETCH_DEST = "webidentity"
 """``Sec-Fetch-Dest`` of Chrome's accounts request; refuse other requests."""
@@ -33,6 +40,12 @@ FEDCM_FETCH_DEST = "webidentity"
 def web_identity_document(*, accounts_endpoint: str, login_url: str) -> dict[str, Any]:
     """Serve at ``https://<registrable domain>/.well-known/web-identity``."""
     return {"accounts_endpoint": accounts_endpoint, "login_url": login_url}
+
+
+def web_identity_response(*, accounts_endpoint: str, login_url: str) -> IssuerResponse:
+    """:func:`web_identity_document` as a response, cacheable for five minutes."""
+    document = web_identity_document(accounts_endpoint=accounts_endpoint, login_url=login_url)
+    return IssuerResponse.json(200, document, PUBLIC_CACHE)
 
 
 def accounts_document(emails: Iterable[str]) -> dict[str, Any]:

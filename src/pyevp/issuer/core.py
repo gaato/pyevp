@@ -29,9 +29,10 @@ import idna
 
 from pyevp import _httpsig, _jose, discovery
 from pyevp._httpsig import Headers
-from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode, IssuanceResponse
+from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, public_jwk
 from pyevp.issuer.profile import DEFAULT_ISSUANCE_PROFILE, IssuanceProfile
+from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
 from pyevp.ports import Clock, system_clock
 from pyevp.profile import IssuerFormat
 from pyevp.replay import AsyncReplayGuard, ReplayGuard
@@ -246,6 +247,18 @@ class Issuer:
         """Serve at ``jwks_uri``."""
         return {"keys": [dict(k) for k in self._jwks["keys"]]}
 
+    def metadata_response(self) -> IssuerResponse:
+        """:meth:`metadata_document` as a response, cacheable for five minutes."""
+        return IssuerResponse.json(200, self.metadata_document(), PUBLIC_CACHE)
+
+    def jwks_response(self) -> IssuerResponse:
+        """:meth:`jwks_document` as a response, cacheable for five minutes.
+
+        Publish a new key at least that long, plus how long relying parties cache keys,
+        before signing with it.
+        """
+        return IssuerResponse.json(200, self.jwks_document(), PUBLIC_CACHE)
+
     def dns_txt_records(self) -> dict[str, str]:
         """The TXT record to publish for each email domain."""
         return {f"_email-verification.{d}": f"iss={self.host}" for d in sorted(self.email_domains)}
@@ -309,8 +322,8 @@ class Issuer:
         return f"{signing_input}.{_jose.b64url_encode(signature)}~"
 
     @staticmethod
-    def success_response(evt: str) -> IssuanceResponse:
-        return IssuanceResponse.json(200, {"issuance_token": evt})
+    def success_response(evt: str) -> IssuerResponse:
+        return IssuerResponse.json(200, {"issuance_token": evt})
 
     # --- internals ---
 

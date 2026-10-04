@@ -12,10 +12,16 @@ from pyevp.issuer.core import (
     Issuer,
     is_valid_email,
 )
-from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode, IssuanceResponse
-from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, accounts_document, web_identity_document
+from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
+from pyevp.issuer.fedcm import (
+    FEDCM_FETCH_DEST,
+    accounts_document,
+    web_identity_document,
+    web_identity_response,
+)
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, SigningKey, public_jwk
 from pyevp.issuer.profile import DEFAULT_ISSUANCE_PROFILE, ISSUANCE_PROFILES, IssuanceProfile
+from pyevp.issuer.response import IssuerResponse
 
 __all__ = [
     "DEFAULT_ISSUANCE_PROFILE",
@@ -28,12 +34,13 @@ __all__ = [
     "IssuanceObserver",
     "IssuanceProfile",
     "IssuanceRequest",
-    "IssuanceResponse",
     "Issuer",
+    "IssuerResponse",
     "Signer",
     "SigningKey",
     "accounts_document",
     "is_valid_email",
     "public_jwk",
     "web_identity_document",
+    "web_identity_response",
 ]
