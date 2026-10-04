@@ -55,7 +55,7 @@ def test_nonce_cookie(client: TestClient) -> None:
     assert cookie.startswith("evp_nonce=")
     assert "HttpOnly" in cookie
     assert "SameSite=strict" in cookie
-    assert "Path=/api" in cookie
+    assert "Path=/;" in cookie or cookie.endswith("Path=/")
     assert "Secure" not in cookie
 
 
@@ -63,8 +63,9 @@ def test_nonce_cookie_over_https(monkeypatch: pytest.MonkeyPatch, issuer: FakeIs
     monkeypatch.setattr(example, "ORIGIN", "https://app.example")
     with TestClient(app, base_url="https://api.example") as client:
         cookie = client.get("/api/evp/nonce").headers["set-cookie"]
-    assert cookie.startswith("__Secure-evp_nonce=")
+    assert cookie.startswith("__Host-evp_nonce=")
     assert "Secure" in cookie
+    assert "Domain" not in cookie
 
 
 def test_cors_allows_credentials_from_the_frontend(client: TestClient) -> None:
@@ -95,6 +96,25 @@ def test_without_a_token_the_email_is_sent(client: TestClient) -> None:
     assert [address for address, _ in OUTBOX] == [ALICE]
     # Nothing used the nonce, so it stays for the next submission.
     assert "evp_nonce" in client.cookies
+
+
+def test_a_token_from_an_older_form_keeps_the_cookie(
+    client: TestClient, issuer: FakeIssuer
+) -> None:
+    old = _token(client, issuer)
+    current = _token(client, issuer)
+    assert _recover(client, ALICE, old) == {"message": example.GENERIC_REPLY}
+    assert "evp_nonce" in client.cookies
+    assert "reset_token" in _recover(client, ALICE, current)
+
+
+def test_cookie_nonce_is_taken_once_per_request() -> None:
+    request = example.Request(
+        {"type": "http", "headers": [(b"cookie", b"evp_nonce=n")], "method": "POST"}
+    )
+    nonces = example.CookieNonces(request, example.Response())
+    assert nonces.take("n")
+    assert not nonces.take("n")
 
 
 def test_replayed_token_is_refused(client: TestClient, issuer: FakeIssuer) -> None:

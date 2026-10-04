@@ -25,7 +25,7 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import (
     APIRouter,
@@ -39,7 +39,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, generate_nonce
+from pyevp import AsyncVerifier, EVPError, InMemoryReplayGuard, generate_nonce, nonces_equal
 
 logger = logging.getLogger(__name__)
 
@@ -113,48 +113,60 @@ class ResetRequest(BaseModel):
 
 
 # nonce:start
-def nonce_cookie() -> tuple[str, bool]:
-    """The cookie's name and whether it is Secure."""
-    # Over HTTPS, the __Secure- prefix stops plain-HTTP hosts on the same site
-    # from setting the cookie.
-    secure = ORIGIN.startswith("https://")
-    return ("__Secure-evp_nonce" if secure else "evp_nonce"), secure
+class CookieNonces:
+    """Keeps the nonce in an HttpOnly cookie, for an API without server sessions.
+
+    The cookie holds one nonce, so the form opened last wins.
+    """
+
+    def __init__(self, request: Request, response: Response) -> None:
+        self.request, self.response = request, response
+        # Over HTTPS, the __Host- prefix stops other hosts on the same site, and plain
+        # HTTP, from planting a nonce of their choosing.
+        self.secure = ORIGIN.startswith("https://")
+        self.name = "__Host-evp_nonce" if self.secure else "evp_nonce"
+        self._issued: str | None = None
+        self._taken = False
+
+    def issue(self) -> str:
+        if self._issued is None:
+            self._issued = generate_nonce()
+            self.response.set_cookie(
+                self.name, self._issued, max_age=NONCE_MAX_AGE, **self._attributes()
+            )
+        return self._issued
+
+    def take(self, nonce: str) -> bool:
+        stored = self.request.cookies.get(self.name)
+        if self._taken or stored is None or not nonces_equal(stored, nonce):
+            return False
+        # The request still carries the cookie, so remember that it is used up.
+        self._taken, self._issued = True, None
+        self.response.delete_cookie(self.name, **self._attributes())
+        return True
+
+    def _attributes(self) -> dict[str, Any]:
+        return {"path": "/", "httponly": True, "samesite": "strict", "secure": self.secure}
+
+
+Nonces = Annotated[CookieNonces, Depends(CookieNonces)]
 
 
 @api.get("/evp/nonce")
-async def evp_nonce(response: Response) -> Nonce:
-    nonce = generate_nonce()
-    name, secure = nonce_cookie()
-    response.set_cookie(
-        name,
-        nonce,
-        max_age=NONCE_MAX_AGE,
-        path="/api",
-        httponly=True,
-        samesite="strict",
-        secure=secure,
-    )
-    return Nonce(nonce=nonce)
+async def evp_nonce(nonces: Nonces) -> Nonce:
+    return Nonce(nonce=nonces.issue())
 
 
-async def verify_evt(
-    request: Request, response: Response, verifier: AsyncVerifier, *, token: str, email: str
-) -> bool:
-    """Whether ``token`` proves that this browser controls ``email``."""
-    if not token:
-        # Keep the nonce: the browser has not used it yet.
-        return False
-    name, secure = nonce_cookie()
-    nonce = request.cookies.get(name)
-    response.delete_cookie(name, path="/api", httponly=True, samesite="strict", secure=secure)
-    if nonce is None:
-        return False
+async def verify_evt(verifier: AsyncVerifier, nonces: Nonces, *, token: str, email: str) -> bool:
+    """Whether ``token`` proves that this browser controls ``email``.
+
+    Without a token, the cookie stays for the next submission.
+    """
     try:
-        await verifier.verify(token, nonce=nonce, email=email)
+        return await verifier.verify_submission(token, nonces=nonces, email=email) is not None
     except EVPError as exc:
         logger.info("EVP token rejected: %s", exc.code)
         return False
-    return True
     # nonce:end
 
 
@@ -162,14 +174,13 @@ async def verify_evt(
 @api.post("/password-recovery", response_model_exclude_none=True)
 async def password_recovery(
     body: RecoveryRequest,
-    request: Request,
-    response: Response,
     verifier: Verifier,
+    nonces: Nonces,
     background: BackgroundTasks,
 ) -> RecoveryReply:
     # Verify before looking the user up, so that the reply, its cookies and its
     # timing do not depend on whether the address is registered.
-    verified = await verify_evt(request, response, verifier, token=body.evt, email=body.email)
+    verified = await verify_evt(verifier, nonces, token=body.evt, email=body.email)
     user = USERS.get(body.email.lower())
     if user is None or not user.active:
         return RecoveryReply(message=GENERIC_REPLY)
