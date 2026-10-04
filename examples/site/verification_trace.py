@@ -32,7 +32,7 @@ LABELS = {
     Step.DNS: "DNS: _email-verification.<domain>",
     Step.METADATA: "Issuer metadata",
     Step.JWKS: "JWKS",
-    Step.CLAIMS: "Issuer signature and claims, including the email match",
+    Step.CLAIMS: "Issuer signature and claims, including the email match and allowed issuers",
 }
 # Multiple candidates mean the code alone cannot identify the failing stage.
 ERROR_STEPS = {
@@ -54,6 +54,7 @@ ERROR_STEPS = {
     ErrorCode.EVT_SIGNATURE_INVALID: (Step.CLAIMS,),
     ErrorCode.EMAIL_NOT_VERIFIED: (Step.CLAIMS,),
     ErrorCode.EMAIL_MISMATCH: (Step.CLAIMS,),
+    ErrorCode.ISSUER_NOT_ALLOWED: (Step.CLAIMS,),
 }
 
 

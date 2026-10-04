@@ -20,9 +20,11 @@ from pyevp import (
     PolicyError,
     Profile,
     TokenError,
+    VerificationEvent,
     Verifier,
 )
 from pyevp.testing import (
+    AsyncInMemoryDns,
     AsyncInMemoryHttp,
     FakeBrowser,
     FakeIssuer,
@@ -513,3 +515,86 @@ async def test_aclose_closes_what_default_created(monkeypatch: pytest.MonkeyPatc
     async with AsyncVerifier.default(audience=AUDIENCE, resolver=resolver) as verifier:
         fetcher = verifier._fetcher
     assert _closed(resolver, fetcher) == [0, 1]
+
+
+# --- allowed_issuers ---
+
+
+@pytest.mark.parametrize(
+    "allowed", [["https://issuer.example"], ["issuer.example"], ["a.example", "issuer.example"]]
+)
+def test_allowed_issuer(issuer: FakeIssuer, token: str, nonce: str, allowed: list[str]) -> None:
+    verifier = make_verifier(issuer, audience=AUDIENCE, allowed_issuers=allowed)
+    assert verifier.verify(token, nonce=nonce, email=EMAIL).issuer == "https://issuer.example"
+    assert "https://issuer.example" in (verifier.allowed_issuers or ())
+
+
+@pytest.mark.parametrize("allowed", [["https://other.example"], []])
+def test_other_issuers_are_refused_before_any_lookup(
+    issuer: FakeIssuer, token: str, nonce: str, allowed: list[str]
+) -> None:
+    events: list[VerificationEvent] = []
+    verifier = make_verifier(
+        issuer, audience=AUDIENCE, allowed_issuers=allowed, observer=events.append
+    )
+    with pytest.raises(PolicyError) as info:
+        verifier.verify(token, nonce=nonce, email=EMAIL)
+    assert info.value.code == ErrorCode.ISSUER_NOT_ALLOWED
+    resolver = verifier._resolver
+    assert isinstance(resolver, InMemoryDns)
+    assert resolver.queries == []
+    assert _http(verifier).requests == []
+    assert [e.code for e in events] == [ErrorCode.ISSUER_NOT_ALLOWED]
+
+
+def test_allowed_issuers_compare_exactly(clock: FixedClock, nonce: str) -> None:
+    issuer = FakeIssuer(clock=clock, iss_format="host")
+    browser = FakeBrowser(clock=clock)
+    token = browser.present(issuer.issue(EMAIL, browser.public_jwk), audience=AUDIENCE, nonce=nonce)
+    accepting = make_verifier(issuer, audience=AUDIENCE, allowed_issuers=["issuer.example"])
+    assert accepting.verify(token, nonce=nonce, email=EMAIL).issuer == "https://issuer.example"
+    refusing = make_verifier(issuer, audience=AUDIENCE, allowed_issuers=["ISSUER.example"])
+    with pytest.raises(PolicyError):
+        refusing.verify(token, nonce=nonce, email=EMAIL)
+
+
+@pytest.mark.anyio
+async def test_async_allowed_issuers(issuer: FakeIssuer, token: str, nonce: str) -> None:
+    verifier = make_async_verifier(issuer, audience=AUDIENCE, allowed_issuers=["other.example"])
+    with pytest.raises(PolicyError) as info:
+        await verifier.verify(token, nonce=nonce, email=EMAIL)
+    assert info.value.code == ErrorCode.ISSUER_NOT_ALLOWED
+
+
+@pytest.mark.parametrize(
+    ("allowed", "error"),
+    [
+        ("issuer.example", TypeError),
+        (["https://issuer.example/"], ValueError),
+        (["http://issuer.example"], ValueError),
+        (["localhost"], ValueError),
+        (["192.0.2.1"], ValueError),
+    ],
+)
+def test_allowed_issuers_are_checked(
+    issuer: FakeIssuer, allowed: object, error: type[Exception]
+) -> None:
+    with pytest.raises(error):
+        make_verifier(issuer, audience=AUDIENCE, allowed_issuers=cast("list[str]", allowed))
+
+
+def test_default_takes_allowed_issuers(issuer: FakeIssuer) -> None:
+    verifier = Verifier.default(
+        audience=AUDIENCE,
+        resolver=InMemoryDns({}),
+        fetcher=InMemoryHttp({}),
+        allowed_issuers=["issuer.example"],
+    )
+    assert verifier.allowed_issuers == frozenset({"https://issuer.example"})
+    averifier = AsyncVerifier.default(
+        audience=AUDIENCE,
+        resolver=AsyncInMemoryDns({}),
+        fetcher=AsyncInMemoryHttp({}),
+        allowed_issuers=["issuer.example"],
+    )
+    assert averifier.allowed_issuers == frozenset({"https://issuer.example"})

@@ -6,7 +6,7 @@ import inspect
 import logging
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from contextlib import AsyncExitStack, ExitStack, contextmanager
 from datetime import datetime, timedelta
 from types import TracebackType
@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from pyevp.cache import AsyncCache, Cache, CacheEntry, InMemoryCache
 from pyevp.core import Effect, FetchJson, MarkUsed, ResolveTxt, Steps, verification_steps
+from pyevp.discovery import canonical_issuer
 from pyevp.errors import DiscoveryError, ErrorCode, EVPError, TokenError
 from pyevp.nonce import AsyncNonceStore, NonceStore, generate_nonce
 from pyevp.observability import Observer, VerificationEvent, claimed_email_domain
@@ -26,7 +27,7 @@ from pyevp.ports import (
     TxtResolver,
     system_clock,
 )
-from pyevp.profile import DEFAULT_PROFILE, Profile
+from pyevp.profile import DEFAULT_PROFILE, IssuerFormat, Profile
 from pyevp.replay import AsyncReplayGuard, ReplayGuard
 from pyevp.token import parse_token
 from pyevp.types import VerifiedEmail
@@ -52,6 +53,20 @@ def _validate_origin(origin: str) -> str:
     return origin
 
 
+def _allowed_issuers(issuers: Collection[str] | None) -> frozenset[str] | None:
+    if issuers is None:
+        return None
+    if isinstance(issuers, str):
+        raise TypeError("allowed_issuers must be a collection of issuers, not one string")
+    allowed = set()
+    for issuer in issuers:
+        canonical = canonical_issuer(issuer, IssuerFormat.ANY)
+        if canonical is None:
+            raise ValueError(f"not an issuer identifier (https:// + host, or a host): {issuer!r}")
+        allowed.add(canonical)
+    return frozenset(allowed)
+
+
 class _Unreadable(Exception):
     """The token cannot be parsed, so it has no nonce to take."""
 
@@ -71,6 +86,7 @@ class _Base:
         *,
         audience: str,
         profile: Profile,
+        allowed_issuers: Collection[str] | None,
         clock: Clock,
         cache_ttl: timedelta,
         min_refresh_interval: timedelta,
@@ -81,6 +97,8 @@ class _Base:
         self._replay_protection = replay_protection
         self._observer = observer
         self.profile = profile
+        self.allowed_issuers = _allowed_issuers(allowed_issuers)
+        """Canonical issuers whose tokens are accepted, or ``None`` for any issuer."""
         self._clock = clock
         self._cache_ttl = cache_ttl
         self._min_refresh_interval = min_refresh_interval
@@ -98,6 +116,7 @@ class _Base:
             profile=self.profile,
             email=email,
             replay_protection=self._replay_protection,
+            allowed_issuers=self.allowed_issuers,
         )
 
     def _store_failed(self, token: str, error: Exception, started: float) -> None:
@@ -192,6 +211,10 @@ class Verifier(_Base):
 
     Thread-safe as long as the injected ports and cache are.  A context manager:
     leaving it calls :meth:`close`.
+
+    ``allowed_issuers``, when given, are the only issuers whose tokens are accepted, as
+    ``https://`` + host or as a host; any other is ``issuer_not_allowed``, refused before
+    anything is looked up.  An empty collection accepts no token.
     """
 
     def __init__(
@@ -201,6 +224,7 @@ class Verifier(_Base):
         resolver: TxtResolver,
         fetcher: JsonFetcher,
         profile: Profile = DEFAULT_PROFILE,
+        allowed_issuers: Collection[str] | None = None,
         cache: Cache | None = None,
         clock: Clock = system_clock,
         cache_ttl: timedelta = timedelta(minutes=10),
@@ -211,6 +235,7 @@ class Verifier(_Base):
         super().__init__(
             audience=audience,
             profile=profile,
+            allowed_issuers=allowed_issuers,
             clock=clock,
             cache_ttl=cache_ttl,
             min_refresh_interval=min_refresh_interval,
@@ -230,6 +255,7 @@ class Verifier(_Base):
         resolver: TxtResolver | None = None,
         fetcher: JsonFetcher | None = None,
         profile: Profile = DEFAULT_PROFILE,
+        allowed_issuers: Collection[str] | None = None,
         cache: Cache | None = None,
         clock: Clock = system_clock,
         cache_ttl: timedelta = timedelta(minutes=10),
@@ -262,6 +288,7 @@ class Verifier(_Base):
             resolver=resolver,
             fetcher=fetcher,
             profile=profile,
+            allowed_issuers=allowed_issuers,
             cache=cache,
             clock=clock,
             cache_ttl=cache_ttl,
@@ -305,9 +332,9 @@ class Verifier(_Base):
             ``None`` explicitly to skip the check and use the asserted address instead.
         :param audience: override the configured origin (multi-host deployments).
         :raises pyevp.TokenError: the token is malformed, stale, mis-bound or badly signed.
-        :raises pyevp.PolicyError: the token does not satisfy the profile, e.g. it asserts
-            another address.  Raised before the issuer's signature is checked, so it says
-            nothing about authenticity.
+        :raises pyevp.PolicyError: the token does not satisfy your policy, e.g. it asserts
+            another address or comes from an issuer outside ``allowed_issuers``.  Raised
+            before the issuer's signature is checked, so it says nothing about authenticity.
         :raises pyevp.DiscoveryError: the issuer could not be used.  ``ISSUER_UNREACHABLE``
             means its DNS or HTTPS failed and may be transient; other codes mean its
             records, metadata or keys are unusable.
@@ -408,6 +435,7 @@ class AsyncVerifier(_Base):
         resolver: AsyncTxtResolver,
         fetcher: AsyncJsonFetcher,
         profile: Profile = DEFAULT_PROFILE,
+        allowed_issuers: Collection[str] | None = None,
         cache: Cache | AsyncCache | None = None,
         clock: Clock = system_clock,
         cache_ttl: timedelta = timedelta(minutes=10),
@@ -418,6 +446,7 @@ class AsyncVerifier(_Base):
         super().__init__(
             audience=audience,
             profile=profile,
+            allowed_issuers=allowed_issuers,
             clock=clock,
             cache_ttl=cache_ttl,
             min_refresh_interval=min_refresh_interval,
@@ -437,6 +466,7 @@ class AsyncVerifier(_Base):
         resolver: AsyncTxtResolver | None = None,
         fetcher: AsyncJsonFetcher | None = None,
         profile: Profile = DEFAULT_PROFILE,
+        allowed_issuers: Collection[str] | None = None,
         cache: Cache | AsyncCache | None = None,
         clock: Clock = system_clock,
         cache_ttl: timedelta = timedelta(minutes=10),
@@ -469,6 +499,7 @@ class AsyncVerifier(_Base):
             resolver=resolver,
             fetcher=fetcher,
             profile=profile,
+            allowed_issuers=allowed_issuers,
             cache=cache,
             clock=clock,
             cache_ttl=cache_ttl,

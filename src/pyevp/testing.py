@@ -14,7 +14,7 @@ access::
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, TypeAlias
@@ -301,6 +301,7 @@ def make_verifier(
     *issuers: FakeIssuer,
     audience: str,
     profile: Profile = DEFAULT_PROFILE,
+    allowed_issuers: Collection[str] | None = None,
     clock: FixedClock | None = None,
     cache: Cache | None = None,
     replay_guard: ReplayGuard | None = None,
@@ -314,6 +315,7 @@ def make_verifier(
         resolver=InMemoryDns(records),
         fetcher=InMemoryHttp(documents),
         profile=profile,
+        allowed_issuers=allowed_issuers,
         clock=clock,
         cache=cache,
         replay_guard=replay_guard,
@@ -325,6 +327,7 @@ def make_async_verifier(
     *issuers: FakeIssuer,
     audience: str,
     profile: Profile = DEFAULT_PROFILE,
+    allowed_issuers: Collection[str] | None = None,
     clock: FixedClock | None = None,
     cache: Cache | AsyncCache | None = None,
     replay_guard: ReplayGuard | AsyncReplayGuard | None = None,
@@ -337,6 +340,7 @@ def make_async_verifier(
         resolver=AsyncInMemoryDns(records),
         fetcher=AsyncInMemoryHttp(documents),
         profile=profile,
+        allowed_issuers=allowed_issuers,
         clock=clock,
         cache=cache,
         replay_guard=replay_guard,

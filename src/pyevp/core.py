@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import math
-from collections.abc import Generator, Sequence
+from collections.abc import Collection, Generator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal, TypeAlias
@@ -262,6 +262,7 @@ def verification_steps(
     profile: Profile,
     email: str | None,
     replay_protection: bool = False,
+    allowed_issuers: Collection[str] | None = None,
 ) -> Steps:
     """Full RP verification.  Yields effects; returns :class:`VerifiedEmail`.
 
@@ -269,7 +270,9 @@ def verification_steps(
     key-binding signature) is checked before any network effect is requested,
     and the only hosts ever contacted are derived from DNS, never from the token.
     With ``replay_protection`` the token is marked as used once everything else
-    has passed, so that garbage tokens cannot fill the replay store.
+    has passed, so that garbage tokens cannot fill the replay store.  With
+    ``allowed_issuers`` (canonical ``https://`` + host), a token naming any other
+    issuer is refused offline; DNS must later delegate the same issuer.
     """
     parsed = parse_token(token, allow_disclosures=profile.allow_disclosures)
     evt = precheck_evt(parsed, now=now, profile=profile)
@@ -277,6 +280,12 @@ def verification_steps(
         parsed, cnf_jwk=evt.cnf_jwk, audience=audience, nonce=nonce, now=now, profile=profile
     )
     check_email(evt.email, email, profile)
+    if allowed_issuers is not None and (
+        discovery.canonical_issuer(evt.claimed_issuer, profile.issuer_format) not in allowed_issuers
+    ):
+        raise PolicyError(
+            ErrorCode.ISSUER_NOT_ALLOWED, f"EVT iss {evt.claimed_issuer!r} is not allowed"
+        )
 
     try:
         txt_name = discovery.txt_name_for(evt.email, profile)

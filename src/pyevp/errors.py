@@ -42,6 +42,7 @@ class ErrorCode(StrEnum):
     # policy
     EMAIL_NOT_VERIFIED = "email_not_verified"
     EMAIL_MISMATCH = "email_mismatch"
+    ISSUER_NOT_ALLOWED = "issuer_not_allowed"
 
 
 class EVPError(Exception):
@@ -73,7 +74,8 @@ class DiscoveryError(EVPError):
 
 
 class PolicyError(EVPError):
-    """The token does not satisfy the relying party's policy (``email_mismatch``, ...).
+    """The token does not satisfy the relying party's policy (``email_mismatch``,
+    ``issuer_not_allowed``, ...).
 
     Checked offline, before the issuer's signature, so it says nothing about whether
     the token is authentic.
