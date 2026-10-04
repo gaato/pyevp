@@ -38,13 +38,20 @@ autodoc_preserve_defaults = True
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
-html_theme = "furo"
+html_theme = "shibuya"
 # Read the Docs passes the canonical URL (https://docs.pyevp.dev/<lang>/<version>/) but
 # no longer sets html_baseurl itself; without it Sphinx emits no rel="canonical".
 html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 html_title = "PyEVP"
-html_theme_options = {
-    "source_repository": "https://github.com/gaato/pyevp/",
-    "source_branch": "main",
-    "source_directory": "docs/",
+html_theme_options = {"github_url": "https://github.com/gaato/pyevp"}
+# Shibuya builds the "Copy page" and raw-source links from the source name; without this
+# Sphinx appends ".txt" and the links point at files that do not exist.
+html_sourcelink_suffix = ""
+# The "Edit this page" link.
+html_context = {
+    "source_type": "github",
+    "source_user": "gaato",
+    "source_repo": "pyevp",
+    "source_version": "main",
+    "source_docs_path": "/docs/",
 }
