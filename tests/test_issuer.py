@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -1137,7 +1137,6 @@ def test_login_status_headers() -> None:
     assert login_status_headers(signed_in=False) == {"Set-Login": "logged-out"}
 
 
-@pytest.mark.xfail(strict=True, reason="an awaitable from the guard counts as fresh")
 def test_sync_issuance_refuses_an_awaitable_from_the_guard(
     clock: FixedClock, leash: list[Any]
 ) -> None:
@@ -1152,3 +1151,76 @@ def test_sync_issuance_refuses_an_awaitable_from_the_guard(
     issuer = make_issuer(clock, replay_guard=AwaitableGuard())
     with pytest.raises(TypeError, match="aissuance_response"):
         respond(issuer, Browser(clock).request())
+
+
+# --- reading the body ---
+
+
+def test_the_body_is_read_once_and_no_further_than_needed(clock: FixedClock) -> None:
+    request = Browser(clock).request()
+    reads: list[int] = []
+
+    def read(n: int) -> bytes:
+        reads.append(n)
+        return request["body"]
+
+    issuer = make_issuer(clock)
+    headers = request["headers"]
+    token(issuer.issuance_response(method="POST", headers=headers, body=read, user_emails=OWNER))
+    assert reads == [MAX_REQUEST_BODY + 1]
+    # Nothing is read for a request refused without its body.
+    reads.clear()
+    refusal(issuer.issuance_response(method="GET", headers=headers, body=read, user_emails=OWNER))
+    too_long = {**request["headers"], "Content-Length": str(MAX_REQUEST_BODY + 1)}
+    refusal(issuer.issuance_response(method="POST", headers=too_long, body=read, user_emails=OWNER))
+    assert reads == []
+
+
+def test_an_async_body_is_read_in_chunks_and_closed(clock: FixedClock) -> None:
+    request = Browser(clock).request()
+    closed: list[bool] = []
+
+    async def chunks(data: bytes) -> AsyncIterator[bytes]:
+        try:
+            for i in range(0, len(data), 7):
+                yield data[i : i + 7]
+        finally:
+            closed.append(True)
+
+    issuer = make_issuer(clock)
+
+    async def main() -> None:
+        response = await issuer.aissuance_response(
+            method="POST",
+            headers=request["headers"],
+            body=chunks(request["body"]),
+            user_emails=OWNER,
+        )
+        token(response)
+        huge = chunks(b"x" * (3 * MAX_REQUEST_BODY))
+        response = await issuer.aissuance_response(
+            method="POST", headers={}, body=huge, user_emails=OWNER
+        )
+        assert refusal(response) == "invalid_request"
+
+    anyio.run(main)
+    assert closed == [True, True]
+
+
+def test_an_async_body_needs_aissuance_response(clock: FixedClock) -> None:
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b"{}"
+
+    body: Any = chunks()
+    with pytest.raises(TypeError, match="aissuance_response"):
+        make_issuer(clock).issuance_response(
+            **{**Browser(clock).request(), "body": body}, user_emails=OWNER
+        )
+
+
+def test_reading_the_body_must_give_bytes(clock: FixedClock) -> None:
+    body: Any = lambda n: "text"  # noqa: E731
+    with pytest.raises(TypeError, match="not bytes"):
+        make_issuer(clock).issuance_response(
+            **{**Browser(clock).request(), "body": body}, user_emails=OWNER
+        )

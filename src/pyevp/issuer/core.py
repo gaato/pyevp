@@ -13,11 +13,19 @@ controls is the one thing it has to be told::
 from __future__ import annotations
 
 import hashlib
-import inspect
 import json
 import logging
 import re
-from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping, Sequence
+from collections.abc import (
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Collection,
+    Generator,
+    Iterable,
+    Mapping,
+    Sequence,
+)
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Literal, TypeAlias, cast
@@ -26,7 +34,9 @@ from urllib.parse import urlsplit
 import idna
 
 from pyevp import _httpsig, _jose, discovery
+from pyevp._drive import adrive, drive, is_async
 from pyevp._httpsig import Headers
+from pyevp.core import MarkUsed
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
 from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, _accounts_document
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, public_jwk
@@ -38,10 +48,12 @@ from pyevp.replay import AsyncReplayGuard, ReplayGuard
 
 __all__ = [
     "MAX_REQUEST_BODY",
+    "AsyncRequestBody",
     "AsyncUserEmails",
     "IssuanceEvent",
     "IssuanceObserver",
     "Issuer",
+    "RequestBody",
     "UserEmails",
     "is_valid_email",
 ]
@@ -130,6 +142,65 @@ A function is called at most once, and only for a request that is otherwise vali
 AsyncUserEmails: TypeAlias = Iterable[str] | Callable[[], Iterable[str] | Awaitable[Iterable[str]]]
 """Like :data:`UserEmails`; the function may also be ``async``."""
 
+RequestBody: TypeAlias = bytes | Callable[[int], bytes]
+"""The request body, or a function reading at most ``n`` bytes of it, such as Django's
+``request.read``.  The issuer reads only for a ``POST`` whose ``Content-Length`` allows it, and
+then no more than :data:`MAX_REQUEST_BODY` and one byte."""
+
+AsyncRequestBody: TypeAlias = (
+    bytes | Callable[[int], bytes | Awaitable[bytes]] | AsyncIterable[bytes]
+)
+"""Like :data:`RequestBody`; it may also be read asynchronously, or be an asynchronous
+iterable of chunks such as Starlette's ``request.stream()``."""
+
+
+@dataclass(frozen=True, slots=True)
+class _ReadBody:
+    """Read at most ``limit`` bytes of the body.  Reply with them."""
+
+    limit: int
+
+
+@dataclass(frozen=True, slots=True)
+class _LookupEmails:
+    """Look up the signed-in user's addresses.  Reply with them."""
+
+
+# TODO(py3.12): back to ``type`` statements once 3.11 support is dropped.
+_IssuanceEffect: TypeAlias = _ReadBody | _LookupEmails | MarkUsed
+_SYNC = "use aissuance_response"
+
+
+def _read(body: object, limit: int) -> object:
+    """``body`` read as :data:`AsyncRequestBody` describes: bytes, or an awaitable of them."""
+    if isinstance(body, bytes | bytearray | memoryview):
+        return bytes(body)
+    if isinstance(body, AsyncIterable):
+        return _collect(body, limit)
+    if callable(body):
+        return body(limit)
+    raise TypeError(f"the request body must be bytes or a function reading it, not {body!r}")
+
+
+async def _collect(chunks: AsyncIterable[bytes], limit: int) -> bytes:
+    body = b""
+    iterator = aiter(chunks)
+    try:
+        async for chunk in iterator:
+            body += chunk[: limit - len(body)]
+            if len(body) >= limit:
+                break
+    finally:
+        if callable(aclose := getattr(iterator, "aclose", None)):
+            await aclose()
+    return body
+
+
+def _lookup_emails() -> Generator[_IssuanceEffect, Any, list[str]]:
+    emails = yield _LookupEmails()
+    _require_iterable(emails)
+    return list(emails)
+
 
 def _owns(email: str, emails: Iterable[str]) -> bool:
     """Whether ``email`` (already valid) is one of ``emails``, compared case-insensitively.
@@ -177,7 +248,7 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def _check_size(lines: Mapping[str, list[str]], body: bytes) -> None:
+def _check_length(lines: Mapping[str, list[str]]) -> None:
     length = lines.get("content-length")
     if length is not None and (
         len(length) != 1
@@ -189,8 +260,6 @@ def _check_size(lines: Mapping[str, list[str]], body: bytes) -> None:
         raise IssuanceError(
             IssuanceErrorCode.INVALID_REQUEST, "body too large or malformed Content-Length"
         )
-    if len(body) > MAX_REQUEST_BODY:
-        raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
 
 
 def _parse_body(body: bytes) -> dict[str, Any]:
@@ -329,18 +398,16 @@ class Issuer:
         would issue for are listed.
         """
         _require_iterable(user_emails)
+        hint = "accounts_response needs the addresses, not an awaitable"
+        if callable(user_emails) and is_async(user_emails):
+            raise TypeError(hint)
         if _httpsig._field_lines(headers).get("sec-fetch-dest") != [FEDCM_FETCH_DEST]:
             return IssuerResponse.json(400, {"error": "not a FedCM request"})
-        emails = user_emails() if callable(user_emails) else user_emails
-        if inspect.isawaitable(emails):
-            if inspect.iscoroutine(emails):
-                emails.close()
-            raise TypeError("accounts_response needs the addresses, not an awaitable")
-        _require_iterable(emails)
+        emails = drive(_lookup_emails(), self._performer(b"", user_emails), hint=hint)
         domains = self.email_domains
         listed = [
             e
-            for e in dict.fromkeys(cast("Iterable[str]", emails))
+            for e in dict.fromkeys(emails)
             if isinstance(e, str) and is_valid_email(e) and discovery.email_domain(e) in domains
         ]
         if not listed:
@@ -350,55 +417,74 @@ class Issuer:
     # --- issuance ---
 
     def issuance_response(
-        self, *, method: str, headers: Headers, body: bytes, user_emails: UserEmails
+        self, *, method: str, headers: Headers, body: RequestBody, user_emails: UserEmails
     ) -> IssuerResponse:
         """Answer a request to the issuance endpoint.
 
-        Route every method here, with the raw body and the request's header lines.
-        ``user_emails`` are the addresses of the user signed in to this issuer; pass an
-        empty collection when nobody is.  An EVT is issued only for one of them.
+        Route every method here, with the request's header lines and its body (see
+        :data:`RequestBody`).  ``user_emails`` are the addresses of the user signed in to this
+        issuer; pass an empty collection when nobody is.  An EVT is issued only for one of
+        them.
         """
         _require_iterable(user_emails)
-        guard = self.replay_guard
-        if guard is not None and inspect.iscoroutinefunction(guard.mark_used):
-            raise TypeError("use aissuance_response with an asynchronous replay guard")
+        if is_async(getattr(self.replay_guard, "mark_used", None)):
+            raise TypeError(f"the replay guard is asynchronous; {_SYNC}")
+        if callable(user_emails) and is_async(user_emails):
+            raise TypeError(f"user_emails is asynchronous; {_SYNC}")
         try:
-            request = self._validate(method, headers, body)
-            emails = user_emails() if callable(user_emails) else user_emails
-            if inspect.isawaitable(emails):
-                if inspect.iscoroutine(emails):
-                    emails.close()
-                raise TypeError("use aissuance_response with asynchronous user_emails")
-            self._authorize(request, emails)
-            if guard is not None:
-                key, expires_at = self._replay_key(request)
-                fresh = cast(ReplayGuard, guard).mark_used(key, expires_at)
-                self._check_replay(fresh)
-            self._check_fresh(request)
+            request = drive(
+                self._issuance_steps(method, headers),
+                self._performer(body, user_emails),
+                hint=_SYNC,
+            )
         except IssuanceError as exc:
             return self._refuse(exc)
         return self._grant(request)
 
     async def aissuance_response(
-        self, *, method: str, headers: Headers, body: bytes, user_emails: AsyncUserEmails
+        self,
+        *,
+        method: str,
+        headers: Headers,
+        body: AsyncRequestBody,
+        user_emails: AsyncUserEmails,
     ) -> IssuerResponse:
-        """:meth:`issuance_response` for asynchronous replay guards and ``user_emails``."""
+        """:meth:`issuance_response` for asynchronous replay guards, bodies and
+        ``user_emails``."""
         _require_iterable(user_emails)
         try:
-            request = self._validate(method, headers, body)
-            emails = user_emails() if callable(user_emails) else user_emails
-            if inspect.isawaitable(emails):
-                emails = await emails
-            self._authorize(request, emails)
-            if self.replay_guard is not None:
-                key, expires_at = self._replay_key(request)
-                marked = self.replay_guard.mark_used(key, expires_at)
-                fresh = await marked if inspect.isawaitable(marked) else marked
-                self._check_replay(fresh)
-            self._check_fresh(request)
+            request = await adrive(
+                self._issuance_steps(method, headers), self._performer(body, user_emails)
+            )
         except IssuanceError as exc:
             return self._refuse(exc)
         return self._grant(request)
+
+    def _issuance_steps(
+        self, method: str, headers: Headers
+    ) -> Generator[_IssuanceEffect, Any, IssuanceRequest]:
+        request = yield from self._request(method, headers)
+        # Before the replay guard: only signed-in users' requests are worth recording.
+        self._authorize(request, (yield from _lookup_emails()))
+        if self.replay_guard is not None:
+            self._check_replay((yield MarkUsed(*self._replay_key(request))))
+        self._check_fresh(request)
+        return request
+
+    def _performer(self, body: object, user_emails: object) -> Callable[..., Any]:
+        """Answers the effects, as values or, from asynchronous callers, awaitables."""
+
+        def perform(effect: _IssuanceEffect) -> object:
+            match effect:
+                case _ReadBody(limit=limit):
+                    return _read(body, limit)
+                case _LookupEmails():
+                    return user_emails() if callable(user_emails) else user_emails
+                case MarkUsed():
+                    assert self.replay_guard is not None
+                    return self.replay_guard.mark_used(effect.key, effect.expires_at)
+
+        return perform
 
     def _issue(self, request: IssuanceRequest) -> str:
         """Sign an EVT for ``request``, whose address the user has been found to control."""
@@ -424,10 +510,7 @@ class Issuer:
 
     # --- internals ---
 
-    def _authorize(self, request: IssuanceRequest, user_emails: object) -> None:
-        # Before the replay guard: only signed-in users' requests are worth recording.
-        _require_iterable(user_emails)
-        emails = list(cast("Iterable[str]", user_emails))
+    def _authorize(self, request: IssuanceRequest, emails: list[str]) -> None:
         if not _owns(request.email, emails):
             detail = "address not the user's" if emails else "no addresses"
             # One answer for every way this can fail, so responses do not reveal accounts.
@@ -457,7 +540,10 @@ class Issuer:
         except Exception:
             _logger.exception("EVP issuance observer failed")
 
-    def _validate(self, method: str, headers: Headers, body: bytes) -> IssuanceRequest:
+    def _request(
+        self, method: str, headers: Headers
+    ) -> Generator[_IssuanceEffect, Any, IssuanceRequest]:
+        """Validate the request, reading its body only once it is worth reading."""
         if method != "POST":
             raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, f"method {method} not allowed")
         # Read once: an iterator would be empty when verify_request parses it again.
@@ -465,7 +551,12 @@ class Issuer:
         lines = _httpsig._field_lines(headers)
         # Before anything else is worth doing, and before Content-Type so that an oversized
         # body is refused the same way whatever it claims to be.
-        _check_size(lines, body)
+        _check_length(lines)
+        body = yield _ReadBody(MAX_REQUEST_BODY + 1)
+        if not isinstance(body, bytes):
+            raise TypeError(f"reading the request body gave {type(body).__name__}, not bytes")
+        if len(body) > MAX_REQUEST_BODY:
+            raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, "body too large")
         if _media_type(lines.get("content-type", ())) != "application/json":
             raise IssuanceError(
                 IssuanceErrorCode.UNSUPPORTED_MEDIA_TYPE, "Content-Type is not application/json"
