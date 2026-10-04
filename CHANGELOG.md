@@ -6,12 +6,19 @@ see the [compatibility policy].
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-04
+
+### Security
+
+- Replay protection could be off without any sign of it, in 0.1.0 as well: a synchronous
+  `Verifier` given an asynchronous replay guard, and `Issuer.parse_request` with a guard whose
+  `mark_used` returned an awaitable, took the unawaited answer as "not seen before" and accepted
+  every replay. Synchronous calls now refuse asynchronous ports with `TypeError`, up front where
+  it can be told and otherwise when the port answers; the same holds for nonce stores, caches
+  and `discover`.
+
 ### Relying party
 
-- A synchronous `Verifier` given an asynchronous replay guard accepted every replay: the guard's
-  unawaited answer counted as "not seen before". This was so in 0.1.0. Synchronous calls now
-  refuse asynchronous ports with `TypeError`, up front where it can be told and otherwise when
-  the port answers; the same holds for nonce stores, caches and `discover`.
 - `verification_steps` takes a `clock` instead of `now`, and itself refuses a token that expired
   while it was being marked used, which drivers had to do before.
 - `Profile.metadata_path` is gone, since the path is fixed: it is `discovery.METADATA_PATH`, and
@@ -59,8 +66,7 @@ see the [compatibility policy].
 - The issuer reads the body itself, only once the request is worth reading and no further than
   it accepts: pass a function that reads it, such as Django's `request.read`, or to
   `aissuance_response` an asynchronous iterable such as Starlette's `request.stream()`. Bytes
-  work too. A guard whose `mark_used` returned an awaitable to `issuance_response` let replays
-  through; that is now a `TypeError`.
+  work too.
 - `IssuerSite` routes issuance and the JWKS where the issuer's URLs say. Its `issuance_path`
   and `jwks_path` only need setting without an `Issuer`, and `metadata_path` and
   `web_identity_path` are gone, being fixed. So that every framework routes them as written,
@@ -124,7 +130,8 @@ The first release.
   decodes a token offline and `verify` verifies one. `pyevp issuer keygen` and
   `pyevp issuer documents` help set up an issuer.
 
-[Unreleased]: https://github.com/gaato/pyevp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/gaato/pyevp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gaato/pyevp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gaato/pyevp/releases/tag/v0.1.0
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [compatibility policy]: https://docs.pyevp.dev/en/latest/compatibility.html
