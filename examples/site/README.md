@@ -75,15 +75,18 @@ The container listens on port 8080.
 |---|---|
 | `GET /` | Landing page rendered once at startup; no nonce or session |
 | `GET /demo` | Demo page rendered per request, with a fresh nonce in the form and site session |
-| `POST /verify` | Demo page with the verification result: verified email and issuer, error code and explanation (400), expired session (400), or missing-token explanation (200) |
+| `POST /verify` | Demo page with the verification result: verified email and issuer, error code and explanation (400), or missing-token explanation (200) |
 | `GET /robots.txt` | Allows all crawlers and names `https://<site host>/sitemap.xml` |
 | `GET /sitemap.xml` | `https://<site host>/` and `https://<site host>/demo` |
 | `GET /.well-known/web-identity` | `web_identity_response(accounts_endpoint="https://<mail host>/fedcm/accounts", login_url="https://<mail host>/login")`: `application/json`, `Cache-Control: public, max-age=300` |
 
 The relying-party session cookie is host-only on the site host, named `pyevp_site_session`,
-with `SameSite=Lax; Secure; HttpOnly`. It is separate from the mail host's cookie. The nonce
-is consumed on submission, whether verification succeeds or fails; "Start over" links to
-`/demo` to get a new nonce. Demo and verification responses use `Cache-Control: no-store`.
+with `SameSite=Lax; Secure; HttpOnly`. It is separate from the mail host's cookie. The session
+keeps the nonces of the last five demo pages for ten minutes (`pyevp.SessionNonces`), so a form
+in any open tab can be verified. A submitted token uses up its nonce, whether verification
+succeeds or fails, and a nonce the session does not hold is `nonce_mismatch`; a submission
+without a token leaves it. "Start over" links to `/demo` to get a new nonce. Demo and
+verification responses use `Cache-Control: no-store`.
 Each page has its own title, description, canonical URL (`https://<site host>/` or
 `https://<site host>/demo`; the result page uses the demo's), Open Graph tags and
 `twitter:card=summary`.

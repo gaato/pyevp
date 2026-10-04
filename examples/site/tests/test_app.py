@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from collections.abc import AsyncIterator, Iterator
+from datetime import timedelta
 from html.parser import HTMLParser
 from http.cookies import SimpleCookie
 from pathlib import Path
@@ -676,7 +677,8 @@ def test_nonce_and_site_cookie(application: Starlette) -> None:
         nonce = re.search(r'nonce="([^"]+)"', response.text)
         assert nonce
         session = json.loads(base64.b64decode(cookie.value.split(".")[0]))
-        assert session == {site.SESSION_NONCE: nonce.group(1)}
+        assert [n for n, _ in session.pop("evp_nonce")] == [nonce.group(1)]
+        assert session == {}
         assert _nonce(client) != nonce.group(1)
         assert response.headers["cache-control"] == "no-store"
         assert 'autocomplete="email-verification-token"' in response.text
@@ -819,17 +821,48 @@ def test_legacy_host_redirect(client: TestClient, method: str, path: str) -> Non
 
 
 @pytest.mark.parametrize("outcome", ["verified", "no-token", "failed"])
-def test_nonce_is_consumed(rp_client: TestClient, rp_issuer: FakeIssuer, outcome: str) -> None:
+def test_nonce_lifecycle(rp_client: TestClient, rp_issuer: FakeIssuer, outcome: str) -> None:
     nonce = _nonce(rp_client)
-    evt = _present(rp_issuer, "alice@gmail.example", "wrong" if outcome == "failed" else nonce)
-    response = rp_client.post(
-        "/verify",
-        data={"email": "alice@gmail.example", "evt": "" if outcome == "no-token" else evt},
-    )
-    assert response.status_code == (400 if outcome == "failed" else 200)
-    again = rp_client.post("/verify", data={"email": "alice@gmail.example", "evt": evt})
-    assert again.status_code == 400
-    assert "Session expired" in again.text
+    evt = _present(rp_issuer, "alice@gmail.example", nonce)
+    form = {"email": "alice@gmail.example", "evt": evt}
+    if outcome == "no-token":
+        first = rp_client.post("/verify", data={**form, "evt": ""})
+    elif outcome == "failed":
+        first = rp_client.post("/verify", data={**form, "email": "bob@gmail.example"})
+    else:
+        first = rp_client.post("/verify", data=form)
+    assert first.status_code == (400 if outcome == "failed" else 200)
+    again = rp_client.post("/verify", data=form)
+    if outcome == "no-token":
+        # Nothing used the nonce.
+        assert again.status_code == 200
+        assert "Verified" in again.text
+    else:
+        # The first submission used it up, whether or not it verified.
+        assert again.status_code == 400
+        assert "nonce_mismatch" in again.text
+
+
+def test_unknown_nonce_is_refused_before_other_checks(
+    rp_client: TestClient, rp_issuer: FakeIssuer, clock: FixedClock
+) -> None:
+    evt = _present(rp_issuer, "alice@gmail.example", _nonce(rp_client))
+    # The token has expired, too, by the clocks of the verifier and of the trace.
+    rp_issuer.clock.advance(timedelta(hours=1))
+    clock.advance(timedelta(hours=1))
+    rp_client.cookies.clear()  # and the session with its nonce is gone
+    response = rp_client.post("/verify", data={"email": "alice@gmail.example", "evt": evt})
+    assert response.status_code == 400
+    assert "nonce_mismatch" in response.text
+    assert list(_statuses(response.text).values()) == ["passed", "failed"] + ["not run"] * 4
+
+
+def test_forms_in_two_tabs(rp_client: TestClient, rp_issuer: FakeIssuer) -> None:
+    nonces = [_nonce(rp_client), _nonce(rp_client)]
+    for nonce in reversed(nonces):
+        evt = _present(rp_issuer, "alice@gmail.example", nonce)
+        response = rp_client.post("/verify", data={"email": "alice@gmail.example", "evt": evt})
+        assert response.status_code == 200
 
 
 @pytest.mark.parametrize("success", [True, False])
@@ -841,7 +874,7 @@ def test_result_values_are_escaped(
     verifier.profile = DEFAULT_PROFILE
     verifier.audience = SITE
     if success:
-        verifier.verify.return_value = VerifiedEmail(
+        verifier.verify_submission.return_value = VerifiedEmail(
             email=payload,
             issuer=payload,
             issued_at=clock.now,
@@ -850,7 +883,7 @@ def test_result_values_are_escaped(
             claims={},
         )
     else:
-        verifier.verify.side_effect = EVPError(ErrorCode.MALFORMED_TOKEN, payload)
+        verifier.verify_submission.side_effect = EVPError(ErrorCode.MALFORMED_TOKEN, payload)
     application.state.site.dependency_overrides[site.get_verifier] = lambda: verifier
     with TestClient(application, base_url=SITE) as client:
         _nonce(client)

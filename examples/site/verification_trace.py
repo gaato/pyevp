@@ -91,7 +91,12 @@ class Trace:
             candidates = ERROR_STEPS[error.code]
             failed = self.active if self.active in candidates else candidates[0]
             passed = set(list(Step)[: list(Step).index(failed)])
-            if self.active is None:
+            if error.code == ErrorCode.NONCE_MISMATCH and not nonce:
+                # No nonce of this session was presented: the token was refused before any
+                # other check ran, so later stages would only show what never happened.
+                passed = {Step.PARSE} if parsed is not None else set()
+                failed = Step.BINDING
+            elif self.active is None:
                 # Public checks disambiguate errors shared by EVT and KB-JWT.
                 # They are only repeated for display after the verifier has failed.
                 passed = set()

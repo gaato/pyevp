@@ -39,14 +39,6 @@
           </dl>
         </div>
       </div>
-    {% elif result_kind == "expired" %}
-      <div class="alert alert-warning alert-soft text-base-content items-start">
-        {{ icon("warning", "size-6 text-warning") }}
-        <div>
-          <h2 class="text-lg font-semibold">Session expired</h2>
-          <p>The form's session is missing or has already been used.</p>
-        </div>
-      </div>
     {% elif result_kind == "no-token" %}
       <div class="alert alert-warning alert-soft text-base-content items-start">
         {{ icon("warning", "size-6 text-warning") }}
@@ -187,7 +179,7 @@
           <p id="token-status" class="token-status alert alert-soft text-base-content empty:sr-only data-[state=waiting]:alert-info data-[state=received]:alert-success data-[state=missing]:alert-warning" role="status" aria-live="polite"></p>
         </form>
         {% else %}
-        <p>This submission has consumed its nonce. <a class="link" href="/demo">Start over</a> to get a new form.</p>
+        <p><a class="link" href="/demo">Start over</a> to get a new form.</p>
         {% endif %}
       </div>
     </li>

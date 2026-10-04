@@ -58,7 +58,7 @@ from pyevp import (
     EVPError,
     InMemoryReplayGuard,
     LoggingObserver,
-    generate_nonce,
+    SessionNonces,
 )
 from pyevp.adapters import httpx as httpx_adapter
 from pyevp.adapters.dnspython import AsyncDnsPythonResolver
@@ -83,7 +83,6 @@ LOGIN_PATH = "/login"
 # The issuer answers every method itself; HEAD and OPTIONS are left to the framework.
 ISSUANCE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 SESSION_USER = "email"
-SESSION_NONCE = "evp_nonce"
 HERE = Path(__file__).resolve().parent
 EXAMPLES_DIR = HERE.parent
 STYLESHEET = HERE / "static" / "site.css"
@@ -124,6 +123,18 @@ class AllowedIssuers:
 
 def get_verifier(request: Request) -> AsyncVerifier:
     return request.app.state.verifier
+
+
+class _TracedNonces(SessionNonces):
+    """Remembers the nonce a submission took, for the trace to show what it expected."""
+
+    taken = ""
+
+    def take(self, nonce: str) -> bool:
+        if not super().take(nonce):
+            return False
+        self.taken = nonce
+        return True
 
 
 def extract_example(path: Path) -> str:
@@ -248,9 +259,7 @@ def _site_app(
 
     @site.get("/demo")
     async def demo(request: Request) -> HTMLResponse:
-        nonce = generate_nonce()
-        request.session[SESSION_NONCE] = nonce
-        return demo_response(nonce=nonce)
+        return demo_response(nonce=SessionNonces(request.session).issue())
 
     @site.post("/verify")
     async def verify(
@@ -259,12 +268,10 @@ def _site_app(
         email: Annotated[str, Form()],
         evt: Annotated[str, Form()] = "",
     ) -> HTMLResponse:
-        # Single use: the nonce is consumed whether or not verification succeeds.
-        nonce = request.session.pop(SESSION_NONCE, None)
         if not evt:
+            # The form's nonce stays in the session for another try.
             return demo_response(result_kind="no-token")
-        if nonce is None:
-            return demo_response(result_kind="expired", status_code=400)
+        nonces = _TracedNonces(request.session)
         trace = Trace()
         started = perf_counter()
         now = site.state.clock()
@@ -283,7 +290,8 @@ def _site_app(
         error = None
         marker = CURRENT_TRACE.set(trace)
         try:
-            result = await verifier.verify(evt, nonce=nonce, email=email)
+            # The token's nonce is used up, whether or not it verifies.
+            result = await verifier.verify_submission(evt, nonces=nonces, email=email)
         except EVPError as exc:
             error = exc
         finally:
@@ -295,7 +303,7 @@ def _site_app(
                 now=trace.checked_at or now,
                 profile=verifier.profile,
                 audience=verifier.audience,
-                nonce=nonce,
+                nonce=nonces.taken,
                 email=email,
             ),
             "decoded": decoded,
@@ -309,6 +317,7 @@ def _site_app(
                 status_code=400,
                 **display,
             )
+        assert result is not None  # evt is not empty
         rows = {
             "Email": result.email,
             "Issuer": result.issuer,
