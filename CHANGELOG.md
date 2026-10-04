@@ -14,8 +14,10 @@ The first release.
   The key-binding JWT (audience, nonce, freshness, `sd_hash`, holder signature) is checked before
   any I/O. The issuer is then discovered from the `_email-verification.<domain>` TXT record, and
   its metadata, JWKS and signature are checked.
-- Only hosts derived from DNS are contacted, never hosts named in the token, and only when they
-  resolve to public addresses.
+- Only hosts derived from DNS are contacted, never hosts named in the token. Before connecting,
+  the default fetchers check that the host resolves only to public addresses; the
+  [transport guide](https://docs.pyevp.dev/en/latest/guides/transport.html#ssrf) explains what
+  this check does not catch (DNS rebinding).
 - Every rejected token raises an `EVPError` with a stable `ErrorCode`.
 - Profile presets `compat-2026-10` (the default) and `draft-hardt-02` hold every point where the
   drafts and deployed issuers differ.

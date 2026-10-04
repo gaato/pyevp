@@ -73,8 +73,10 @@ library can be passed explicitly, e.g. `HttpxFetcher(httpx.Client(...))`.
 Verification checks the key-binding JWT (audience, nonce, freshness, `sd_hash`, holder signature)
 before doing any I/O. It then discovers the issuer from DNS (`_email-verification.<domain>`
 TXT `iss=…`), fetches its metadata and JWKS (cached), and verifies the issuer's signature. Only
-hosts derived from DNS are ever contacted, never hosts named in the token, and only when they
-resolve to public addresses.
+hosts derived from DNS are ever contacted, never hosts named in the token. Before connecting, the
+default fetchers also check that the host resolves only to public addresses; see
+[private networks](https://docs.pyevp.dev/en/latest/guides/transport.html#ssrf) for what this check
+does not catch.
 
 Every rejected token raises an `EVPError` with a stable `ErrorCode`. The safe default is to fall back to your existing
 verification flow; the [error table](https://docs.pyevp.dev/en/latest/quickstart.html#handle-failures) tells which codes

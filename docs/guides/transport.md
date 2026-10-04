@@ -23,6 +23,8 @@ or set proxies: `HttpxFetcher(httpx2.Client(...))`. Redirects are never followed
 client was configured to follow them. Responses are requested uncompressed, compressed ones
 are refused, and bodies are size-capped.
 
+(ssrf)=
+
 ## Private networks (SSRF)
 
 The issuer host comes from a DNS record that anyone can publish for their own domain, and the
