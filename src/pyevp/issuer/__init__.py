@@ -7,16 +7,19 @@ the metadata, JWKS and DNS records to publish.  See :class:`Issuer`.
 
 from pyevp.issuer.core import (
     MAX_REQUEST_BODY,
+    AsyncUserEmails,
     IssuanceEvent,
     IssuanceObserver,
     IssuanceRequest,
     Issuer,
+    UserEmails,
     is_valid_email,
 )
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
 from pyevp.issuer.fedcm import (
     FEDCM_FETCH_DEST,
     accounts_document,
+    login_status_headers,
     web_identity_document,
     web_identity_response,
 )
@@ -30,6 +33,7 @@ __all__ = [
     "ISSUANCE_PROFILES",
     "MAX_REQUEST_BODY",
     "SIGNING_ALGORITHMS",
+    "AsyncUserEmails",
     "IssuanceError",
     "IssuanceErrorCode",
     "IssuanceEvent",
@@ -40,8 +44,10 @@ __all__ = [
     "IssuerResponse",
     "Signer",
     "SigningKey",
+    "UserEmails",
     "accounts_document",
     "is_valid_email",
+    "login_status_headers",
     "public_jwk",
     "web_identity_document",
     "web_identity_response",

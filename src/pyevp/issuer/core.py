@@ -30,6 +30,7 @@ import idna
 from pyevp import _httpsig, _jose, discovery
 from pyevp._httpsig import Headers
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
+from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, accounts_document
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, public_jwk
 from pyevp.issuer.profile import DEFAULT_ISSUANCE_PROFILE, IssuanceProfile
 from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
@@ -323,6 +324,31 @@ class Issuer:
     def dns_txt_records(self) -> dict[str, str]:
         """The TXT record to publish for each email domain."""
         return {f"_email-verification.{d}": f"iss={self.host}" for d in sorted(self.email_domains)}
+
+    def accounts_response(self, *, headers: Headers, user_emails: UserEmails) -> IssuerResponse:
+        """Answer Chrome's FedCM accounts request (see :mod:`pyevp.issuer.fedcm`).
+
+        ``user_emails`` are as for :meth:`issuance_response`.  Only addresses this issuer
+        would issue for are listed.
+        """
+        _require_iterable(user_emails)
+        if _httpsig._field_lines(headers).get("sec-fetch-dest") != [FEDCM_FETCH_DEST]:
+            return IssuerResponse.json(400, {"error": "not a FedCM request"})
+        emails = user_emails() if callable(user_emails) else user_emails
+        if inspect.isawaitable(emails):
+            if inspect.iscoroutine(emails):
+                emails.close()
+            raise TypeError("accounts_response needs the addresses, not an awaitable")
+        _require_iterable(emails)
+        domains = self.email_domains
+        listed = [
+            e
+            for e in dict.fromkeys(cast("Iterable[str]", emails))
+            if isinstance(e, str) and is_valid_email(e) and discovery.email_domain(e) in domains
+        ]
+        if not listed:
+            return IssuerResponse.json(401, {"accounts": []})
+        return IssuerResponse.json(200, accounts_document(listed))
 
     # --- issuance ---
 

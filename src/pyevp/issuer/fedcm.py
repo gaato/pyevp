@@ -29,6 +29,7 @@ from pyevp.issuer.response import PUBLIC_CACHE, IssuerResponse
 __all__ = [
     "FEDCM_FETCH_DEST",
     "accounts_document",
+    "login_status_headers",
     "web_identity_document",
     "web_identity_response",
 ]
@@ -55,3 +56,8 @@ def accounts_document(emails: Iterable[str]) -> dict[str, Any]:
     requests with the session cookie; without a session, answer 401.
     """
     return {"accounts": [{"id": email, "email": email, "name": email} for email in emails]}
+
+
+def login_status_headers(*, signed_in: bool) -> dict[str, str]:
+    """The FedCM Login Status header to add to a page response after login or logout."""
+    return {"Set-Login": "logged-in" if signed_in else "logged-out"}

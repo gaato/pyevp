@@ -32,6 +32,7 @@ from pyevp.issuer import (
     SigningKey,
     accounts_document,
     is_valid_email,
+    login_status_headers,
     public_jwk,
     web_identity_document,
     web_identity_response,
@@ -1070,3 +1071,68 @@ def test_issuance_response_events(clock: FixedClock) -> None:
         ),
         IssuanceEvent(False, "request", code.INVALID_REQUEST, None, "method GET not allowed"),
     ]
+
+
+# --- accounts_response ---
+
+FEDCM = {"Sec-Fetch-Dest": "webidentity"}
+
+
+def test_accounts_response_lists_the_users_addresses(clock: FixedClock) -> None:
+    issuer = make_issuer(clock, email_domains=["example.com", "example.org"])
+    response = issuer.accounts_response(
+        headers=FEDCM,
+        user_emails=[
+            "alice@example.com",
+            "Alice@Example.org",
+            "alice@example.com",
+            "alice@elsewhere.example",  # not served here
+            "\u212aate@example.com",
+        ],
+    )
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    accounts = json.loads(response.body)["accounts"]
+    assert [a["email"] for a in accounts] == ["alice@example.com", "Alice@Example.org"]
+    assert accounts[0] == {
+        "id": "alice@example.com",
+        "email": "alice@example.com",
+        "name": "alice@example.com",
+    }
+
+
+@pytest.mark.parametrize("emails", [[], ["alice@elsewhere.example"], list])
+def test_accounts_response_without_addresses(clock: FixedClock, emails: Any) -> None:
+    response = make_issuer(clock).accounts_response(headers=FEDCM, user_emails=emails)
+    assert (response.status, json.loads(response.body)) == (401, {"accounts": []})
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"Sec-Fetch-Dest": "document"}, [("Sec-Fetch-Dest", "webidentity")] * 2],
+)
+def test_accounts_response_needs_a_fedcm_request(clock: FixedClock, headers: Any) -> None:
+    def emails() -> list[str]:
+        raise AssertionError("looked up for a non-FedCM request")
+
+    response = make_issuer(clock).accounts_response(headers=headers, user_emails=emails)
+    assert (response.status, json.loads(response.body)) == (400, {"error": "not a FedCM request"})
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_accounts_response_type_errors(clock: FixedClock) -> None:
+    async def lookup() -> list[str]:
+        return []
+
+    emails: Any = lookup  # what a type checker would catch
+    issuer = make_issuer(clock)
+    with pytest.raises(TypeError):
+        issuer.accounts_response(headers=FEDCM, user_emails="alice@example.com")
+    with pytest.raises(TypeError):
+        issuer.accounts_response(headers=FEDCM, user_emails=emails)
+
+
+def test_login_status_headers() -> None:
+    assert login_status_headers(signed_in=True) == {"Set-Login": "logged-in"}
+    assert login_status_headers(signed_in=False) == {"Set-Login": "logged-out"}
