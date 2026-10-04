@@ -1,5 +1,5 @@
 [project]
-name = "pyevp"
+name = "PyEVP"
 version = "0.1.0"
 description = "Python library for the Email Verification Protocol (EVP): verify tokens as a relying party, or issue them for your own email domains"
 readme = "README.md"
