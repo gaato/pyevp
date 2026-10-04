@@ -23,7 +23,7 @@ from pyevp import (
     emails_match,
 )
 from pyevp._jose import b64url_encode
-from pyevp.core import FetchJson, ResolveTxt, verification_steps
+from pyevp.core import FetchJson, MarkUsed, ResolveTxt, verification_steps
 from pyevp.testing import FakeBrowser, FakeIssuer, FixedClock, make_async_verifier, make_verifier
 from pyevp.token import build_kb, compute_sd_hash, sign_jwt
 
@@ -34,7 +34,7 @@ def test_steps_request_dns_then_metadata_then_jwks(
     issuer: FakeIssuer, token: str, nonce: str, clock: FixedClock
 ) -> None:
     steps = verification_steps(
-        token, audience=AUDIENCE, nonce=nonce, now=clock(), profile=DEFAULT_PROFILE, email=None
+        token, audience=AUDIENCE, nonce=nonce, clock=clock, profile=DEFAULT_PROFILE, email=None
     )
     assert next(steps) == ResolveTxt("_email-verification.example.com")
     assert steps.send(["iss=issuer.example"]) == FetchJson(issuer.metadata_url, "metadata")
@@ -45,9 +45,32 @@ def test_steps_request_dns_then_metadata_then_jwks(
     assert stop.value.value.issuer == "https://issuer.example"
 
 
+def test_a_token_expiring_while_marked_used_is_refused(
+    issuer: FakeIssuer, token: str, nonce: str, clock: FixedClock
+) -> None:
+    steps = verification_steps(
+        token,
+        audience=AUDIENCE,
+        nonce=nonce,
+        clock=clock,
+        profile=DEFAULT_PROFILE,
+        email=None,
+        replay_protection=True,
+    )
+    next(steps)
+    steps.send(["iss=issuer.example"])
+    steps.send(issuer.metadata)
+    marking = steps.send(issuer.jwks)
+    assert isinstance(marking, MarkUsed)
+    clock.now = marking.expires_at  # the record may already be gone
+    with pytest.raises(EVPError) as exc:
+        steps.send(True)
+    assert exc.value.code is ErrorCode.TOKEN_EXPIRED
+
+
 def test_offline_failures_request_no_io(token: str, clock: FixedClock) -> None:
     steps = verification_steps(
-        token, audience=AUDIENCE, nonce="wrong", now=clock(), profile=DEFAULT_PROFILE, email=None
+        token, audience=AUDIENCE, nonce="wrong", clock=clock, profile=DEFAULT_PROFILE, email=None
     )
     with pytest.raises(EVPError) as exc:
         next(steps)
@@ -62,7 +85,7 @@ def test_key_rotation_requests_refresh(
     fresh = FakeBrowser(clock=clock)
     token = fresh.present(issuer.issue(EMAIL, fresh.public_jwk), audience=AUDIENCE, nonce=nonce)
     steps = verification_steps(
-        token, audience=AUDIENCE, nonce=nonce, now=clock(), profile=DEFAULT_PROFILE, email=None
+        token, audience=AUDIENCE, nonce=nonce, clock=clock, profile=DEFAULT_PROFILE, email=None
     )
     next(steps)
     steps.send(["iss=issuer.example"])

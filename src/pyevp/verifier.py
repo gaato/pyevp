@@ -113,7 +113,7 @@ class _Base:
             token,
             audience=_validate_origin(audience) if audience is not None else self.audience,
             nonce=nonce,
-            now=self._clock(),
+            clock=self._clock,
             profile=self.profile,
             email=email,
             replay_protection=self._replay_protection,
@@ -170,13 +170,6 @@ class _Base:
             }
             self._refresh_attempts[effect.url] = now
         return None
-
-    def _check_marked(self, effect: MarkUsed, marked: bool) -> bool:
-        # Freshness was judged when verification started.  If the token expired since,
-        # the record just written may already be gone, and a replay would find nothing.
-        if marked and self._clock() >= effect.expires_at:
-            raise TokenError(ErrorCode.TOKEN_EXPIRED, "token expired during verification")
-        return marked
 
     def _entry(self, value: object) -> CacheEntry:
         return CacheEntry(value, self._clock())
@@ -403,9 +396,7 @@ class Verifier(_Base):
         match effect:
             case MarkUsed():
                 assert self._replay_guard is not None
-                return self._check_marked(
-                    effect, self._replay_guard.mark_used(effect.key, effect.expires_at)
-                )
+                return self._replay_guard.mark_used(effect.key, effect.expires_at)
             case ResolveTxt(name=name):
                 with _issuer_io(effect):
                     return self._resolver.resolve_txt(name)
@@ -589,9 +580,7 @@ class AsyncVerifier(_Base):
             case MarkUsed():
                 assert self._replay_guard is not None
                 marked = self._replay_guard.mark_used(effect.key, effect.expires_at)
-                return self._check_marked(
-                    effect, await marked if inspect.isawaitable(marked) else marked
-                )
+                return await marked if inspect.isawaitable(marked) else marked
             case ResolveTxt(name=name):
                 with _issuer_io(effect):
                     return await self._resolver.resolve_txt(name)

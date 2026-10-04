@@ -34,7 +34,7 @@ The verification core can also be driven by hand. That is useful when writing yo
 ```python
 from pyevp.core import verification_steps
 
-steps = verification_steps(token, audience=..., nonce=..., email=..., now=..., profile=...)
+steps = verification_steps(token, audience=..., nonce=..., email=..., clock=..., profile=...)
 effect = next(steps)  # ResolveTxt("_email-verification.example.com")
 effect = steps.send(["iss=issuer.example"])
 ...

@@ -18,6 +18,7 @@ from typing import Any, Literal, TypeAlias
 
 from pyevp import _jose, discovery
 from pyevp.errors import DiscoveryError, ErrorCode, PolicyError, TokenError
+from pyevp.ports import Clock
 from pyevp.profile import Profile
 from pyevp.token import ParsedToken, compute_sd_hash, parse_token
 from pyevp.types import JSONObject, VerifiedEmail
@@ -61,10 +62,7 @@ class MarkUsed:
     """Record that a token has been accepted.  Reply ``True`` if it was not seen before.
 
     ``key`` only needs remembering until ``expires_at``: from that instant on, the
-    token fails the freshness checks anyway.  Freshness is judged once, before any
-    I/O, so a driver must reject the token (``TOKEN_EXPIRED``) if its clock has
-    reached ``expires_at`` after marking: the record may already be gone, and a
-    replay would not find it.
+    token fails the freshness checks anyway.
     """
 
     key: str
@@ -258,7 +256,7 @@ def verification_steps(
     *,
     audience: str,
     nonce: str,
-    now: datetime,
+    clock: Clock,
     profile: Profile,
     email: str | None,
     replay_protection: bool = False,
@@ -274,6 +272,7 @@ def verification_steps(
     ``allowed_issuers`` (canonical ``https://`` + host), a token naming any other
     issuer is refused offline; DNS must later delegate the same issuer.
     """
+    now = clock()
     parsed = parse_token(token, allow_disclosures=profile.allow_disclosures)
     evt = precheck_evt(parsed, now=now, profile=profile)
     kb_issued_at = verify_kb(
@@ -321,6 +320,10 @@ def verification_steps(
         expires_at = kb_issued_at + profile.max_token_age + profile.clock_skew
         if not (yield MarkUsed(replay_key(parsed), expires_at)):
             raise TokenError(ErrorCode.TOKEN_REPLAYED, "token has already been used")
+        # Freshness was judged when verification started.  If the token expired since,
+        # the record just written may already be gone, and a replay would find nothing.
+        if clock() >= expires_at:
+            raise TokenError(ErrorCode.TOKEN_EXPIRED, "token expired during verification")
 
     private = parsed.evt.claims.get("is_private_email")
     return VerifiedEmail(
