@@ -120,6 +120,16 @@ def test_transport_failure_raises(issuer: FakeIssuer) -> None:
     assert exc.value.code is ErrorCode.ISSUER_UNREACHABLE
 
 
+def test_a_txt_reply_that_is_not_a_list_of_strings_is_refused(issuer: FakeIssuer) -> None:
+    class OneString:
+        def resolve_txt(self, name: str) -> list[str]:
+            return "iss=issuer.example"  # ty: ignore[invalid-return-type]
+
+    _, fetcher = _ports(issuer)
+    with pytest.raises(TypeError, match="ResolveTxt must return a list of strings"):
+        discover("example.com", resolver=OneString(), fetcher=fetcher)
+
+
 @pytest.mark.anyio
 async def test_async(issuer: FakeIssuer) -> None:
     report = await adiscover(

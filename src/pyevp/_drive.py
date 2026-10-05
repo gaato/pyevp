@@ -33,7 +33,7 @@ def is_async(function: object) -> bool:
 
 
 def drive(
-    steps: Generator[E, Any, R],
+    steps: Generator[E, object, R],
     perform: Callable[[E], object],
     *,
     hint: str,
@@ -63,7 +63,7 @@ def drive(
 
 
 async def adrive(
-    steps: Generator[E, Any, R],
+    steps: Generator[E, object, R],
     perform: Callable[[E], object],
     *,
     translate: Translate | None = None,

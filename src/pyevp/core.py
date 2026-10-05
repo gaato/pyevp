@@ -14,7 +14,7 @@ import math
 from collections.abc import Collection, Generator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Literal, TypeAlias
+from typing import Literal, TypeAlias, TypeVar
 
 from pyevp import _jose, discovery
 from pyevp.errors import DiscoveryError, ErrorCode, PolicyError, TokenError
@@ -71,7 +71,31 @@ class MarkUsed:
 
 # TODO(py3.12): back to a ``type`` statement once 3.11 support is dropped.
 Effect: TypeAlias = ResolveTxt | FetchJson | MarkUsed
-Steps: TypeAlias = Generator[Effect, Any, VerifiedEmail]
+Steps: TypeAlias = Generator[Effect, object, VerifiedEmail]
+Q = TypeVar("Q")
+
+
+def _resolve_txt(name: str) -> Generator[Effect, object, list[str]]:
+    """Request the TXT records of ``name``, refusing a reply that is not a list of strings.
+
+    A single string would otherwise be read one character at a time, as no records.
+    """
+    records = yield ResolveTxt(name)
+    if not isinstance(records, list) or not all(isinstance(r, str) for r in records):
+        raise TypeError("the port answering ResolveTxt must return a list of strings")
+    return records
+
+
+def _ask(question: Q) -> Generator[Q, object, bool]:
+    """Yield ``question`` and return its yes-or-no answer, refusing one that is not a bool.
+
+    Any other truthy value would otherwise read as yes, letting a token or nonce through.
+    """
+    answer = yield question
+    if not isinstance(answer, bool):
+        name = type(question).__name__.lstrip("_")
+        raise TypeError(f"the port answering {name} must return a bool")
+    return answer
 
 
 @dataclass(frozen=True, slots=True)
@@ -290,7 +314,7 @@ def verification_steps(
         txt_name = discovery.txt_name_for(evt.email, profile)
     except (ValueError, UnicodeError) as exc:
         raise TokenError(ErrorCode.MALFORMED_TOKEN, "EVT email domain is invalid") from exc
-    records = yield ResolveTxt(txt_name)
+    records = yield from _resolve_txt(txt_name)
     issuer = discovery.parse_txt_records(records)
     if discovery.canonical_issuer(evt.claimed_issuer, profile.issuer_format) != issuer:
         raise DiscoveryError(
@@ -318,7 +342,7 @@ def verification_steps(
 
     if replay_protection:
         expires_at = kb_issued_at + profile.max_token_age + profile.clock_skew
-        if not (yield MarkUsed(replay_key(parsed), expires_at)):
+        if not (yield from _ask(MarkUsed(replay_key(parsed), expires_at))):
             raise TokenError(ErrorCode.TOKEN_REPLAYED, "token has already been used")
         # Freshness was judged when verification started.  If the token expired since,
         # the record just written may already be gone, and a replay would find nothing.

@@ -356,6 +356,18 @@ async def test_async_cache_failures_propagate_unchanged(
             await verifier.verify(token, nonce=nonce, email=None)
 
 
+def test_a_cache_returning_something_else_is_refused(
+    issuer: FakeIssuer, token: str, nonce: str
+) -> None:
+    class ValueCache(_BrokenCache):
+        def get(self, key: str) -> CacheEntry | None:
+            return issuer.metadata  # ty: ignore[invalid-return-type]
+
+    verifier = make_verifier(issuer, audience=AUDIENCE, cache=ValueCache("none"))
+    with pytest.raises(TypeError, match="cache must return a CacheEntry or None"):
+        verifier.verify(token, nonce=nonce, email=None)
+
+
 def test_policy_errors_say_nothing_about_authenticity(
     issuer: FakeIssuer, browser: FakeBrowser, nonce: str
 ) -> None:

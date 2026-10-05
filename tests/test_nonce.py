@@ -311,3 +311,33 @@ def test_sync_submission_refuses_an_async_store_up_front(verifier: Verifier) -> 
     # Even without a token, so that the mistake shows before EVP is in use.
     with pytest.raises(TypeError, match="AsyncVerifier"):
         verifier.verify_submission("", nonces=store, email=EMAIL)
+
+
+def test_a_store_answering_anything_but_a_bool_is_refused(
+    issuer: FakeIssuer, browser: FakeBrowser
+) -> None:
+    class Wordy:
+        def issue(self) -> str:
+            return "n"
+
+        def take(self, nonce: str) -> bool:
+            return "not-issued"  # ty: ignore[invalid-return-type]
+
+    class AsyncWordy:
+        async def issue(self) -> str:
+            return "n"
+
+        async def take(self, nonce: str) -> bool:
+            return "not-issued"  # ty: ignore[invalid-return-type]
+
+    token = _token(issuer, browser, "n")
+    verifier = make_verifier(issuer, audience=AUDIENCE)
+    with pytest.raises(TypeError, match="TakeNonce must return a bool"):
+        verifier.verify_submission(token, nonces=Wordy(), email=EMAIL)
+    averifier = make_async_verifier(issuer, audience=AUDIENCE)
+
+    async def main() -> None:
+        with pytest.raises(TypeError, match="TakeNonce must return a bool"):
+            await averifier.verify_submission(token, nonces=AsyncWordy(), email=EMAIL)
+
+    anyio.run(main)

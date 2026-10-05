@@ -45,6 +45,20 @@ def test_steps_request_dns_then_metadata_then_jwks(
     assert stop.value.value.issuer == "https://issuer.example"
 
 
+@pytest.mark.parametrize(
+    "reply", ["iss=issuer.example", ("iss=issuer.example",), [b"iss=issuer.example"], None]
+)
+def test_a_txt_reply_that_is_not_a_list_of_strings_is_refused(
+    token: str, nonce: str, clock: FixedClock, reply: object
+) -> None:
+    steps = verification_steps(
+        token, audience=AUDIENCE, nonce=nonce, clock=clock, profile=DEFAULT_PROFILE, email=None
+    )
+    next(steps)
+    with pytest.raises(TypeError, match="ResolveTxt must return a list of strings"):
+        steps.send(reply)
+
+
 def test_a_token_expiring_while_marked_used_is_refused(
     issuer: FakeIssuer, token: str, nonce: str, clock: FixedClock
 ) -> None:

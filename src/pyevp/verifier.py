@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 from pyevp._drive import adrive, drive, is_async, lookup, unreachable
 from pyevp.cache import AsyncCache, Cache, CacheEntry, InMemoryCache
-from pyevp.core import Effect, FetchJson, MarkUsed, Steps, verification_steps
+from pyevp.core import Effect, FetchJson, MarkUsed, Steps, _ask, verification_steps
 from pyevp.discovery import canonical_issuer
 from pyevp.errors import ErrorCode, EVPError, TokenError
 from pyevp.nonce import AsyncNonceStore, NonceStore, generate_nonce
@@ -105,8 +105,15 @@ class _CacheSet:
 
 # TODO(py3.12): back to ``type`` statements once 3.11 support is dropped.
 _Effect: TypeAlias = Effect | _TakeNonce | _CacheGet | _CacheSet
-_Steps: TypeAlias = Generator[_Effect, Any, VerifiedEmail]
+_Steps: TypeAlias = Generator[_Effect, object, VerifiedEmail]
 _SYNC = "use AsyncVerifier"
+
+
+def _cache_get(url: str) -> Generator[_Effect, object, CacheEntry | None]:
+    entry = yield _CacheGet(url)
+    if entry is not None and not isinstance(entry, CacheEntry):
+        raise TypeError("the cache must return a CacheEntry or None")
+    return entry
 
 
 class _Base:
@@ -162,7 +169,7 @@ class _Base:
             # Fails verification as malformed, with a nonce that matches nothing.
             return (yield from self._steps(token, generate_nonce(), email, audience))
         # Refused before the token is checked, so that this is the one error reported.
-        if not presented or not (yield _TakeNonce(presented)):
+        if not presented or not (yield from _ask(_TakeNonce(presented))):
             raise TokenError(
                 ErrorCode.NONCE_MISMATCH, "KB-JWT nonce was not issued to this user or was used"
             )
@@ -174,7 +181,7 @@ class _Base:
             effect = next(steps)
             while True:
                 if isinstance(effect, FetchJson):
-                    entry = self._reuse(effect, (yield _CacheGet(effect.url)))
+                    entry = self._reuse(effect, (yield from _cache_get(effect.url)))
                     if entry is None:
                         entry = CacheEntry((yield effect), self._clock())
                         yield _CacheSet(effect.url, entry)

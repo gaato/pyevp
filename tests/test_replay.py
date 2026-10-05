@@ -244,3 +244,30 @@ async def test_token_expiring_during_async_verification_is_rejected(
     with pytest.raises(EVPError) as exc:
         await verifier.verify(token, nonce=nonce, email=None)
     assert exc.value.code is ErrorCode.TOKEN_EXPIRED
+
+
+class _Wordy:
+    def mark_used(self, key: str, expires_at: datetime) -> bool:
+        return "already-used"  # ty: ignore[invalid-return-type]
+
+
+class _AsyncWordy:
+    async def mark_used(self, key: str, expires_at: datetime) -> bool:
+        return "already-used"  # ty: ignore[invalid-return-type]
+
+
+def test_a_guard_answering_anything_but_a_bool_is_refused(
+    issuer: FakeIssuer, token: str, nonce: str
+) -> None:
+    verifier = make_verifier(issuer, audience=AUDIENCE, replay_guard=_Wordy())
+    with pytest.raises(TypeError, match="MarkUsed must return a bool"):
+        verifier.verify(token, nonce=nonce, email=None)
+
+
+@pytest.mark.anyio
+async def test_an_async_guard_answering_anything_but_a_bool_is_refused(
+    issuer: FakeIssuer, token: str, nonce: str
+) -> None:
+    verifier = make_async_verifier(issuer, audience=AUDIENCE, replay_guard=_AsyncWordy())
+    with pytest.raises(TypeError, match="MarkUsed must return a bool"):
+        await verifier.verify(token, nonce=nonce, email=None)

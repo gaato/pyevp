@@ -6,6 +6,18 @@ see the [compatibility policy].
 
 ## [Unreleased]
 
+### Security
+
+- A replay guard or nonce store whose answer was truthy but not a `bool`, such as
+  `"already-used"`, let the token or nonce through. Such an answer is now a `TypeError`.
+
+### Relying party
+
+- `Steps` and `ReportSteps` are sent `object` rather than `Any`, so a flow checks each answer
+  before using it. A TXT resolver that returns anything but a list of strings, and a cache that
+  returns anything but a `CacheEntry` or `None`, are a `TypeError`. A single string used to be
+  read one character at a time, as no `iss=` record.
+
 ## [0.2.0] - 2026-10-04
 
 ### Security

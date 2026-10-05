@@ -13,7 +13,7 @@ from typing import Any, TypeAlias
 
 from pyevp import _jose, discovery
 from pyevp._drive import adrive, drive, is_async, lookup, unreachable
-from pyevp.core import Effect, FetchJson, ResolveTxt, _signing_alg_advertised
+from pyevp.core import Effect, FetchJson, _resolve_txt, _signing_alg_advertised
 from pyevp.errors import DiscoveryError
 from pyevp.ports import AsyncJsonFetcher, AsyncTxtResolver, JsonFetcher, TxtResolver
 from pyevp.profile import DEFAULT_PROFILE, Profile
@@ -56,7 +56,7 @@ class IssuerReport:
 
 
 # TODO(py3.12): back to a ``type`` statement once 3.11 support is dropped.
-ReportSteps: TypeAlias = Generator[Effect, Any, IssuerReport]
+ReportSteps: TypeAlias = Generator[Effect, object, IssuerReport]
 
 
 def _normalize_domain(target: str) -> str:
@@ -78,7 +78,7 @@ def discovery_steps(target: str, profile: Profile = DEFAULT_PROFILE) -> ReportSt
     def done(problem: str, **changes: Any) -> IssuerReport:
         return replace(report, problems=(problem,), **changes)
 
-    records = tuple((yield ResolveTxt(dns_name)))
+    records = tuple((yield from _resolve_txt(dns_name)))
     try:
         issuer = discovery.parse_txt_records(records)
     except DiscoveryError as exc:
