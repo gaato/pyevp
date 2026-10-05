@@ -8,8 +8,9 @@ see the [compatibility policy].
 
 ### Security
 
-- A replay guard or nonce store whose answer was truthy but not a `bool`, such as
-  `"already-used"`, let the token or nonce through. Such an answer is now a `TypeError`.
+- A replay guard, the relying party's or the issuer's, or a nonce store whose answer was truthy
+  but not a `bool`, such as `"already-used"`, let the token, request or nonce through. Such an
+  answer is now a `TypeError`.
 
 ### Relying party
 

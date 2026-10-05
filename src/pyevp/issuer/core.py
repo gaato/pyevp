@@ -36,7 +36,7 @@ import idna
 from pyevp import _httpsig, _jose, discovery
 from pyevp._drive import adrive, drive, is_async
 from pyevp._httpsig import Headers
-from pyevp.core import MarkUsed
+from pyevp.core import MarkUsed, _ask
 from pyevp.issuer.errors import IssuanceError, IssuanceErrorCode
 from pyevp.issuer.fedcm import FEDCM_FETCH_DEST, _accounts_document
 from pyevp.issuer.keys import SIGNING_ALGORITHMS, Signer, public_jwk
@@ -196,13 +196,14 @@ async def _collect(chunks: AsyncIterable[bytes], limit: int) -> bytes:
     return body
 
 
-def _lookup_emails() -> Generator[_IssuanceEffect, Any, list[str]]:
+def _lookup_emails() -> Generator[_IssuanceEffect, object, list[object]]:
+    """The signed-in user's addresses, as given: anything in them may still be invalid."""
     emails = yield _LookupEmails()
     _require_iterable(emails)
-    return list(emails)
+    return list(cast("Iterable[object]", emails))
 
 
-def _owns(email: str, emails: Iterable[str]) -> bool:
+def _owns(email: str, emails: Iterable[object]) -> bool:
     """Whether ``email`` (already valid) is one of ``emails``, compared case-insensitively.
 
     Addresses EVP cannot carry are ignored: lowercasing a non-ASCII one can turn it into
@@ -489,12 +490,12 @@ class Issuer:
 
     def _issuance_steps(
         self, method: str, headers: Headers
-    ) -> Generator[_IssuanceEffect, Any, IssuanceRequest]:
+    ) -> Generator[_IssuanceEffect, object, IssuanceRequest]:
         request = yield from self._request(method, headers)
         # Before the replay guard: only signed-in users' requests are worth recording.
         self._authorize(request, (yield from _lookup_emails()))
         if self.replay_guard is not None:
-            self._check_replay((yield MarkUsed(*self._replay_key(request))))
+            self._check_replay((yield from _ask(MarkUsed(*self._replay_key(request)))))
         self._check_fresh(request)
         return request
 
@@ -537,7 +538,7 @@ class Issuer:
 
     # --- internals ---
 
-    def _authorize(self, request: IssuanceRequest, emails: list[str]) -> None:
+    def _authorize(self, request: IssuanceRequest, emails: list[object]) -> None:
         if not _owns(request.email, emails):
             detail = "address not the user's" if emails else "no addresses"
             # One answer for every way this can fail, so responses do not reveal accounts.
@@ -569,7 +570,7 @@ class Issuer:
 
     def _request(
         self, method: str, headers: Headers
-    ) -> Generator[_IssuanceEffect, Any, IssuanceRequest]:
+    ) -> Generator[_IssuanceEffect, object, IssuanceRequest]:
         """Validate the request, reading its body only once it is worth reading."""
         if method != "POST":
             raise IssuanceError(IssuanceErrorCode.INVALID_REQUEST, f"method {method} not allowed")

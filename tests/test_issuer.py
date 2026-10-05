@@ -1153,6 +1153,27 @@ def test_sync_issuance_refuses_an_awaitable_from_the_guard(
         respond(issuer, Browser(clock).request())
 
 
+def test_a_guard_answering_anything_but_a_bool_is_refused(clock: FixedClock) -> None:
+    class Wordy:
+        def mark_used(self, key: str, expires_at: Any) -> bool:
+            return "already-used"  # ty: ignore[invalid-return-type]
+
+    class AsyncWordy:
+        async def mark_used(self, key: str, expires_at: Any) -> bool:
+            return "already-used"  # ty: ignore[invalid-return-type]
+
+    request = Browser(clock).request()
+    with pytest.raises(TypeError, match="MarkUsed must return a bool"):
+        respond(make_issuer(clock, replay_guard=Wordy()), request)
+    issuer = make_issuer(clock, replay_guard=AsyncWordy())
+
+    async def main() -> None:
+        with pytest.raises(TypeError, match="MarkUsed must return a bool"):
+            await issuer.aissuance_response(**request, user_emails=OWNER)
+
+    anyio.run(main)
+
+
 # --- reading the body ---
 
 
