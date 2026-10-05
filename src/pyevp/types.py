@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, TypeAlias
+from typing import TypeAlias
 
 __all__ = ["IssuerMetadata", "JSONObject", "VerifiedEmail"]
 
 # TODO(py3.12): back to a ``type`` statement once 3.11 support is dropped.
-JSONObject: TypeAlias = Mapping[str, Any]
+JSONObject: TypeAlias = Mapping[str, object]
 
 
 @dataclass(frozen=True, slots=True)

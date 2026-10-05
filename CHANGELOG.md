@@ -17,6 +17,12 @@ see the [compatibility policy].
   before using it. A TXT resolver that returns anything but a list of strings, and a cache that
   returns anything but a `CacheEntry` or `None`, are a `TypeError`. A single string used to be
   read one character at a time, as no `iss=` record.
+- `JSONObject` is `Mapping[str, object]` rather than `Mapping[str, Any]`, so a type checker
+  wants a claim in `VerifiedEmail.claims` (or a member of `IssuerMetadata.raw`) checked with
+  `isinstance` before it is used as anything more specific. Two checks it called for change
+  what a caller sees: `verify_kb` given a `cnf_jwk` whose `alg` is neither a string nor null
+  fails with `malformed_token` rather than `unsupported_alg`, and `sign_jwt` given a header whose
+  `alg` is not a string raises `TypeError` rather than joserfc's `InvalidHeaderValueError`.
 
 ## [0.2.0] - 2026-10-04
 

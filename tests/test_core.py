@@ -23,9 +23,16 @@ from pyevp import (
     emails_match,
 )
 from pyevp._jose import b64url_encode
-from pyevp.core import FetchJson, MarkUsed, ResolveTxt, verification_steps
+from pyevp.core import (
+    FetchJson,
+    MarkUsed,
+    ResolveTxt,
+    precheck_evt,
+    verification_steps,
+    verify_kb,
+)
 from pyevp.testing import FakeBrowser, FakeIssuer, FixedClock, make_async_verifier, make_verifier
-from pyevp.token import build_kb, compute_sd_hash, sign_jwt
+from pyevp.token import build_kb, compute_sd_hash, parse_token, sign_jwt
 
 from .conftest import AUDIENCE, EMAIL
 
@@ -333,6 +340,23 @@ def test_ed448_cnf_does_not_cover_ed25519(
             _cnf_alg_ed448(kb_alg)(issuer, browser, nonce, clock), nonce=nonce, email=None
         )
     assert exc.value.code is ErrorCode.UNSUPPORTED_ALG
+
+
+def test_verify_kb_refuses_a_cnf_alg_that_is_not_a_string(
+    token: str, nonce: str, clock: FixedClock
+) -> None:
+    parsed = parse_token(token, allow_disclosures=DEFAULT_PROFILE.allow_disclosures)
+    evt = precheck_evt(parsed, now=clock(), profile=DEFAULT_PROFILE)
+    with pytest.raises(EVPError) as exc:
+        verify_kb(
+            parsed,
+            cnf_jwk={**evt.cnf_jwk, "alg": ["ES256"]},
+            audience=AUDIENCE,
+            nonce=nonce,
+            now=clock(),
+            profile=DEFAULT_PROFILE,
+        )
+    assert exc.value.code is ErrorCode.MALFORMED_TOKEN
 
 
 def test_exp_at_the_end_of_time(issuer: FakeIssuer, browser: FakeBrowser, nonce: str) -> None:

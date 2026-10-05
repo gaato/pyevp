@@ -122,10 +122,13 @@ def verify_compact(compact: str, key: JSONObject, alg: str) -> bool:
 
 
 def sign_compact(header: JSONObject, claims: JSONObject, private_key: Any) -> str:
+    alg = header["alg"]
+    if not isinstance(alg, str):
+        raise TypeError(f"header alg must be a string, not {alg!r}")
     payload = json.dumps(dict(claims), separators=(",", ":")).encode()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", SecurityWarning)
-        return jws.serialize_compact(dict(header), payload, private_key, algorithms=[header["alg"]])
+        return jws.serialize_compact(dict(header), payload, private_key, algorithms=[alg])
 
 
 def verify_raw(message: bytes, signature: bytes, key: JSONObject, alg: str) -> bool:

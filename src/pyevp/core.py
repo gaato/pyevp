@@ -198,6 +198,8 @@ def verify_kb(
     cnf_alg = cnf_jwk.get("alg")
     if cnf_alg is None and profile.require_cnf_alg:
         raise TokenError(ErrorCode.UNSUPPORTED_ALG, "cnf.jwk has no alg")
+    if cnf_alg is not None and not isinstance(cnf_alg, str):
+        raise TokenError(ErrorCode.MALFORMED_TOKEN, "cnf.jwk alg is not a string")
     if cnf_alg is not None and (
         cnf_alg != alg if profile.require_cnf_alg else not _jose.algorithms_compatible(cnf_alg, alg)
     ):

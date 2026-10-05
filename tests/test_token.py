@@ -6,7 +6,7 @@ import pytest
 
 from pyevp import ErrorCode, TokenError, _jose
 from pyevp.testing import FakeBrowser, FakeIssuer
-from pyevp.token import compute_sd_hash, parse_token
+from pyevp.token import compute_sd_hash, parse_token, sign_jwt
 
 
 def test_parse_roundtrip(token: str) -> None:
@@ -98,3 +98,8 @@ def test_unencoded_payload_is_rejected(token: str, part: str, b64: object) -> No
 def test_explicit_b64_true_is_accepted(token: str) -> None:
     evt, kb = token.split("~")
     assert parse_token(f"{_with_header(evt, b64=True)}~{kb}").evt.header["b64"] is True
+
+
+def test_sign_jwt_refuses_an_alg_that_is_not_a_string() -> None:
+    with pytest.raises(TypeError, match="header alg must be a string"):
+        sign_jwt({"alg": ["ES256"]}, {}, None)
