@@ -23,10 +23,11 @@ A push to `main` that changes the site image deploys pyevp.dev and the demo prov
 running.
 
 The site's stylesheet build pins Tailwind CSS and daisyUI, each download with a SHA256, at the
-top of `examples/site/scripts/build-css.sh`. Renovate bumps the versions but not the hashes, so
-after a bump the build fails with a SHA256 mismatch. From `examples/site`, run
-`scripts/build-css.sh --print-hashes`, paste its output over the `*_SHA256` lines, then rebuild
-with `scripts/build-css.sh static/site.css` and check the page.
+top of `examples/site/scripts/build-css.sh`. Renovate leaves them alone: they run only at build
+time and produce static CSS, the hashes already fix what is downloaded, and every bump needs new
+hashes by hand anyway. To bump one, change its version, then from `examples/site` run
+`scripts/build-css.sh --print-hashes`, paste its output over the `*_SHA256` lines, rebuild with
+`scripts/build-css.sh static/site.css` and check the page.
 
 ## Japanese docs on Read the Docs
 

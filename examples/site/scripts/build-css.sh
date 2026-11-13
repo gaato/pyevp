@@ -7,13 +7,11 @@
 # Downloads are cached in .cache/ next to this directory and verified on every run.
 set -euo pipefail
 
-# Renovate bumps the versions below but cannot update the hashes: after a bump, run
+# Bumped by hand (see MAINTAINING.md): change a version, run
 # `scripts/build-css.sh --print-hashes` and paste its output over the *_SHA256 lines.
-# renovate: datasource=github-releases depName=tailwindlabs/tailwindcss versioning=semver
 TAILWIND_VERSION=4.3.3
 TAILWIND_SHA256_LINUX_X64=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
 TAILWIND_SHA256_LINUX_ARM64=55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195
-# renovate: datasource=github-releases depName=saadeghi/daisyui versioning=semver
 DAISYUI_VERSION=5.7.47
 DAISYUI_SHA256=85819d3fe86a852237b439b13f481481aac58e562ac47694cd11c3038e994f2a
 

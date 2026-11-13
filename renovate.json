@@ -49,18 +49,5 @@
       ],
       "groupName": "GitHub Actions (non-major)"
     }
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Pinned tool versions in shell scripts, annotated with a `# renovate:` comment",
-      "managerFilePatterns": [
-        "/^examples/site/scripts/build-css\\.sh$/"
-      ],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+[A-Z0-9_]+_VERSION=(?<currentValue>\\S+)"
-      ],
-      "extractVersionTemplate": "^v?(?<version>.+)$"
-    }
   ]
 }
