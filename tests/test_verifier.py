@@ -361,7 +361,7 @@ def test_a_cache_returning_something_else_is_refused(
 ) -> None:
     class ValueCache(_BrokenCache):
         def get(self, key: str) -> CacheEntry | None:
-            return issuer.metadata  # ty: ignore[invalid-return-type]
+            return issuer.metadata  # ty: ignore[invalid-explicit-return]
 
     verifier = make_verifier(issuer, audience=AUDIENCE, cache=ValueCache("none"))
     with pytest.raises(TypeError, match="cache must return a CacheEntry or None"):
@@ -423,7 +423,7 @@ def test_default_names_missing_extras(
     for module in missing:
         monkeypatch.setitem(sys.modules, module, None)
     # Without the dns extra installed, the resolver import would fail first.
-    kwargs = {"resolver": InMemoryDns()} if named != "dnspython" else {}
+    kwargs: dict[str, Any] = {"resolver": InMemoryDns()} if named != "dnspython" else {}
     with pytest.raises(ImportError, match=named) as exc:
         cls.default(audience=AUDIENCE, **kwargs)
     assert "pip install 'pyevp[dns,httpx2]'" in str(exc.value)

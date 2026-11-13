@@ -321,14 +321,14 @@ def test_a_store_answering_anything_but_a_bool_is_refused(
             return "n"
 
         def take(self, nonce: str) -> bool:
-            return "not-issued"  # ty: ignore[invalid-return-type]
+            return "not-issued"  # ty: ignore[invalid-explicit-return]
 
     class AsyncWordy:
         async def issue(self) -> str:
             return "n"
 
         async def take(self, nonce: str) -> bool:
-            return "not-issued"  # ty: ignore[invalid-return-type]
+            return "not-issued"  # ty: ignore[invalid-explicit-return]
 
     token = _token(issuer, browser, "n")
     verifier = make_verifier(issuer, audience=AUDIENCE)

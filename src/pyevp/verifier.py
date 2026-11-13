@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections.abc import Callable, Collection, Generator, Iterator
+from collections.abc import Callable, Collection, Generator
 from contextlib import AsyncExitStack, ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import TracebackType
-from typing import Any, Self, TypeAlias
+from typing import TYPE_CHECKING, Any, Self, TypeAlias
 from urllib.parse import urlsplit
 
 from pyevp._drive import adrive, drive, is_async, lookup, unreachable
@@ -117,10 +117,21 @@ def _cache_get(url: str) -> Generator[_Effect, object, CacheEntry | None]:
 
 
 class _Base:
-    _resolver: TxtResolver | AsyncTxtResolver
-    _fetcher: JsonFetcher | AsyncJsonFetcher
-    _cache: Cache | AsyncCache
-    _replay_guard: ReplayGuard | AsyncReplayGuard | None
+    # The ports are set and narrowed by each subclass; the shared code here only reads
+    # them.  Read-only properties say so to the type checker, which would otherwise
+    # reject the narrower annotations as unsafe overrides of writable attributes.  They
+    # exist only for type checking: a real property without a setter would make the
+    # subclasses' assignments fail.
+    if TYPE_CHECKING:
+
+        @property
+        def _resolver(self) -> TxtResolver | AsyncTxtResolver: ...
+        @property
+        def _fetcher(self) -> JsonFetcher | AsyncJsonFetcher: ...
+        @property
+        def _cache(self) -> Cache | AsyncCache: ...
+        @property
+        def _replay_guard(self) -> ReplayGuard | AsyncReplayGuard | None: ...
 
     def __init__(
         self,
@@ -219,7 +230,7 @@ class _Base:
         return perform
 
     @contextmanager
-    def _observed(self, token: str) -> Iterator[Callable[[VerifiedEmail], VerifiedEmail]]:
+    def _observed(self, token: str) -> Generator[Callable[[VerifiedEmail], VerifiedEmail]]:
         """Tell the observer how verifying ``token`` ended, once."""
         started = time.perf_counter()
 
@@ -486,6 +497,8 @@ class AsyncVerifier(_Base):
 
     _resolver: AsyncTxtResolver
     _fetcher: AsyncJsonFetcher
+    _cache: Cache | AsyncCache
+    _replay_guard: ReplayGuard | AsyncReplayGuard | None
 
     def __init__(
         self,

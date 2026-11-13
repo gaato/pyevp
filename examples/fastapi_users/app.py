@@ -14,7 +14,7 @@ import logging
 import os
 import secrets
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -102,7 +102,7 @@ current_verified_user = fastapi_users.current_user(active=True, verified=True)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     # Signed-cookie sessions cannot make the nonce single-use on their own.

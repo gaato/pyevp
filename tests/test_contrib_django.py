@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import re
 import warnings
-from collections.abc import Iterator
+from collections.abc import Generator
 from datetime import timedelta
 from typing import Any
 
@@ -223,7 +223,7 @@ def test_outer_rollback_does_not_forget_tokens(issuer: FakeIssuer, token: str, n
 
 
 @contextlib.contextmanager
-def _manual_transaction(using: str = "default") -> Iterator[None]:
+def _manual_transaction(using: str = "default") -> Generator[None]:
     """Autocommit off, as with AUTOCOMMIT=False; rolled back on exit."""
     transaction.set_autocommit(False, using=using)
     try:
@@ -331,7 +331,7 @@ def _with_session(request: HttpRequest, session: SessionBase | None = None) -> H
     if session is None:
         SessionMiddleware(lambda r: HttpResponse()).process_request(request)
     else:
-        request.session = session  # ty: ignore[unresolved-attribute]
+        request.session = session  # ty: ignore[missing-attribute]
     return request
 
 
@@ -344,7 +344,7 @@ def _nonces(html: str) -> list[str]:
 
 
 def _session(request: HttpRequest) -> SessionBase:
-    return request.session  # ty: ignore[unresolved-attribute]
+    return request.session  # ty: ignore[missing-attribute]
 
 
 def _stored(request: HttpRequest) -> list[str]:

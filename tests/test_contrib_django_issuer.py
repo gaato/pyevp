@@ -79,7 +79,7 @@ def issuer(clock: FixedClock) -> Issuer:
 
 def _mount(*patterns: Any) -> Any:
     urlconf = ModuleType("evp_urls")
-    urlconf.urlpatterns = list(patterns)  # ty: ignore[unresolved-attribute]
+    urlconf.urlpatterns = list(patterns)  # ty: ignore[missing-attribute]
     return override_settings(ROOT_URLCONF=urlconf)
 
 

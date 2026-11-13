@@ -248,12 +248,12 @@ async def test_token_expiring_during_async_verification_is_rejected(
 
 class _Wordy:
     def mark_used(self, key: str, expires_at: datetime) -> bool:
-        return "already-used"  # ty: ignore[invalid-return-type]
+        return "already-used"  # ty: ignore[invalid-explicit-return]
 
 
 class _AsyncWordy:
     async def mark_used(self, key: str, expires_at: datetime) -> bool:
-        return "already-used"  # ty: ignore[invalid-return-type]
+        return "already-used"  # ty: ignore[invalid-explicit-return]
 
 
 def test_a_guard_answering_anything_but_a_bool_is_refused(

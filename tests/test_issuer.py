@@ -1156,11 +1156,11 @@ def test_sync_issuance_refuses_an_awaitable_from_the_guard(
 def test_a_guard_answering_anything_but_a_bool_is_refused(clock: FixedClock) -> None:
     class Wordy:
         def mark_used(self, key: str, expires_at: Any) -> bool:
-            return "already-used"  # ty: ignore[invalid-return-type]
+            return "already-used"  # ty: ignore[invalid-explicit-return]
 
     class AsyncWordy:
         async def mark_used(self, key: str, expires_at: Any) -> bool:
-            return "already-used"  # ty: ignore[invalid-return-type]
+            return "already-used"  # ty: ignore[invalid-explicit-return]
 
     request = Browser(clock).request()
     with pytest.raises(TypeError, match="MarkUsed must return a bool"):

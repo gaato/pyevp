@@ -123,7 +123,7 @@ def test_transport_failure_raises(issuer: FakeIssuer) -> None:
 def test_a_txt_reply_that_is_not_a_list_of_strings_is_refused(issuer: FakeIssuer) -> None:
     class OneString:
         def resolve_txt(self, name: str) -> list[str]:
-            return "iss=issuer.example"  # ty: ignore[invalid-return-type]
+            return "iss=issuer.example"  # ty: ignore[invalid-explicit-return]
 
     _, fetcher = _ports(issuer)
     with pytest.raises(TypeError, match="ResolveTxt must return a list of strings"):

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 import secrets
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated
@@ -40,7 +40,7 @@ auth = AuthX(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     verifier = AsyncVerifier.default(audience=ORIGIN, replay_guard=InMemoryReplayGuard())
     async with verifier:  # closes its HTTP client on shutdown
         app.state.verifier = verifier

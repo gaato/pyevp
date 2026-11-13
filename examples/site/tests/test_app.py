@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, Iterator
 from datetime import timedelta
 from html.parser import HTMLParser
 from http.cookies import SimpleCookie
@@ -570,7 +570,7 @@ def stranger() -> FakeIssuer:
 
 
 @contextlib.asynccontextmanager
-async def _opened(http: AsyncInMemoryHttp) -> AsyncIterator[AsyncInMemoryHttp]:
+async def _opened(http: AsyncInMemoryHttp) -> AsyncGenerator[AsyncInMemoryHttp]:
     """Stand in for ``AsyncHttpxFetcher()``, which the app opens with ``async with``."""
     yield http
 

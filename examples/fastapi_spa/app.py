@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Annotated, Any
@@ -64,7 +64,7 @@ OUTBOX: list[tuple[str, str]] = []  # (address, reset token)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # The nonce cookie is client-side state: a captured token could be sent again
     # with the old cookie.  The replay guard refuses the second use.  Use a shared
     # store (e.g. Redis) when running more than one worker.

@@ -12,7 +12,7 @@ Verification Protocol.  Tests swap the verifier for one wired to fakes via
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -26,7 +26,7 @@ ORIGIN = os.environ.get("EVP_ORIGIN", "http://localhost:8000")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # SessionMiddleware keeps the session in a signed cookie, so taking the nonce
     # out of it does not stop an attacker from resending a captured token with the
     # old cookie.  The replay guard does.  Use a shared store (e.g. Redis) when

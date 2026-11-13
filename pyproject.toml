@@ -70,7 +70,7 @@ dev = [
     "httpx2>=2.13",
     "pytest>=9.1.1",
     "ruff>=0.16.9",
-    "ty>=0.0.84",
+    "ty>=0.0.102",
 ]
 # The nightly Chrome interop test (interop/chrome_evp.py).
 interop = [

@@ -152,7 +152,7 @@ async def averify_request(
 
 def _session(request: HttpRequest) -> SessionBase:
     # Added by SessionMiddleware, which Django's types do not model.
-    return request.session  # ty: ignore[unresolved-attribute]
+    return request.session  # ty: ignore[missing-attribute]
 
 
 def _digest(key: str) -> str:

@@ -13,7 +13,7 @@ import logging
 import os
 import secrets
 import textwrap
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncGenerator, Iterable
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from time import perf_counter
@@ -496,7 +496,7 @@ def create_app(
     )
 
     @asynccontextmanager
-    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+    async def lifespan(app: Starlette) -> AsyncGenerator[None]:
         logging.basicConfig(level=logging.INFO)
         # The verifier closes only what it creates; this fetcher is ours to close.
         async with httpx_adapter.AsyncHttpxFetcher() as fetcher:

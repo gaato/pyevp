@@ -36,7 +36,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -210,7 +210,7 @@ def wait_for(description: str, check, timeout: float = 60) -> None:
 
 
 @contextlib.contextmanager
-def process(name: str, args: list[str], out: Path, **kwargs: Any) -> Iterator[None]:
+def process(name: str, args: list[str], out: Path, **kwargs: Any) -> Generator[None]:
     with (out / f"{name}.log").open("w") as logfile:
         proc = subprocess.Popen(args, stdout=logfile, stderr=subprocess.STDOUT, **kwargs)
         try:
