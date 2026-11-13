@@ -81,8 +81,9 @@ waits briefly for it (see the [quickstart](../../docs/quickstart.md)).
 
 `.github/workflows/site-image.yml` builds `ghcr.io/gaato/pyevp-site` from `Containerfile` for
 amd64 and arm64. On a push to `main` that touches one of the paths it lists (this directory, the
-three example files above, `src/`, `pyproject.toml`, `uv.lock`, `.dockerignore` or the workflow
-itself), or on a manual run, it pushes `:latest` and `:sha-<commit>`; pull requests only build.
+three example files above, `src/`, `pyproject.toml`, `uv.lock`, `.python-version`,
+`.dockerignore` or the workflow itself), or on a manual run, it pushes `:latest` and
+`:sha-<commit>`; pull requests only build.
 The host runs `:latest` under podman auto-update, so such a push to `main` is a deploy.
 `GET https://mail.pyevp.dev/me` returns the deployed commit as `build_sha`.
 

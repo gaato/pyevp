@@ -5,6 +5,10 @@
     "helpers:pinGitHubActionDigestsToSemver",
     ":semanticCommits"
   ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/.venv/**"
+  ],
   "lockFileMaintenance": {
     "description": "Vulnerability PRs only fix direct dependencies; a daily lock file refresh lands transitive fixes within a day.",
     "enabled": true,
@@ -21,6 +25,17 @@
       "automerge": true,
       "automergeType": "pr",
       "platformAutomerge": false
+    },
+    {
+      "description": "The site image builds with UV_PYTHON_DOWNLOADS=never, so its base image must carry the Python that .python-version names; update both in one PR.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "python",
+        "docker.io/library/python"
+      ],
+      "groupName": "Python"
     },
     {
       "matchManagers": [

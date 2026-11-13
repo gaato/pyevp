@@ -15,6 +15,7 @@ on:
       - "src/**"
       - "pyproject.toml"
       - "uv.lock"
+      - ".python-version"
   pull_request:
     branches: [main]
     paths:
@@ -27,6 +28,7 @@ on:
       - "src/**"
       - "pyproject.toml"
       - "uv.lock"
+      - ".python-version"
   workflow_dispatch:
 
 concurrency:
