@@ -1,7 +1,7 @@
 name: Site image
 
-# Builds ghcr.io/gaato/pyevp-site (examples/site).  The site host pulls :latest with
-# podman auto-update, so a push to main that changes the image is a deploy.
+# Builds ghcr.io/gaato/pyevp-site (examples/site).  Flux on the site's cluster follows
+# :latest by digest, so a push to main that changes the image is a deploy.
 on:
   push:
     branches: [main]
